@@ -1,3 +1,7 @@
+#![allow(unused, dead_code)]
+
+mod math;
+
 slint::include_modules!();
 
 fn main() -> Result<(), slint::PlatformError> {
