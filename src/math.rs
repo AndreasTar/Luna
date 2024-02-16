@@ -5,7 +5,7 @@ mod base_converter;
 use core::num;
 
 pub fn convert_number_base(from:f32, to:f32, num:String){
-    base_converter::convert_to_decimal(1.0,"1".to_string());
+    base_converter::convert_to_decimal(1,"1".to_string());
 }
 
 pub fn convert_to_decimal(from:f32, num:String){
