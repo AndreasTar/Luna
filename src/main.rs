@@ -1,17 +1,20 @@
 #![allow(unused, dead_code)]
 
+use math::convert_number_base;
+
 mod math;
 
 slint::include_modules!();
 
 fn main() -> Result<(), slint::PlatformError> {
-    let ui = AppWindow::new()?;
+    let ui = MyWindow::new()?;
 
-    ui.on_request_increase_value({
+    ui.on_request_convert_number({
         let ui_handle = ui.as_weak();
-        move || {
+        move |in_num| {
             let ui = ui_handle.unwrap();
-            ui.set_counter(ui.get_counter() + 1);
+            let number = convert_number_base(10, 16, in_num.to_string());
+            ui.set_converted(number.into());
         }
     });
 

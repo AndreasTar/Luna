@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 
 const DIGITS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-enum ConversionResult <T>{
+pub enum ConversionResult <T>{
     ParseError,
     InvalidBase,
     NormalConverted(T),
@@ -92,6 +92,10 @@ fn normal_conversion_to_decimal(base: u8, num: String) -> Result<u32, ParseIntEr
     return u32::from_str_radix(num.as_str(), base.into());
 }
 
+// TODO temporary implementation. doesnt work correctly
 fn custom_conversion_to_decimal(base: u32, num: String) -> Result<Vec<u32>, ParseIntError> {
-    
+    return match u32::from_str_radix(num.as_str(), base.into()) {
+        Ok(n) => Ok(vec![n]),
+        Err(e) => Err(e),
+    };
 }

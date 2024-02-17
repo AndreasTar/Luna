@@ -4,8 +4,15 @@ mod base_converter;
 
 use core::num;
 
-pub fn convert_number_base(from:f32, to:f32, num:String){
-    base_converter::convert_to_decimal(1,"1".to_string());
+use self::base_converter::ConversionResult;
+
+pub fn convert_number_base(from:u32, to:u32, num:String) -> String{
+    return match base_converter::convert_to_decimal(2, num){
+        ConversionResult::ParseError => String::from("-1"),
+        ConversionResult::InvalidBase => String::from("-2"),
+        ConversionResult::NormalConverted(n) => n.first().unwrap().to_string(),
+        ConversionResult::CustomConverted(n) => n.first().unwrap().to_string(),
+    };
 }
 
 pub fn convert_to_decimal(from:f32, num:String){

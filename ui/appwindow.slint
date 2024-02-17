@@ -1,17 +1,21 @@
-import { Button, VerticalBox } from "std-widgets.slint";
+import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
 
-export component AppWindow inherits Window {
-    in-out property<int> counter: 42;
-    callback request-increase-value();
+
+export component MyWindow inherits Window {
+    in-out property<int> number: 0;
+    in-out property <string> converted: 0;
+    callback request-convert-number(string);
     VerticalBox {
-        Text {
-            text: "Counter: \{root.counter}";
-        }
-        Button {
-            text: "Increase value";
-            clicked => {
-                root.request-increase-value();
+        LineEdit {
+            input-type: decimal;
+            text: "\{root.number}";
+            placeholder-text: "Input a decimal number:";
+            edited(number) => {
+                root.request-convert-number(number);
             }
+        }
+        Text {
+            text: root.converted;
         }
     }
 }
