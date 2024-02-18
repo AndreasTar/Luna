@@ -11,7 +11,7 @@ pub enum ConversionResult <T>{
 }
 
 
-pub fn convert_to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
+pub fn to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
 
     /*
 
@@ -28,7 +28,24 @@ pub fn convert_to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
     if base isnt integer, we must make our own system (remember that one vid)
     
     */
-    let result = if from <= 36 && from >= 2 {
+
+    // number from String -> &str
+    // then &str -> number in decimal
+    // then number -> char in radix
+
+    // // converts a digit in the given radix to a char like
+    // // char::from_digit(4, 10) ==  Some('4');
+    // let char =  char::from_digit(
+    //
+    //     
+    //     u32::from_str_radix(
+    //         num.as_str(),
+    //         from
+    //     ).unwrap(), 
+    //     from
+
+    let result = 
+    if from <= 36 && from >= 2 {
         
         let base: u8 = from as u8;
 
@@ -38,20 +55,6 @@ pub fn convert_to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
         };
         converted_num
 
-        // number from String -> &str
-        // then &str -> number in decimal
-        // then number -> char in radix
-
-        // // converts a digit in the given radix to a char like
-        // // char::from_digit(4, 10) ==  Some('4');
-        // let char =  char::from_digit(
-        //
-        //     
-        //     u32::from_str_radix(
-        //         num.as_str(),
-        //         from
-        //     ).unwrap(), 
-        //     from
     }
     else if from > 36 {
         let base = from;

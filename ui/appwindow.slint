@@ -2,20 +2,24 @@ import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
 
 
 export component MyWindow inherits Window {
-    in-out property<int> number: 0;
-    in-out property <string> converted: 0;
-    callback request-convert-number(string);
+    in property <string> decEdit;
+    in property <string> binEdit;
+    callback request-convert-number(int, int, string) -> string;
     VerticalBox {
-        LineEdit {
+        dec := LineEdit {
             input-type: decimal;
-            text: "\{root.number}";
             placeholder-text: "Input a decimal number:";
-            edited(number) => {
-                root.request-convert-number(number);
+            edited(decEdit) => {
+                bin.text = root.request-convert-number(10, 2, decEdit);
             }
         }
-        Text {
-            text: root.converted;
+
+        bin := LineEdit {
+            input-type: decimal;
+            placeholder-text: "Input a binary number:";
+            edited(binEdit) => {
+                dec.text = root.request-convert-number(2, 10, binEdit);
+            }
         }
     }
 }
