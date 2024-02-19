@@ -18,7 +18,7 @@ fn main() -> Result<(), slint::PlatformError> {
             if number.starts_with("Invalid"){
                 return SharedString::from("");
             }
-            println!("In : {} {} {} Out {}", in_from,in_to,in_num, number);
+            //println!("In : {} {} {} Out {}", in_from,in_to,in_num, number);
             return number.into();
         }
     });

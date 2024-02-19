@@ -4,6 +4,9 @@ import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
 export component MyWindow inherits Window {
     in property <string> decEdit;
     in property <string> binEdit;
+    in property <string> hexEdit;
+    in property <string> octEdit;
+    property <string> res;
     callback request-convert-number(int, int, string) -> string;
     VerticalBox {
         dec := LineEdit {
@@ -11,6 +14,8 @@ export component MyWindow inherits Window {
             placeholder-text: "Input a decimal number:";
             edited(decEdit) => {
                 bin.text = root.request-convert-number(10, 2, decEdit);
+                hex.text = root.request-convert-number(10, 16, decEdit);
+                oct.text = root.request-convert-number(10, 8, decEdit);
             }
         }
 
@@ -18,7 +23,29 @@ export component MyWindow inherits Window {
             input-type: decimal;
             placeholder-text: "Input a binary number:";
             edited(binEdit) => {
-                dec.text = root.request-convert-number(2, 10, binEdit);
+                dec.text = root.request-convert-number(2, 10, binEdit);;
+                hex.text = root.request-convert-number(2, 16, binEdit);
+                oct.text = root.request-convert-number(2, 8, binEdit);
+            }
+        }
+
+        hex := LineEdit {
+            input-type: text;
+            placeholder-text: "Input a hexadecimal number:";
+            edited(hexEdit) => {
+                dec.text = root.request-convert-number(16, 10, hexEdit);
+                bin.text = root.request-convert-number(16, 2, hexEdit);
+                oct.text = root.request-convert-number(16, 8, hexEdit);
+            }
+        }
+
+        oct := LineEdit {
+            input-type: decimal;
+            placeholder-text: "Input a octal number:";
+            edited(octEdit) => {
+                dec.text = root.request-convert-number(8, 10, octEdit);
+                bin.text = root.request-convert-number(8, 2, octEdit);
+                hex.text = root.request-convert-number(8, 16, octEdit);
             }
         }
     }

@@ -3,15 +3,13 @@ use std::num::ParseIntError;
 
 const DIGITS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+
+
 pub enum ConversionResult <T>{
     ParseError,
-    InvalidBase,
-    NormalConverted(T),
-    CustomConverted(T)
+    Converted(T),
 }
 
-
-pub fn to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
 
     /*
 
@@ -44,37 +42,6 @@ pub fn to_decimal(from: u32, num: String) -> ConversionResult<Vec<u32>>{
     //     ).unwrap(), 
     //     from
 
-    let result = 
-    if from <= 36 && from >= 2 {
-        
-        let base: u8 = from as u8;
-
-        let converted_num =  match normal_conversion_to_decimal(base, num) {
-            Ok(n) => ConversionResult::NormalConverted(vec![n]),
-            Err(e) => ConversionResult::ParseError,
-        };
-        converted_num
-
-    }
-    else if from > 36 {
-        let base = from;
-        let converted_num =  match custom_conversion_to_decimal(base, num) {
-            Ok(n) => ConversionResult::CustomConverted(n),
-            Err(e) => ConversionResult::ParseError,
-        };
-        converted_num
-    }
-    else {
-        ConversionResult::InvalidBase
-    };
-
-    return result;
-}
-
-pub fn convert_from_decimal(to:f32, num:String){
-    
-}
-
 /// Converts a string from a radix to a number.
 /// 
 /// Radix **must** be between 2 and 36 (inclusive).
@@ -86,13 +53,66 @@ pub fn convert_from_decimal(to:f32, num:String){
 /// ## Examples
 /// 
 /// ```rust
-/// asserteq!(normal_conversion_to_decimal(16, "e"), Ok(14));
+/// asserteq!(to_decimal(16, "e"), Ok(14));
 /// 
 /// // If radix isnt between 2 and 36 inclusive:
-/// asserteq!(normal_conversion_to_decimal(1, "9"), ParseIntError);
+/// asserteq!(to_decimal(1, "9"), ParseIntError);
 /// ```
-fn normal_conversion_to_decimal(base: u8, num: String) -> Result<u32, ParseIntError> {
-    return u32::from_str_radix(num.as_str(), base.into());
+pub fn to_decimal(from: u8, num: String) -> ConversionResult<u32> {
+
+    return match u32::from_str_radix(num.as_str(), from.into()) {
+        Ok(n) => ConversionResult::Converted(n),
+        Err(e) => ConversionResult::ParseError,
+    };
+}
+
+/// Converts a string from a decimal number to a number in the given radix.
+/// 
+/// Radix **must** be between 2 and 36 (inclusive).
+/// 
+/// ## Arguments
+/// * `to` - The base the output number should be in (between 2 and 36 inclusive)
+/// * `num` - The input number
+/// 
+/// ## Examples
+/// 
+/// ```rust
+/// asserteq!(from_decimal(16, "17"), Ok("f2"));
+/// 
+/// // If radix isnt between 2 and 36 inclusive:
+/// asserteq!(from_decimal(1, "9"), ParseIntError);
+/// ```
+pub fn from_decimal(to: u8, num:u32) -> ConversionResult<Vec<String>> {
+
+    let mut result = vec![];
+    let mut number = num;
+    let radix = to as u32;
+
+    loop {
+        let digit = number % radix;
+        number = number / radix;
+
+        // will panic if you use a bad radix (< 2 or > 36).
+        result.push( 
+            match char::from_digit(digit, radix) {
+                Some(c) => c.to_string(),
+                None => return ConversionResult::ParseError,
+            }.to_string()
+        );
+        if number == 0 {
+            break;
+        }
+    }
+    let result = result.into_iter().rev().collect::<Vec<String>>();
+    return ConversionResult::Converted(result);
+}
+
+pub fn custom_to_decimal(){
+
+}
+
+pub fn custom_from_decimal(){
+
 }
 
 // TODO temporary implementation. doesnt work correctly
