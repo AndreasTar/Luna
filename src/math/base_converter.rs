@@ -1,9 +1,6 @@
 
 use std::num::ParseIntError;
 
-const DIGITS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-
 
 pub enum ConversionResult <T>{
     ParseError,
