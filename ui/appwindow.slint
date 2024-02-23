@@ -1,6 +1,6 @@
 import { Button, VerticalBox, LineEdit, GridBox } from "std-widgets.slint";
 
-import { NumberConverter, ConversionCallback } from "pages.slint";
+import { NumberConverter, ConversionCallback } from "pagesExport.slint";
 import { SideBar } from "helpers/side-bar.slint";
 
 export { ConversionCallback }
@@ -11,12 +11,11 @@ export component MyWindow inherits Window {
     preferred-width: 600px;
     title: "Tool Box";
 
-    //callback request-convert-number(int, int, string) -> string;
 
     HorizontalLayout {
         sideBar := SideBar {
             title: "Tool Bar";
-            model: ["NumConv"];
+            model: ["Num Conv"];
         }
 
         if (sideBar.current-item == 0) : NumberConverter{}

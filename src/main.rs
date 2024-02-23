@@ -1,7 +1,7 @@
 #![allow(unused, dead_code)]
 
 use math::convert_number_base;
-use slint::{ComponentHandle, SharedString};
+use slint::{ComponentHandle, SharedString, WindowPosition};
 
 mod math;
 
@@ -9,6 +9,8 @@ slint::include_modules!();
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MyWindow::new()?;
+
+    //ui.window().set_position(WindowPosition::Logical(slint::LogicalPosition { x: (1000.0), y: (600.0) }));
 
     ui.global::<ConversionCallback>().on_request_convert_number({
         let ui_handle = ui.as_weak();

@@ -8,14 +8,17 @@ import { Switch, GridBox, ListView, ScrollView, VerticalBox } from "std-widgets.
 export component Page inherits VerticalBox {
     in property<string> title: "default title";
     in property<string> description: "default description";
-    in property<bool> show-enable-switch: true;
+    in property<bool> show-enable-switch: false;
 
     HorizontalLayout {
         height: 24px;
 
+        alignment: center;
+        
         Text {
             font-size: 20px;
             text <=> root.title;
+
         }
 
         // Spacer
