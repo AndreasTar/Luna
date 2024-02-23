@@ -1,7 +1,7 @@
 #![allow(unused, dead_code)]
 
 use math::convert_number_base;
-use slint::SharedString;
+use slint::{ComponentHandle, SharedString};
 
 mod math;
 
@@ -10,7 +10,7 @@ slint::include_modules!();
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MyWindow::new()?;
 
-    ui.on_request_convert_number({
+    ui.global::<ConversionCallback>().on_request_convert_number({
         let ui_handle = ui.as_weak();
         move |in_from, in_to, in_num:SharedString| {
             if in_num.is_empty() {

@@ -1,0 +1,34 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import { Switch, GridBox, ListView, ScrollView, VerticalBox } from "std-widgets.slint";
+
+//import { GallerySettings } from "../gallery_settings.slint";
+
+export component Page inherits VerticalBox {
+    in property<string> title: "default title";
+    in property<string> description: "default description";
+    in property<bool> show-enable-switch: true;
+
+    HorizontalLayout {
+        height: 24px;
+
+        Text {
+            font-size: 20px;
+            text <=> root.title;
+        }
+
+        // Spacer
+        Rectangle {}
+
+        if show-enable-switch: Switch {
+            horizontal-stretch: 0;
+            //text: @tr("Widgets enabled");
+            //checked <=> GallerySettings.widgets-enabled;
+            text: "Widgets enabled";
+            enabled: true;
+        }
+    }
+
+    @children
+}

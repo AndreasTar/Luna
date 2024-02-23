@@ -1,0 +1,102 @@
+import { Button, VerticalBox, LineEdit, GridBox } from "std-widgets.slint";
+import { Page } from "page.slint";
+
+
+// TODO consider switching to TextInput
+component InputBox inherits LineEdit {
+    min-width: 190px;
+    max-width: 260px;
+    min-height: 28px;
+    max-height: 40px;
+
+    input-type: decimal;
+}
+
+component ConversionBox {
+    in property <string> base : "Default";
+    in property <string> type : "Default";
+    in-out property <string> text;
+    in property <InputType> input-type;
+    callback edited(string);
+    HorizontalLayout {
+        spacing: 9px;
+        Text {
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            font-weight: 600;
+            text: base;
+        }
+        InputBox {
+            input-type: input-type;
+            placeholder-text: type;
+            edited(n) => {edited(n)}
+            text <=> text;
+        }
+    }
+}
+
+export global ConversionCallback {
+    callback request-convert-number(int, int, string) -> string;
+    
+}
+
+export component NumberConverter inherits Page {
+
+    title: "Number Base Converter";
+    show-enable-switch: false;
+    description: "Convert an integer from any integer base to any other integer base.";
+
+    in property <string> decEdit;
+    in property <string> binEdit;
+    in property <string> hexEdit;
+    in property <string> octEdit;
+    //callback request-convert-number(int, int, string) -> string;
+    GridBox {
+        spacing-horizontal: 40px;
+        spacing-vertical: 26px;
+        Row {
+            dec := ConversionBox {
+                base: "Dec";
+                type: "Input a decimal number:";
+                edited(decEdit) => {
+                    bin.text = ConversionCallback.request-convert-number(10, 2, decEdit);
+                    hex.text = ConversionCallback.request-convert-number(10, 16, decEdit);
+                    oct.text = ConversionCallback.request-convert-number(10, 8, decEdit);
+                }
+            }
+
+            bin := ConversionBox {
+                base: "Bin";
+                type: "Input a binary number:";
+                edited(binEdit) => {
+                    dec.text = ConversionCallback.request-convert-number(2, 10, binEdit);
+                    hex.text = ConversionCallback.request-convert-number(2, 16, binEdit);
+                    oct.text = ConversionCallback.request-convert-number(2, 8, binEdit);
+                }
+            }
+        }
+
+        Row {
+            hex := ConversionBox {
+                base: "Hex";
+                type: "Input a hex number:";
+                input-type: text;
+                edited(hexEdit) => {
+                    dec.text = ConversionCallback.request-convert-number(16, 10, hexEdit);
+                    bin.text = ConversionCallback.request-convert-number(16, 2, hexEdit);
+                    oct.text = ConversionCallback.request-convert-number(16, 8, hexEdit);
+                }
+            }
+    
+            oct := ConversionBox {
+                base: "Oct";
+                type: "Input an octal number:";
+                edited(octEdit) => {
+                    dec.text = ConversionCallback.request-convert-number(8, 10, octEdit);
+                    bin.text = ConversionCallback.request-convert-number(8, 2, octEdit);
+                    hex.text = ConversionCallback.request-convert-number(8, 16, octEdit);
+                }
+            }
+        }
+    }
+}

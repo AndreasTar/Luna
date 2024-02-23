@@ -1,91 +1,24 @@
 import { Button, VerticalBox, LineEdit, GridBox } from "std-widgets.slint";
 
+import { NumberConverter, ConversionCallback } from "pages.slint";
+import { SideBar } from "helpers/side-bar.slint";
 
-// TODO consider switching to TextInput
-component InputBox inherits LineEdit {
-    min-width: 190px;
-    max-width: 260px;
-    min-height: 28px;
-    max-height: 40px;
+export { ConversionCallback }
 
-    input-type: decimal;
-}
-
-component ConversionBox {
-    in property <string> base : "Default";
-    in property <string> type : "Default";
-    in-out property <string> text;
-    in property <InputType> input-type;
-    callback edited(string);
-    HorizontalLayout {
-        spacing: 9px;
-        Text {
-            vertical-alignment: center;
-            horizontal-alignment: right;
-            font-weight: 600;
-            text: base;
-        }
-        InputBox {
-            input-type: input-type;
-            placeholder-text: type;
-            edited(n) => {edited(n)}
-            text <=> text;
-        }
-    }
-}
 
 export component MyWindow inherits Window {
-    in property <string> decEdit;
-    in property <string> binEdit;
-    in property <string> hexEdit;
-    in property <string> octEdit;
-    callback request-convert-number(int, int, string) -> string;
-    GridBox {
-        spacing-horizontal: 40px;
-        spacing-vertical: 26px;
-        Row {
-            dec := ConversionBox {
-                base: "Dec";
-                type: "Input a decimal number:";
-                edited(decEdit) => {
-                    bin.text = root.request-convert-number(10, 2, decEdit);
-                    hex.text = root.request-convert-number(10, 16, decEdit);
-                    oct.text = root.request-convert-number(10, 8, decEdit);
-                }
-            }
+    preferred-height: 500px;
+    preferred-width: 600px;
+    title: "Tool Box";
 
-            bin := ConversionBox {
-                base: "Bin";
-                type: "Input a binary number:";
-                edited(binEdit) => {
-                    dec.text = root.request-convert-number(2, 10, binEdit);
-                    hex.text = root.request-convert-number(2, 16, binEdit);
-                    oct.text = root.request-convert-number(2, 8, binEdit);
-                }
-            }
+    //callback request-convert-number(int, int, string) -> string;
+
+    HorizontalLayout {
+        sideBar := SideBar {
+            title: "Tool Bar";
+            model: ["NumConv"];
         }
 
-        Row {
-            hex := ConversionBox {
-                base: "Hex";
-                type: "Input a hex number:";
-                input-type: text;
-                edited(hexEdit) => {
-                    dec.text = root.request-convert-number(16, 10, hexEdit);
-                    bin.text = root.request-convert-number(16, 2, hexEdit);
-                    oct.text = root.request-convert-number(16, 8, hexEdit);
-                }
-            }
-    
-            oct := ConversionBox {
-                base: "Oct";
-                type: "Input an octal number:";
-                edited(octEdit) => {
-                    dec.text = root.request-convert-number(8, 10, octEdit);
-                    bin.text = root.request-convert-number(8, 2, octEdit);
-                    hex.text = root.request-convert-number(8, 16, octEdit);
-                }
-            }
-        }
+        if (sideBar.current-item == 0) : NumberConverter{}
     }
 }
