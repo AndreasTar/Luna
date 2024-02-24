@@ -1,5 +1,5 @@
 
-import { Button, VerticalBox, LineEdit, GridBox } from "std-widgets.slint";
+import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
 import { Page } from "page.slint";
 
 
@@ -8,7 +8,7 @@ component InputBox inherits LineEdit {
     min-width: 200px;
     min-height: 24px;
     max-width: 400px;
-    max-height: 60px;
+    max-height: 66px;
 
     preferred-width: 240px;
     preferred-height: 40px;
@@ -22,6 +22,7 @@ component ConversionBox {
     in-out property <string> text;
     in property <InputType> input-type;
     callback edited(string);
+
     HorizontalLayout {
         spacing: 9px;
         Text {
@@ -45,6 +46,44 @@ component ConversionBox {
     }
 }
 
+component CustomBox {
+    in property <string> base : "";
+    in-out property <string> text;
+    callback edited(string);
+    in property <string> placeholder;
+    in property <bool> enabled;
+    in property <TextHorizontalAlignment> horizontal-alignment;
+
+    HorizontalBox {
+        InputBox {
+            horizontal-alignment: horizontal-alignment;
+            input-type: InputType.text;
+            placeholder-text: placeholder;
+            edited(n) => {edited(n)}
+            text <=> text;
+            enabled <=> enabled;
+
+            width: 440px;
+            height: 80px;
+            
+        }
+
+        Rectangle {
+            width: 40px;
+        }
+    
+        LineEdit {
+            width: 140px;
+            height: 40px;
+
+            horizontal-alignment: center;
+            input-type: decimal;
+            placeholder-text: "Base:";
+        }
+    }
+    
+}
+
 export global ConversionCallback {
     callback request-convert-number(int, int, string) -> string;
     
@@ -64,15 +103,62 @@ export component NumberConverter inherits Page {
     in property <string> octEdit;
     
     GridBox {
-        spacing-horizontal: 40px;
-        spacing-vertical: 26px;
+        //spacing-horizontal: 40px;
+        //spacing-vertical: 26px;
 
-        Rectangle {col: 0;}
-        Rectangle {col: 2;}
-        Rectangle {col: 4;}
-        Rectangle {row: 0;}
-        Rectangle {row: 2;}
-        Rectangle {row: 4;}
+        Rectangle {
+            col: 0;
+            rowspan: 6;
+
+            min-width: 40px;
+            min-height: 2px;
+        }
+        Rectangle {
+            col: 2;
+            row: 1;
+            rowspan: 3;
+
+            min-width: 40px;
+            min-height: 4px;
+            max-width: 80px;
+            horizontal-stretch: 0.6;
+        }
+        Rectangle {
+            col: 4;
+            row: 0;
+            rowspan: 6;
+
+            min-width: 40px;
+            min-height: 8px;
+        }
+        Rectangle {
+            row: 0;
+            col: 1;
+            colspan: 3;
+
+            min-width: 2px;
+            min-height: 40px;
+            max-height: 140px;
+        }
+        Rectangle {
+            row: 2;
+            col: 1;
+            colspan: 3;
+
+            min-width: 4px;
+            min-height: 8px;
+            max-height: 40px;
+        }
+        Rectangle {
+            row: 4;
+            col: 1;
+            colspan: 3;
+
+            min-width: 2px;
+            min-height: 4px;
+
+            max-height: 40px;
+        }
 
         //padding-right: 80px;
 
@@ -128,5 +214,31 @@ export component NumberConverter inherits Page {
                 hex.text = ConversionCallback.request-convert-number(8, 16, octEdit);
             }
         }
+
+        ScrollView {
+            row: 5;
+            col: 1;
+            colspan: 3;
+
+            viewport-height: 400px;
+            viewport-width: 400px;
+
+
+            cus1 := CustomBox {
+                x: 0;
+                y: 0;
+        
+                base: "";
+                placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+                enabled: self.base != "" ? true : false;
+    
+                edited(cus1Edit) => {
+                    dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, cus1Edit);
+                    bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, cus1Edit);
+                    hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, cus1Edit);
+                }
+            }
+        }
     }
+
 }
