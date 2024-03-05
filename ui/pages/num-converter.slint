@@ -54,6 +54,12 @@ component CustomBox {
     in property <bool> enabled;
     in property <TextHorizontalAlignment> horizontal-alignment;
 
+    in property <length> scrollWidth;
+
+    x: 0;
+    placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+    enabled: self.base != "" ? true : false;
+
     HorizontalBox {
         InputBox {
             horizontal-alignment: horizontal-alignment;
@@ -63,13 +69,22 @@ component CustomBox {
             text <=> text;
             enabled <=> enabled;
 
-            width: 440px;
+
+            preferred-width: 440px;
+            min-width: 350px;
+            max-width: 600px;
             height: 80px;
+
+            horizontal-stretch: 0.4;
             
         }
 
         Rectangle {
-            width: 40px;
+            //width: scrollWidth;
+            preferred-width: 10px;
+
+            horizontal-stretch: 1.2;
+            //max-width: 20px;
         }
     
         LineEdit {
@@ -80,9 +95,17 @@ component CustomBox {
             input-type: decimal;
             placeholder-text: "Base:";
         }
-    }
-    
+
+        Rectangle {
+            //width: scrollWidth;
+            preferred-width: 10px;
+
+            horizontal-stretch: 0.2;
+            //max-width: 20px;
+        }
+    }    
 }
+
 
 export global ConversionCallback {
     callback request-convert-number(int, int, string) -> string;
@@ -101,6 +124,11 @@ export component NumberConverter inherits Page {
     in property <string> binEdit;
     in property <string> hexEdit;
     in property <string> octEdit;
+
+    property <int> index: 3;
+    in-out property <[{name: string, base: int}]> models:[
+        {name: "temp", base: -1}
+    ];
     
     GridBox {
         //spacing-horizontal: 40px;
@@ -168,6 +196,7 @@ export component NumberConverter inherits Page {
 
             base: "Dec";
             type: "Input a decimal number:";
+
             edited(decEdit) => {
                 bin.text = ConversionCallback.request-convert-number(10, 2, decEdit);
                 hex.text = ConversionCallback.request-convert-number(10, 16, decEdit);
@@ -220,25 +249,49 @@ export component NumberConverter inherits Page {
             col: 1;
             colspan: 3;
 
+            min-width: 620px;
+            min-height: 100px;
+            preferred-width: 640px;
+            preferred-height: 180px;
+
+            viewport-width: 600px;
             viewport-height: 400px;
-            viewport-width: 400px;
 
 
-            cus1 := CustomBox {
-                x: 0;
-                y: 0;
+            // cus1 := CustomBox {
+            //     x: 0;
+            //     y: 0;
+            //     width: parent.width;
+
+            //     scrollWidth: parent.width * 0.02;
+        
+            //     base: "";
+            //     placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+            //     enabled: self.base != "" ? true : false;
+    
+            //     edited(cus1Edit) => {
+            //         dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, cus1Edit);
+            //         bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, cus1Edit);
+            //         hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, cus1Edit);
+            //     }
+            // }
+
+            
+
+            for m[index] in models: CustomBox {
+                y: self.height * -index;
+                width: parent.width;
+
+                scrollWidth: parent.width * 0.02;
         
                 base: "";
-                placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
-                enabled: self.base != "" ? true : false;
-    
-                edited(cus1Edit) => {
-                    dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, cus1Edit);
-                    bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, cus1Edit);
-                    hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, cus1Edit);
+
+                edited(e) => {
+                    dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, e);
+                    bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, e);
+                    hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, e);
                 }
             }
         }
     }
-
 }

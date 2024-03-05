@@ -14,15 +14,14 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.global::<ConversionCallback>().on_request_convert_number({
         let ui_handle = ui.as_weak();
+
         move |in_from, in_to, in_num:SharedString| {
             if in_num.is_empty() {
                 return SharedString::from("");
             }
             let ui = ui_handle.unwrap();
             let number = convert_number_base(in_from as u32, in_to as u32, in_num.to_string());
-            // if number.starts_with("Invalid"){
-            //     return SharedString::from("");
-            // }
+
             return number.into();
         }
     });
