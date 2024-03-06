@@ -1,5 +1,6 @@
 
 import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
+
 import { Page } from "page.slint";
 
 
@@ -106,11 +107,19 @@ component CustomBox {
     }    
 }
 
+struct Field {
+    fieldBase: int,
+    fieldNum: string
+}
 
 export global ConversionCallback {
-    callback request-convert-number(int, int, string) -> string;
+    // allNums, allBases, index, number
+    callback request-convert-number([string], [int], int, string) -> [string];
     
 }
+
+
+
 
 export component NumberConverter inherits Page {
 
@@ -125,11 +134,26 @@ export component NumberConverter inherits Page {
     in property <string> hexEdit;
     in property <string> octEdit;
 
-    property <int> index: 3;
-    in-out property <[{name: string, base: int}]> models:[
-        {name: "temp", base: -1}
+    in-out property <int> amountOfCustoms: 1;
+
+    in-out property <[int]> allBases: [
+     10, 2, 16, 8,
+
     ];
-    
+
+    in-out property <[string]> allNums: [
+        "", "", "", "", 
+
+    ];
+
+    function convert-number(index: int, number: string) {
+        allNums = ConversionCallback.request-convert-number(allNums, allBases, index, number);
+    }
+
+    function clear-children() {
+        
+    }
+
     GridBox {
         //spacing-horizontal: 40px;
         //spacing-vertical: 26px;
@@ -196,11 +220,13 @@ export component NumberConverter inherits Page {
 
             base: "Dec";
             type: "Input a decimal number:";
+            text: allNums[0];
 
             edited(decEdit) => {
-                bin.text = ConversionCallback.request-convert-number(10, 2, decEdit);
-                hex.text = ConversionCallback.request-convert-number(10, 16, decEdit);
-                oct.text = ConversionCallback.request-convert-number(10, 8, decEdit);
+                convert-number(0, decEdit);
+                // bin.text = ConversionCallback.request-convert-number(10, 2, decEdit);
+                // hex.text = ConversionCallback.request-convert-number(10, 16, decEdit);
+                // oct.text = ConversionCallback.request-convert-number(10, 8, decEdit);
             }
         }
 
@@ -210,10 +236,13 @@ export component NumberConverter inherits Page {
 
             base: "Bin";
             type: "Input a binary number:";
+            text: allNums[1];
+
             edited(binEdit) => {
-                dec.text = ConversionCallback.request-convert-number(2, 10, binEdit);
-                hex.text = ConversionCallback.request-convert-number(2, 16, binEdit);
-                oct.text = ConversionCallback.request-convert-number(2, 8, binEdit);
+                convert-number(1, binEdit);
+                // dec.text = ConversionCallback.request-convert-number(2, 10, binEdit);
+                // hex.text = ConversionCallback.request-convert-number(2, 16, binEdit);
+                // oct.text = ConversionCallback.request-convert-number(2, 8, binEdit);
             }
         }
 
@@ -224,10 +253,13 @@ export component NumberConverter inherits Page {
             base: "Hex";
             type: "Input a hex number:";
             input-type: text;
+            text: allNums[2];
+
             edited(hexEdit) => {
-                dec.text = ConversionCallback.request-convert-number(16, 10, hexEdit);
-                bin.text = ConversionCallback.request-convert-number(16, 2, hexEdit);
-                oct.text = ConversionCallback.request-convert-number(16, 8, hexEdit);
+                convert-number(2, hexEdit);
+                // dec.text = ConversionCallback.request-convert-number(16, 10, hexEdit);
+                // bin.text = ConversionCallback.request-convert-number(16, 2, hexEdit);
+                // oct.text = ConversionCallback.request-convert-number(16, 8, hexEdit);
             }
         }
 
@@ -237,10 +269,13 @@ export component NumberConverter inherits Page {
 
             base: "Oct";
             type: "Input an octal number:";
+            text: allNums[3];
+
             edited(octEdit) => {
-                dec.text = ConversionCallback.request-convert-number(8, 10, octEdit);
-                bin.text = ConversionCallback.request-convert-number(8, 2, octEdit);
-                hex.text = ConversionCallback.request-convert-number(8, 16, octEdit);
+                convert-number(3, octEdit);
+                // dec.text = ConversionCallback.request-convert-number(8, 10, octEdit);
+                // bin.text = ConversionCallback.request-convert-number(8, 2, octEdit);
+                // hex.text = ConversionCallback.request-convert-number(8, 16, octEdit);
             }
         }
 
@@ -278,7 +313,7 @@ export component NumberConverter inherits Page {
 
             
 
-            for m[index] in models: CustomBox {
+            for m[index] in amountOfCustoms: CustomBox {
                 y: self.height * -index;
                 width: parent.width;
 
@@ -287,9 +322,10 @@ export component NumberConverter inherits Page {
                 base: "";
 
                 edited(e) => {
-                    dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, e);
-                    bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, e);
-                    hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, e);
+                    convert-number(index + 4, e);
+                    // dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, e);
+                    // bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, e);
+                    // hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, e);
                 }
             }
         }
