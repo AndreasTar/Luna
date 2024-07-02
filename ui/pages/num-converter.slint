@@ -24,6 +24,12 @@ component ConversionBox {
     in property <InputType> input-type;
     callback edited(string);
 
+    public pure function setText(te: string) -> string{
+        return te;
+    }
+
+    //in-out property <bool> hasFocus <=> i.has-focus;
+
     HorizontalLayout {
         spacing: 9px;
         Text {
@@ -45,25 +51,33 @@ component ConversionBox {
             text <=> text;
         }
     }
+    
 }
 
 component CustomBox {
-    in property <string> base : "";
+
+    in property <string> base : "Custom";
+    in property <string> type : "Custom";
     in-out property <string> text;
+    in property <InputType> input-type;
     callback edited(string);
-    in property <string> placeholder;
-    in property <bool> enabled;
-    in property <TextHorizontalAlignment> horizontal-alignment;
+    callback baseEdited(string);
 
-    in property <length> scrollWidth;
+    public pure function setText(te: string) -> string{
+        return te;
+    }
 
-    x: 0;
-    placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
-    enabled: self.base != "" ? true : false;
+    in property <string> placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+    in property <bool> enabled: self.base != "" ? true : false;
+
+    function setBase(b: string) {
+        base: b;
+        enabled: b != "" ? true : false;
+    }
 
     HorizontalBox {
+
         InputBox {
-            horizontal-alignment: horizontal-alignment;
             input-type: InputType.text;
             placeholder-text: placeholder;
             edited(n) => {edited(n)}
@@ -81,31 +95,93 @@ component CustomBox {
         }
 
         Rectangle {
-            //width: scrollWidth;
             preferred-width: 10px;
-
+    
             horizontal-stretch: 1.2;
             //max-width: 20px;
         }
     
-        LineEdit {
+        InputBox {
             width: 140px;
             height: 40px;
-
+    
             horizontal-alignment: center;
             input-type: decimal;
             placeholder-text: "Base:";
+            edited(b) => {baseEdited(b)}
         }
-
+    
         Rectangle {
-            //width: scrollWidth;
-            preferred-width: 10px;
 
+            preferred-width: 10px;
+    
             horizontal-stretch: 0.2;
             //max-width: 20px;
         }
-    }    
+    }
 }
+
+// component CustomBox {
+//     in property <string> base : "";
+//     in-out property <string> text;
+    
+//     in property <string> placeholder;
+//     in property <bool> enabled;
+    
+//     callback edited(string);
+
+//     //in property <TextHorizontalAlignment> horizontal-alignment;
+//     //in property <length> scrollWidth;
+
+//     //x: 0;
+//     placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+//     enabled: self.base != "" ? true : false;
+
+//     HorizontalBox {
+//         InputBox {
+//             horizontal-alignment: horizontal-alignment;
+//             input-type: InputType.text;
+//             placeholder-text: placeholder;
+//             edited(n) => {edited(n)}
+//             text <=> text;
+//             enabled <=> enabled;
+
+
+//             preferred-width: 440px;
+//             min-width: 350px;
+//             max-width: 600px;
+//             height: 80px;
+
+//             horizontal-stretch: 0.4;
+            
+//         }
+
+//         Rectangle {
+//             //width: scrollWidth;
+//             preferred-width: 10px;
+
+//             horizontal-stretch: 1.2;
+//             //max-width: 20px;
+//         }
+    
+//         LineEdit {
+//             width: 140px;
+//             height: 40px;
+
+//             horizontal-alignment: center;
+//             input-type: decimal;
+//             placeholder-text: "Base:";
+//         }
+
+//         Rectangle {
+//             //width: scrollWidth;
+//             preferred-width: 10px;
+
+//             horizontal-stretch: 0.2;
+//             //max-width: 20px;
+//         }
+//     }    
+// }
 
 struct Field {
     fieldBase: int,
@@ -115,7 +191,6 @@ struct Field {
 export global ConversionCallback {
     // allNums, allBases, index, number
     callback request-convert-number([string], [int], int, string) -> [string];
-    
 }
 
 
@@ -133,25 +208,22 @@ export component NumberConverter inherits Page {
     in property <string> binEdit;
     in property <string> hexEdit;
     in property <string> octEdit;
+    in property <string> cusEdit;
 
-    in-out property <int> amountOfCustoms: 1;
+    // in-out property <int> amountOfCustoms: 1;
 
     in-out property <[int]> allBases: [
-     10, 2, 16, 8,
+     10, 2, 16, 8, 0
 
     ];
 
     in-out property <[string]> allNums: [
-        "", "", "", "", 
+        "", "", "", "", ""
 
     ];
 
     function convert-number(index: int, number: string) {
         allNums = ConversionCallback.request-convert-number(allNums, allBases, index, number);
-    }
-
-    function clear-children() {
-        
     }
 
     GridBox {
@@ -220,13 +292,10 @@ export component NumberConverter inherits Page {
 
             base: "Dec";
             type: "Input a decimal number:";
-            text: allNums[0];
+            text: self.setText(allNums[0]);
 
             edited(decEdit) => {
                 convert-number(0, decEdit);
-                // bin.text = ConversionCallback.request-convert-number(10, 2, decEdit);
-                // hex.text = ConversionCallback.request-convert-number(10, 16, decEdit);
-                // oct.text = ConversionCallback.request-convert-number(10, 8, decEdit);
             }
         }
 
@@ -236,13 +305,10 @@ export component NumberConverter inherits Page {
 
             base: "Bin";
             type: "Input a binary number:";
-            text: allNums[1];
+            text: self.setText(allNums[1]);
 
             edited(binEdit) => {
                 convert-number(1, binEdit);
-                // dec.text = ConversionCallback.request-convert-number(2, 10, binEdit);
-                // hex.text = ConversionCallback.request-convert-number(2, 16, binEdit);
-                // oct.text = ConversionCallback.request-convert-number(2, 8, binEdit);
             }
         }
 
@@ -253,13 +319,10 @@ export component NumberConverter inherits Page {
             base: "Hex";
             type: "Input a hex number:";
             input-type: text;
-            text: allNums[2];
+            text: self.setText(allNums[2]);
 
             edited(hexEdit) => {
                 convert-number(2, hexEdit);
-                // dec.text = ConversionCallback.request-convert-number(16, 10, hexEdit);
-                // bin.text = ConversionCallback.request-convert-number(16, 2, hexEdit);
-                // oct.text = ConversionCallback.request-convert-number(16, 8, hexEdit);
             }
         }
 
@@ -269,17 +332,14 @@ export component NumberConverter inherits Page {
 
             base: "Oct";
             type: "Input an octal number:";
-            text: allNums[3];
+            text: self.setText(allNums[3]);
 
             edited(octEdit) => {
                 convert-number(3, octEdit);
-                // dec.text = ConversionCallback.request-convert-number(8, 10, octEdit);
-                // bin.text = ConversionCallback.request-convert-number(8, 2, octEdit);
-                // hex.text = ConversionCallback.request-convert-number(8, 16, octEdit);
             }
         }
 
-        ScrollView {
+        cus := CustomBox {
             row: 5;
             col: 1;
             colspan: 3;
@@ -289,45 +349,53 @@ export component NumberConverter inherits Page {
             preferred-width: 640px;
             preferred-height: 180px;
 
-            viewport-width: 600px;
-            viewport-height: 400px;
+            text: self.setText(allNums[4]);
+
+            baseEdited(base) => {
+                self.enabled: base != "" ? true : false;
+            }
+
+            edited(cusEdit) => {
+                convert-number(4, cusEdit);
+            }
+        }
+
+        // ScrollView {
+        //     row: 5;
+        //     col: 1;
+        //     colspan: 3;
+
+        //     min-width: 620px;
+        //     min-height: 100px;
+        //     preferred-width: 640px;
+        //     preferred-height: 180px;
+
+        //     viewport-width: 600px;
+        //     viewport-height: 400px;
 
 
-            // cus1 := CustomBox {
-            //     x: 0;
-            //     y: 0;
-            //     width: parent.width;
+        //     // cus1 := CustomBox {
+        //     //     x: 0;
+        //     //     y: 0;
+        //     //     width: parent.width;
 
-            //     scrollWidth: parent.width * 0.02;
+        //     //     scrollWidth: parent.width * 0.02;
         
-            //     base: "";
-            //     placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
-            //     enabled: self.base != "" ? true : false;
+        //     //     base: "";
+        //     //     placeholder: self.base != "" ? "Input a number in base " + self.base : "Input a base first ---->";
+        //     //     enabled: self.base != "" ? true : false;
     
-            //     edited(cus1Edit) => {
-            //         dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, cus1Edit);
-            //         bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, cus1Edit);
-            //         hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, cus1Edit);
-            //     }
-            // }
+        //     //     edited(cus1Edit) => {
+        //     //         dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, cus1Edit);
+        //     //         bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, cus1Edit);
+        //     //         hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, cus1Edit);
+        //     //     }
+        //     // }
 
             
 
-            for m[index] in amountOfCustoms: CustomBox {
-                y: self.height * -index;
-                width: parent.width;
-
-                scrollWidth: parent.width * 0.02;
-        
-                base: "";
-
-                edited(e) => {
-                    convert-number(index + 4, e);
-                    // dec.text = ConversionCallback.request-convert-number(self.base.to-float(), 10, e);
-                    // bin.text = ConversionCallback.request-convert-number(self.base.to-float(), 2, e);
-                    // hex.text = ConversionCallback.request-convert-number(self.base.to-float(), 16, e);
-                }
-            }
-        }
+        //     // for m[index] in amountOfCustoms: CustomBox {
+           
+        // }
     }
 }
