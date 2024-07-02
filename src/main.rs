@@ -1,25 +1,46 @@
 #![allow(unused, dead_code)]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use core::num;
-use std::vec;
+
+use eframe::egui;
 
 use math::convert_number_base;
 
 mod math;
+mod ui;
 
 
-fn main(){
-    return;
+fn main() -> eframe::Result<()> {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_min_inner_size([300.0, 220.0]),
+            // .with_icon(
+            //     // NOTE: Adding an icon is optional
+            //     eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
+            //         .expect("Failed to load icon"),
+            // ),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Luna",
+        native_options,
+        Box::new(|cc| Box::new(Luna::TemplateApp::new(cc))),
+    )
 }
 
 
 /*\*
- * THIS NEEDS UPDATING FOR EGUI AND EFRAME
  * the layout i have thought of:
  * 
- * UI will have many buttons and pages etc
- * those will be handled by the main
- * the main will call the respective general module files
- * the module files will call the sub-modules to process
- * they will process, and return the result back up to UI
+ * main.rs will launch the app and windows, and also call function to fetch any saved data to restore
+ * it will then create the threads, and one of them will be fore UI
+ * UI will be stored inside ui/ and will contain whatever it needs to show stuff on screen\
+ * also under ui/pages will prolly be each individual page? idk for sure
+ * all the tools will be inside tools/ into their own respective subfolder
+ * BUT WHO WILL CONNECT THESE TWO?
+ * maybe direct connection? aka UI calls tools?
+ * do we need middle-man?
 */
