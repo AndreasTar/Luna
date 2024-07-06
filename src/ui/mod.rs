@@ -1,16 +1,18 @@
 
 mod tool_pages;
 
-use tool_pages::ToolPages;
+use tool_pages::ToolPage;
+
+static mut LUNA_INSTANCE: Luna = Luna{ pages: vec![] };
 
 pub struct Luna {
-    pages: Vec<ToolPages>,
+    pages: Vec<ToolPage>,
 }
 
 impl Default for Luna {
     fn default() -> Self {
         return Self { 
-            pages: vec![ToolPages::new("temp", "test").set_enabled(true)]
+            pages: vec![ToolPage::new("temp", "test").set_enabled(true)]
         }
     }
 }
@@ -36,6 +38,8 @@ impl eframe::App for Luna {
 }
 
 impl Luna {
+
+    
     fn show_sidebar_pages(&self, ui: &mut egui::Ui){
         for page in &self.pages{
             ui.label(&page.sidebar_name);
@@ -47,4 +51,13 @@ impl Luna {
 
         }
     }
+
+    pub fn add_page(&mut self, tp: ToolPage) {
+        self.pages.push(tp);
+    }
+}
+
+
+pub fn add_toolpage(tp: ToolPage) {
+    unsafe { LUNA_INSTANCE.add_page(tp) };
 }

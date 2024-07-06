@@ -8,10 +8,20 @@ use self::base_converter::ConversionResult;
 
 pub enum InvalidBase{}
 
-pub fn convert_number_base(from:u32, to:u32, num:String) -> String {
-    // send number to correct function, check the return and send to output
-    //  rest -> take number and bases, and sequence if needed, return result to this 
-    //   rester -> conver the number n-n, n-c, c-n, c-c
+pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
+    // check if bases are between currently implemented ones
+    // if they are, get string, seperate into each digit, and get the int value of it
+    //      for example, in hex, num ef would become [14][15]
+    // then convert each digit and add em together
+    // if output base is <= 36, use proper representation
+    // if its > 36, then output each number seperately in base 10 (or base 36 optionally?)
+
+
+    let result = match (from, to) {
+        (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
+        (2..=36, 2..=36)    => todo!(),
+        (_, _)              => todo!()
+    };
 
     let result = match (from, to) {
         (..=1, ..=1)        => return String::from      ("Invalid Base"),
@@ -39,7 +49,7 @@ pub fn convert_number_base(from:u32, to:u32, num:String) -> String {
                 ConversionResult::ParseError => break 'case ConversionResult::ParseError,
                 ConversionResult::Converted(n) => n,
             };
-            convert_from_decimal(to, in_dec)
+            convert_from_decimal(to as u32, in_dec)
         },
         (_, 2..=36)         => {
             todo!();

@@ -2,13 +2,13 @@ use std::default;
 
 
 
-pub struct ToolPages{
+pub struct ToolPage{
     pub enabled: bool,
     pub sidebar_name: String,
     pub title_name: String
 }
 
-impl Default for ToolPages {
+impl Default for ToolPage {
     fn default() -> Self {
         return Self{
             enabled: false,
@@ -18,7 +18,7 @@ impl Default for ToolPages {
     }
 }
 
-impl ToolPages{
+impl ToolPage{
     pub fn new(sidebar: &str, title: &str) -> Self {
         return Self{
             sidebar_name: sidebar.to_string(),

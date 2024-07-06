@@ -41,10 +41,10 @@ pub enum ConversionResult <T>{
 
 /// Converts a string from a radix to a number.
 /// 
-/// Radix **must** be between 2 and 36 (inclusive).
+/// Radix **must** be an integer between 2 and 36 (inclusive).
 /// 
 /// ## Arguments
-/// * `base` - The base of the input number (between 2 and 36 inclusive)
+/// * `base` - The radix of the input number (between 2 and 36 inclusive)
 /// * `num` - The input number
 /// 
 /// ## Examples
@@ -52,8 +52,8 @@ pub enum ConversionResult <T>{
 /// ```rust
 /// asserteq!(to_decimal(16, "e"), Ok(14));
 /// 
-/// // If radix isnt between 2 and 36 inclusive:
-/// asserteq!(to_decimal(1, "9"), ParseIntError);
+/// // If radix isnt between 2 and 36 (inclusive):
+/// asserteq!(to_decimal(1, "9"), ParseError);
 /// ```
 pub fn to_decimal(from: u8, num: String) -> ConversionResult<u32> {
 
@@ -65,10 +65,10 @@ pub fn to_decimal(from: u8, num: String) -> ConversionResult<u32> {
 
 /// Converts a string from a decimal number to a number in the given radix.
 /// 
-/// Radix **must** be between 2 and 36 (inclusive).
+/// Radix **must** be an integer between 2 and 36 (inclusive).
 /// 
 /// ## Arguments
-/// * `to` - The base the output number should be in (between 2 and 36 inclusive)
+/// * `to` - The radix of the output number (between 2 and 36 inclusive)
 /// * `num` - The input number
 /// 
 /// ## Examples
@@ -76,8 +76,8 @@ pub fn to_decimal(from: u8, num: String) -> ConversionResult<u32> {
 /// ```rust
 /// asserteq!(from_decimal(16, "17"), Ok("f2"));
 /// 
-/// // If radix isnt between 2 and 36 inclusive:
-/// asserteq!(from_decimal(1, "9"), ParseIntError);
+/// // If radix isnt between 2 and 36 (inclusive):
+/// asserteq!(from_decimal(1, "9"), ParseError);
 /// ```
 pub fn from_decimal(to: u8, num:u32) -> ConversionResult<Vec<String>> {
 

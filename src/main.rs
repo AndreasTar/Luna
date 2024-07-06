@@ -4,12 +4,10 @@
 
 use eframe::egui;
 
-use math::convert_number_base;
 use ui::Luna;
 
-mod math;
+mod tools;
 mod ui;
-
 
 fn main() -> eframe::Result<()> {
     // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -25,6 +23,7 @@ fn main() -> eframe::Result<()> {
             // ),
         ..Default::default()
     };
+
     eframe::run_native(
         "Luna",
         native_options,
@@ -37,7 +36,7 @@ fn main() -> eframe::Result<()> {
  * the layout i have thought of:
  * 
  * main.rs will launch the app and windows, and also call function to fetch any saved data to restore
- * it will then create the threads, and one of them will be fore UI
+ * it will then create the threads, and one of them will be for UI
  * UI will be stored inside ui/ and will contain whatever it needs to show stuff on screen\
  * also under ui/pages will prolly be each individual page? idk for sure
  * all the tools will be inside tools/ into their own respective subfolder
