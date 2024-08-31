@@ -1,14 +1,31 @@
-mod base_converter;
-
-// from any
+mod UI_base_converter;
 
 use core::num;
 
-use self::base_converter::ConversionResult;
+pub enum ConversionResult <T>{
+    ParseError,
+    Converted(T),
+}
+
+const VALUES: [&str; 36] = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 pub enum InvalidBase{}
 
 pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
+
+    /*
+    take number and its base
+    if base  <= 36, use our own with the letters
+    if base > 36, convert each digit to decimal and return each digit like
+        [58] [95] [1] [18]
+        
+        example with base 16, assuming we had only up to base 10
+        number FF26
+        [15] [15] [2] [6]
+    
+    if base isnt integer, we must make our own system (remember that one vid)
+    */
+
     // check if bases are between currently implemented ones
     // if they are, get string, seperate into each digit, and get the int value of it
     //      for example, in hex, num ef would become [14][15]
@@ -17,141 +34,97 @@ pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
     // if its > 36, then output each number seperately in base 10 (or base 36 optionally?)
 
 
-    // let result = match (from, to) {
-    //     (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
-    //     (2..=36, 2..=36)    => todo!(),
-    //     (_, _)              => todo!()
-    // };
-
-    let result = match (from, to) {
-        (..=1, ..=1)        => return String::from      ("Invalid Base"),
-        (2, 10 )            => convert_binary_to_decimal(num),
-        (2, 16 )            => convert_binary_to_hex    (num),
-        (2, 2..=36)         => convert_binary_to_base   (to as u8, num),
-        (10, 2 )            => convert_decimal_to_binary(num),
-        (10, 16)            => convert_decimal_to_hex   (num),
-        (10, 2..=36)        => convert_decimal_to_base  (to as u8, num),
-        (16, 2 )            => convert_hex_to_binary    (num),
-        (16, 10)            => convert_hex_to_decimal   (num),
-        (16, 2..=36)        => convert_hex_to_base      (to as u8, num),
+    let result: ConversionResult<Vec<String>> = match (from, to) {
+        (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
         (2..=36, 2..=36)    => 'case: {
-            // num -> decimal -> base
-            let in_dec = match convert_base_to_decimal(from as u8, num){
+            let res1 = match convert_to_decimal(from.into(), num) {
                 ConversionResult::ParseError => break 'case ConversionResult::ParseError,
                 ConversionResult::Converted(n) => n,
             };
-            convert_decimal_to_base(to as u8, in_dec)
+            convert_from_decimal(to.into(), res1)
         },
-        (2..=36, _)         => 'case: {
-            // num -> decimal -> custom base
-            // format for output
-            let in_dec = match convert_base_to_decimal(from as u8, num){
-                ConversionResult::ParseError => break 'case ConversionResult::ParseError,
-                ConversionResult::Converted(n) => n,
-            };
-            convert_from_decimal(to as u32, in_dec)
-        },
-        (_, 2..=36)         => {
-            todo!();
-            // convert_to_decimal(from, num);
-            // convert_decimal_to_base(to as u8, num);
-            // unformat base num -> decimal -> base
-        },
-        (_, _)              => {
-            todo!();
-            // convert_to_decimal(from, num);
-            // convert_from_decimal(to, num);
-            // unformat base num -> decimal -> custom base
-            // format for output
-        }
+        (_, _)              => todo!()
     };
 
+    
     match result {
         ConversionResult::ParseError => String::from("Invalid Input"),
-        ConversionResult::Converted(n) => n,
+        ConversionResult::Converted(n) => n.join(""),
     }
 }
 
-// x -c
-fn convert_to_decimal(from:u32, num:String) -> ConversionResult<String> {
-    todo!()
-}
 
-// c- x
-fn convert_from_decimal(to:u32, num:String) -> ConversionResult<String> {
-    todo!();
-}
 
-// from decimal
+/// Converts a string from a radix to a number.
+/// 
+/// Radix **must** be an integer between 2 and 36 (inclusive).
+/// 
+/// ## Arguments
+/// * `base` - The radix of the input number (between 2 and 36 inclusive)
+/// * `num` - The input number
+/// 
+/// ## Examples
+/// 
+/// ```rust
+/// asserteq!(to_decimal(16, "e"), Ok(14));
+/// 
+/// // If radix isnt between 2 and 36 (inclusive):
+/// asserteq!(to_decimal(1, "9"), ParseError);
+/// ```
+pub fn convert_to_decimal(from: u8, num: String) -> ConversionResult<u32> {
 
-fn convert_decimal_to_base(to:u8, num:String) -> ConversionResult<String> {
-    let as_int = match base_converter::to_decimal(10, num){
-        ConversionResult::ParseError => return ConversionResult::ParseError,
-        ConversionResult::Converted(n) => n,
-    };
-    return match base_converter::from_decimal(to, as_int){
-        ConversionResult::ParseError => ConversionResult::ParseError,
-        ConversionResult::Converted(n) => ConversionResult::Converted(n.concat()),
-    };
-}
-
-fn convert_decimal_to_binary(num:String) -> ConversionResult<String> {
-    return convert_decimal_to_base(2, num);
-}
-
-fn convert_decimal_to_hex(num:String) -> ConversionResult<String> {
-    return convert_decimal_to_base(16, num);
-}
-
-// from binary
-
-fn convert_binary_to_base(to:u8, num:String) -> ConversionResult<String> {
-    let as_int = match base_converter::to_decimal(2, num){
-        ConversionResult::ParseError => return ConversionResult::ParseError,
-        ConversionResult::Converted(n) => n,
-    };
-    return match base_converter::from_decimal(to, as_int){
-        ConversionResult::ParseError => ConversionResult::ParseError,
-        ConversionResult::Converted(n) => ConversionResult::Converted(n.concat()),
+    return match u32::from_str_radix(num.as_str(), from.into()) {
+        Ok(n) => ConversionResult::Converted(n),
+        Err(e) => ConversionResult::ParseError,
     };
 }
 
-fn convert_binary_to_decimal(num:String) -> ConversionResult<String> {
-    return convert_binary_to_base(10, num);
+/// Converts a string from a decimal number to a number in the given radix.
+/// 
+/// Radix **must** be an integer between 2 and 36 (inclusive).
+/// 
+/// ## Arguments
+/// * `to` - The radix of the output number (between 2 and 36 inclusive)
+/// * `num` - The input number
+/// 
+/// ## Examples
+/// 
+/// ```rust
+/// asserteq!(from_decimal(16, "17"), Ok("f2"));
+/// 
+/// // If radix isnt between 2 and 36 (inclusive):
+/// asserteq!(from_decimal(1, "9"), ParseError);
+/// ```
+pub fn convert_from_decimal(to: u8, num:u32) -> ConversionResult<Vec<String>> {
 
+    let mut result = vec![];
+    let mut number = num;
+    let radix = to as u32;
+
+    loop {
+        let digit = number % radix;
+        number = number / radix;
+
+        // will panic if you use a bad radix (< 2 or > 36).
+        result.push( 
+            match char::from_digit(digit, radix) {
+                Some(c) => c.to_string(),
+                None => return ConversionResult::ParseError,
+            }.to_string()
+        );
+        if number == 0 {
+            break;
+        }
+    }
+    let result = result.into_iter().rev().collect::<Vec<String>>();
+    return ConversionResult::Converted(result);
 }
 
-fn convert_binary_to_hex(num:String) -> ConversionResult<String> {
-    return convert_binary_to_base(16, num);
-}
 
-// from hex
-
-fn convert_hex_to_base(to:u8, num:String) -> ConversionResult<String> {
-    let as_int = match base_converter::to_decimal(16, num){
-        ConversionResult::ParseError => return ConversionResult::ParseError,
-        ConversionResult::Converted(n) => n,
-    };
-    return match base_converter::from_decimal(to, as_int){
-        ConversionResult::ParseError => ConversionResult::ParseError,
-        ConversionResult::Converted(n) => ConversionResult::Converted(n.concat()),
-    };
-}
-
-fn convert_hex_to_decimal(num:String) -> ConversionResult<String> {
-    return convert_hex_to_base(10, num);
-
-}
-
-fn convert_hex_to_binary(num:String) -> ConversionResult<String> {
-    return convert_hex_to_base(2, num);
-}
-
-// from base to 
-
-fn convert_base_to_decimal(from:u8, num:String) -> ConversionResult<String> {
-    return match base_converter::to_decimal(from, num) {
-        ConversionResult::ParseError => ConversionResult::ParseError,
-        ConversionResult::Converted(n) => ConversionResult::Converted(n.to_string()),
-    };
-}
+// // TODO temporary implementation. doesnt work correctly
+// fn custom_conversion_to_decimal(base: u32, num: String) -> Result<Vec<u32>, ParseIntError> {
+//     return match u32::from_str_radix(num.as_str(), base.into()) {
+//         Ok(n) => Ok(vec![n]),
+//         Err(e) => Err(e),
+//     };
+// }

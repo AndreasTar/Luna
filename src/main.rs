@@ -1,4 +1,4 @@
-#![allow(unused, dead_code)]
+#![allow(unused, dead_code, non_snake_case)]
 //#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 
