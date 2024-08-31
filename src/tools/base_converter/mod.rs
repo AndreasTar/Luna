@@ -17,11 +17,11 @@ pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
     // if its > 36, then output each number seperately in base 10 (or base 36 optionally?)
 
 
-    let result = match (from, to) {
-        (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
-        (2..=36, 2..=36)    => todo!(),
-        (_, _)              => todo!()
-    };
+    // let result = match (from, to) {
+    //     (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
+    //     (2..=36, 2..=36)    => todo!(),
+    //     (_, _)              => todo!()
+    // };
 
     let result = match (from, to) {
         (..=1, ..=1)        => return String::from      ("Invalid Base"),

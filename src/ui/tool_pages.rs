@@ -1,5 +1,7 @@
 use std::default;
 
+use super::{add_toolpage, remove_toolpage};
+
 
 
 pub struct ToolPage{
@@ -18,6 +20,12 @@ impl Default for ToolPage {
     }
 }
 
+impl PartialEq for ToolPage {
+    fn eq(&self, other: &Self) -> bool {
+        return self.title_name == other.title_name;
+    }
+}
+
 impl ToolPage{
     pub fn new(sidebar: &str, title: &str) -> Self {
         return Self{
@@ -27,15 +35,15 @@ impl ToolPage{
         };
     }
 
-    pub fn add_to_sidebar(&self) -> &Self{
-        todo!()
+    pub fn add_to_sidebar(self){
+        add_toolpage(self)
     }
 
-    pub fn remove_from_sidebar(&self) -> &Self{
-        todo!()
+    pub fn remove_from_sidebar(self){
+        remove_toolpage(self)
     }
 
-    pub fn set_enabled(self, enable: bool) -> Self{
+    pub fn set_enabled(self, enable: bool) -> Self{ // why is this even present?
         return Self {
             enabled: enable,
             ..self
@@ -45,5 +53,9 @@ impl ToolPage{
     pub fn set_enabled_as_ref(&mut self, enable: bool) -> &Self {
         self.enabled = enable;
         return self;
+    }
+
+    pub fn show_page(&self, ui: &mut egui::Ui){
+
     }
 }

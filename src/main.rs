@@ -44,3 +44,12 @@ fn main() -> eframe::Result<()> {
  * maybe direct connection? aka UI calls tools?
  * do we need middle-man?
 */
+
+/*\*
+ * New layout
+ * 
+ * under tools/ there will be folders of each tool, including its logic and ui
+ * then ui will be handlers and stuff for making the ui easier for me
+ * and there will also be a third folder for other stuff, like handlers for loading saving etc
+ * that arent tool specific
+ */
