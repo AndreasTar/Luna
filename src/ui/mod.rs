@@ -13,7 +13,10 @@ pub struct Luna {
 impl Default for Luna {
     fn default() -> Self {
         return Self { 
-            pages: vec![ToolPage::new("temp", "test").set_enabled(true)],
+            pages: vec![
+                ToolPage::new("temp", "test"),
+                ToolPage::new("temp1", "test1")
+            ],
             active_index: 0
         }
     }
@@ -50,16 +53,35 @@ impl eframe::App for Luna {
 
 impl Luna {
 
-    fn show_sidebar_pages(&self, ui: &mut egui::Ui){
-        for page in &self.pages{
-            ui.label(&page.sidebar_name);
-            let mut temp = page.enabled;
-            // ui.checkbox(&mut temp, "Enabled?").without_text(true);
-            // ui.add(egui::Checkbox::without_text(&mut temp));
-            ui.add_enabled(temp, egui::Checkbox::without_text(&mut temp));
-            ui.end_row()
+    fn show_sidebar_pages(&mut self, ui: &mut egui::Ui){
+        let mut i: usize = 0;
+        let mut active: usize = 0;
+        let mut changed: bool = false;
+        for page in &mut self.pages{
 
+            ui.label(&page.sidebar_name);
+            let button = ui.checkbox(&mut page.enabled, "").on_hover_text("description");
+
+            if button.changed(){ 
+                active = i;
+                changed = true
+            }
+            ui.end_row();
+            i += 1;
         }
+        if changed{
+            self.pages.get_mut(self.active_index).expect("ERROR").set_enabled(false);
+            self.pages.get_mut(active).expect("ERROR").set_enabled(true);
+            self.active_index = active;
+        }
+        
+    }
+
+    fn change_active(&mut self, to: &mut ToolPage){
+        self.pages.get_mut(self.active_index)
+            .expect("ERROR")
+            .set_enabled(false);
+        to.set_enabled(true);
     }
 
     pub fn add_page(&mut self, tp: ToolPage) {

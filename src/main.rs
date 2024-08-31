@@ -52,4 +52,6 @@ fn main() -> eframe::Result<()> {
  * then ui will be handlers and stuff for making the ui easier for me
  * and there will also be a third folder for other stuff, like handlers for loading saving etc
  * that arent tool specific
+ * 
+ * page 0 will always be there, as a failsafe, and cant be deactivated
  */

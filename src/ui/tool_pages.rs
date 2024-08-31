@@ -26,8 +26,9 @@ impl PartialEq for ToolPage {
     }
 }
 
+
 impl ToolPage{
-    pub fn new(sidebar: &str, title: &str) -> Self {
+    pub fn new(sidebar: &str, title: &str,) -> Self {
         return Self{
             sidebar_name: sidebar.to_string(),
             title_name: title.to_string(),
@@ -43,14 +44,14 @@ impl ToolPage{
         remove_toolpage(self)
     }
 
-    pub fn set_enabled(self, enable: bool) -> Self{ // why is this even present?
+    pub fn set_enabled_copy(self, enable: bool) -> Self{ // why is this even present?
         return Self {
             enabled: enable,
             ..self
         };
     }
 
-    pub fn set_enabled_as_ref(&mut self, enable: bool) -> &Self {
+    pub fn set_enabled(&mut self, enable: bool) -> &Self {
         self.enabled = enable;
         return self;
     }
