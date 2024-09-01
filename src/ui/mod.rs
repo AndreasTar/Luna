@@ -1,26 +1,28 @@
 
 mod tool_pages;
-mod default_page;
 
 use tool_pages::ToolPage;
 
+static mut LUNA_INSTANCE: Luna = Luna{ pages: vec![], active_index: 0 };
 
 pub struct Luna {
-    pages: Vec<Box<dyn ToolPage>>,
+    pages: Vec<ToolPage>,
     active_index: usize
 }
 
 impl Default for Luna {
     fn default() -> Self {
-        return Self {
-            pages: vec![],
+        return Self { 
+            pages: vec![
+                ToolPage::new("temp", "test"),
+                ToolPage::new("temp1", "test1")
+            ],
             active_index: 0
-        };
+        }
     }
 }
 
 impl eframe::App for Luna {
-
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 
         // Sidepanel
@@ -51,20 +53,14 @@ impl eframe::App for Luna {
 
 impl Luna {
 
-    pub fn new(cc: &eframe::CreationContext) -> Self {
-        let mut l = Self::default();
-
-
-    }
-
     fn show_sidebar_pages(&mut self, ui: &mut egui::Ui){
         let mut i: usize = 0;
         let mut active: usize = 0;
         let mut changed: bool = false;
         for page in &mut self.pages{
 
-            ui.label(&page.get_sidebar_title());
-            let button = ui.checkbox(&mut page.is_enabled(), "").on_hover_text("description");
+            ui.label(&page.sidebar_name);
+            let button = ui.checkbox(&mut page.enabled, "").on_hover_text("description");
 
             if button.changed(){ 
                 active = i;
@@ -81,28 +77,27 @@ impl Luna {
         
     }
 
-    fn change_active(&mut self, to: &mut impl ToolPage){
+    fn change_active(&mut self, to: &mut ToolPage){
         self.pages.get_mut(self.active_index)
             .expect("ERROR")
             .set_enabled(false);
         to.set_enabled(true);
     }
 
-    pub fn add_page(&mut self, tp: impl ToolPage + 'static) {
-        self.pages.push(Box::new(tp));
+    pub fn add_page(&mut self, tp: ToolPage) {
+        self.pages.push(tp);
     }
 
-    pub fn remove_page(&mut self, tp: impl ToolPage) {
-        // self.pages.remove(
-        //     self.pages.iter().position(|x| *x == tp).unwrap()
-        // );
-        self.pages.remove(tp.get_index());
+    pub fn remove_page(&mut self, tp: ToolPage) {
+        self.pages.remove(
+            self.pages.iter().position(|x| *x == tp).unwrap()
+        );
     }
 
     pub fn show_active_tool(&self, ui: &mut egui::Ui){
         let page = match self.pages.get(self.active_index){
             Some(p) => p,
-            None => todo!("Wrong index"),
+            None => todo!(),
         };
         page.show_page(ui);
 
@@ -110,10 +105,10 @@ impl Luna {
 }
 
 
-// pub(crate) fn add_toolpage(tp: impl ToolPage + Sized + 'static) {
-//     unsafe { LUNA_INSTANCE.add_page(tp) };
-// }
+pub(crate) fn add_toolpage(tp: ToolPage) {
+    unsafe { LUNA_INSTANCE.add_page(tp) };
+}
 
-// pub(crate) fn remove_toolpage(tp: impl ToolPage + Sized) {
-//     unsafe  { LUNA_INSTANCE.remove_page(tp) };
-// }
+pub(crate) fn remove_toolpage(tp: ToolPage) {
+    unsafe  { LUNA_INSTANCE.remove_page(tp) };
+}

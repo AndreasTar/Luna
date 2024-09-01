@@ -1,16 +1,13 @@
-#![allow(unused, dead_code, non_snake_case, non_camel_case_types)]
+#![allow(unused, dead_code, non_snake_case)]
 //#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 
 use eframe::egui;
 
-use egui::mutex::{Mutex, RwLock};
 use ui::Luna;
 
 mod tools;
 mod ui;
-
-
 
 fn main() -> eframe::Result<()> {
     // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -30,9 +27,10 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Luna",
         native_options,
-        Box::new(|cc| Box::new(Luna::new(cc))),
+        Box::new(|cc| Box::new(Luna::default())),
     )
 }
+
 
 /*\*
  * the layout i have thought of:
