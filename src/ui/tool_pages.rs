@@ -6,35 +6,19 @@ use super::{add_toolpage, remove_toolpage};
 
 pub struct ToolPage{
     pub enabled: bool,
-    pub sidebar_name: String,
-    pub title_name: String
-}
-
-impl Default for ToolPage {
-    fn default() -> Self {
-        return Self{
-            enabled: false,
-            sidebar_name: String::from("Default sidebar name"),
-            title_name: String::from("Default title name")
-        };
-    }
+    pub side_title: String,
+    pub main_title: String,
+    pub render: Box<dyn Fn(&mut egui::Ui)>
 }
 
 impl PartialEq for ToolPage {
     fn eq(&self, other: &Self) -> bool {
-        return self.title_name == other.title_name;
+        return self.main_title == other.main_title;
     }
 }
 
 
 impl ToolPage{
-    pub fn new(sidebar: &str, title: &str,) -> Self {
-        return Self{
-            sidebar_name: sidebar.to_string(),
-            title_name: title.to_string(),
-            ..Default::default()
-        };
-    }
 
     pub fn add_to_sidebar(self){
         add_toolpage(self)
@@ -42,6 +26,14 @@ impl ToolPage{
 
     pub fn remove_from_sidebar(self){
         remove_toolpage(self)
+    }
+
+    fn set_sidebar_title(&mut self, title: &str){
+        self.side_title = title.to_string();
+    }
+    
+    fn set_main_title(&mut self, title: &str) {
+        self.main_title = title.to_string();
     }
 
     pub fn set_enabled_copy(self, enable: bool) -> Self{ // why is this even present?
@@ -57,6 +49,6 @@ impl ToolPage{
     }
 
     pub fn show_page(&self, ui: &mut egui::Ui){
-
+        (self.render)(ui);
     }
 }

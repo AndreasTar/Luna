@@ -1,11 +1,13 @@
 
 mod tool_pages;
+mod default_page;
+mod all_pages;
 
-use tool_pages::ToolPage;
+pub use tool_pages::ToolPage;
 
 static mut LUNA_INSTANCE: Luna = Luna{ pages: vec![], active_index: 0 };
 
-pub struct Luna {
+pub(crate) struct Luna {
     pages: Vec<ToolPage>,
     active_index: usize
 }
@@ -13,10 +15,7 @@ pub struct Luna {
 impl Default for Luna {
     fn default() -> Self {
         return Self { 
-            pages: vec![
-                ToolPage::new("temp", "test"),
-                ToolPage::new("temp1", "test1")
-            ],
+            pages: all_pages::get_pages(),
             active_index: 0
         }
     }
@@ -59,7 +58,7 @@ impl Luna {
         let mut changed: bool = false;
         for page in &mut self.pages{
 
-            ui.label(&page.sidebar_name);
+            ui.label(&page.side_title);
             let button = ui.checkbox(&mut page.enabled, "").on_hover_text("description");
 
             if button.changed(){ 
