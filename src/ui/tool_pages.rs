@@ -1,62 +1,42 @@
 use std::default;
 
-use super::{add_toolpage, remove_toolpage};
 
 
+pub trait ToolPage{
+    // pub enabled: bool,
+    // pub sidebar_name: String,
+    // pub title_name: String
 
-pub struct ToolPage{
-    pub enabled: bool,
-    pub sidebar_name: String,
-    pub title_name: String
-}
+    // fn add_to_sidebar(&self){
+    //     add_toolpage(self)
+    // }
 
-impl Default for ToolPage {
-    fn default() -> Self {
-        return Self{
-            enabled: false,
-            sidebar_name: String::from("Default sidebar name"),
-            title_name: String::from("Default title name")
-        };
-    }
-}
+    // fn remove_from_sidebar(&self){
+    //     remove_toolpage(self)
+    // }
 
-impl PartialEq for ToolPage {
-    fn eq(&self, other: &Self) -> bool {
-        return self.title_name == other.title_name;
-    }
-}
+    fn add_to_sidebar(&self);
+    fn remove_from_sidebar(&self);
 
+    // fn set_enabled_copy(&self, enable: bool) -> Self{ // why is this even present?
+    //     return Self {
+    //         enabled: enable,
+    //         ..self
+    //     };
+    // }
 
-impl ToolPage{
-    pub fn new(sidebar: &str, title: &str,) -> Self {
-        return Self{
-            sidebar_name: sidebar.to_string(),
-            title_name: title.to_string(),
-            ..Default::default()
-        };
-    }
+    fn set_enabled(&mut self, enable: bool);
+    // fn set_enabled(&mut self, enable: bool) -> &Self {
+    //     self.enabled = enable;
+    //     return self;
+    // }
 
-    pub fn add_to_sidebar(self){
-        add_toolpage(self)
-    }
+    fn show_page(&self, ui: &mut egui::Ui);
 
-    pub fn remove_from_sidebar(self){
-        remove_toolpage(self)
-    }
+    fn get_index(&self) -> usize;
+    fn set_index(&self, index: usize);
 
-    pub fn set_enabled_copy(self, enable: bool) -> Self{ // why is this even present?
-        return Self {
-            enabled: enable,
-            ..self
-        };
-    }
-
-    pub fn set_enabled(&mut self, enable: bool) -> &Self {
-        self.enabled = enable;
-        return self;
-    }
-
-    pub fn show_page(&self, ui: &mut egui::Ui){
-
-    }
+    fn get_sidebar_title(&self) -> String;
+    fn get_main_title(&self) -> String;
+    fn is_enabled(&self) -> bool;
 }
