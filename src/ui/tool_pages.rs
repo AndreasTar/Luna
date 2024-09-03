@@ -1,4 +1,4 @@
-use std::default;
+use std::{cell::RefCell, default};
 
 use super::{add_toolpage, remove_toolpage};
 
@@ -8,7 +8,7 @@ pub struct ToolPage{
     pub enabled: bool,
     pub side_title: String,
     pub main_title: String,
-    pub render: Box<dyn Fn(&mut egui::Ui)>
+    pub render: Box<RefCell<dyn FnMut(&mut egui::Ui)>>
 }
 
 impl PartialEq for ToolPage {
@@ -49,6 +49,6 @@ impl ToolPage{
     }
 
     pub fn show_page(&self, ui: &mut egui::Ui){
-        (self.render)(ui);
+        (self.render.borrow_mut())(ui);
     }
 }
