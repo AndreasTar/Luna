@@ -42,29 +42,39 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
             egui::Grid::new("base_converter_top"), 300_f32
         )
         .num_columns(2)
-        .striped(true).show(ui, |ui| {
+        .striped(true)
+        .spacing(Vec2::new(50.0,50.0))
+        .show(ui, |ui| {
             
-            egui::TextEdit::singleline(&mut bc.tl)
-                .clip_text(false)
-                .hint_text("Base 10")
-                .min_size(Vec2::new(100.0, 30.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut bc.tl)
+                    .clip_text(false)
+                    .hint_text("Base 10")
+                    .min_size(Vec2::new(100.0, 30.0))
+            );
 
-            egui::TextEdit::singleline(&mut bc.tr)
-                .clip_text(false)
-                .hint_text("Base 10")
-                .min_size(Vec2::new(100.0, 30.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut bc.tr)
+                    .clip_text(false)
+                    .hint_text("Base 2")
+                    .min_size(Vec2::new(100.0, 30.0))
+            );
 
             ui.end_row();
 
-            egui::TextEdit::singleline(&mut bc.bl)
-                .clip_text(false)
-                .hint_text("Base 10")
-                .min_size(Vec2::new(100.0, 30.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut bc.bl)
+                    .clip_text(false)
+                    .hint_text("Base 8")
+                    .min_size(Vec2::new(100.0, 30.0))
+            );
             
-            egui::TextEdit::singleline(&mut bc.br)
-                .clip_text(false)
-                .hint_text("Base 10")
-                .min_size(Vec2::new(100.0, 30.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut bc.br)
+                    .clip_text(false)
+                    .hint_text("Base 16")
+                    .min_size(Vec2::new(100.0, 30.0))
+            );
         });
 
         egui::ScrollArea::vertical().show(ui, |ui| {
