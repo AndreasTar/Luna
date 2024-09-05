@@ -63,42 +63,70 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                 .show(ui, |ui| {
                     
                     ui.centered_and_justified(|ui|{
-                        ui.add(
+                        let tl_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.tl)
                                 .clip_text(false)
                                 .hint_text("Base 10")
                                 .min_size(Vec2::new(100.0, 30.0))
                                 .desired_width(190.0)
                         );
+
+                        if tl_box.has_focus() && tl_box.changed(){
+                            bc.tr = convert_number(10, 2, &bc.tl);
+                            bc.bl = convert_number(10, 8, &bc.tl);
+                            bc.br = convert_number(10, 16, &bc.tl);
+                        };
                     });
 
                     ui.vertical_centered(|ui|{
-                        ui.add(
+                        let tr_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.tr)
                                 .clip_text(false)
                                 .hint_text("Base 2")
                                 .min_size(Vec2::new(100.0, 30.0))
+                                .char_limit(32)
                         );
+
+                        if tr_box.has_focus() && tr_box.changed(){
+                            bc.tl = convert_number(2, 10, &bc.tr);
+                            bc.bl = convert_number(2, 8, &bc.tr);
+                            bc.br = convert_number(2, 16, &bc.tr);
+                        };
                     });
 
                     ui.end_row();
 
                     ui.vertical_centered(|ui|{
-                        ui.add(
+                        let bl_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.bl)
                                 .clip_text(false)
                                 .hint_text("Base 8")
                                 .min_size(Vec2::new(100.0, 30.0))
                         );
+
+                        if bl_box.has_focus() && bl_box.changed(){
+                            bc.tl = convert_number(8, 10, &bc.bl);
+                            bc.tr = convert_number(8, 2, &bc.bl);
+                            bc.br = convert_number(8, 16, &bc.bl);
+                        };
                     });
 
                     ui.vertical_centered(|ui|{
-                        ui.add(
+                        let br_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.br)
                                 .clip_text(false)
                                 .hint_text("Base 16")
                                 .min_size(Vec2::new(100.0, 30.0))
-                        ).paint_debug_info();
+                                .char_limit(8)
+                        );
+
+                        br_box.paint_debug_info();
+
+                        if br_box.has_focus() && br_box.changed(){
+                            bc.tl = convert_number(16, 10, &bc.br);
+                            bc.tr = convert_number(16, 2, &bc.br);
+                            bc.bl = convert_number(16, 8, &bc.br);
+                        };
                     });
                 });
             });
@@ -123,4 +151,11 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
             })
         
     });
+}
+
+fn convert_number(from: usize, to: usize, num: &String) -> String {
+    if num.is_empty(){
+        return String::new();
+    }
+    return BE_base_converter::convert_number_base(from, to, num);
 }

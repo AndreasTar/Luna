@@ -9,7 +9,7 @@ const VALUES: [&str; 36] = ["0","1","2","3","4","5","6","7","8","9","A","B","C",
 
 pub enum InvalidBase{}
 
-pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
+pub fn convert_number_base(from: usize, to: usize, num: &String) -> String {
 
     /*
     take number and its base
@@ -35,7 +35,7 @@ pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
     let result: ConversionResult<Vec<String>> = match (from, to) {
         (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
         (2..=36, 2..=36)    => 'case: {
-            let res1 = match convert_to_decimal(from.into(), num) {
+            let res1 = match convert_to_decimal(from, num) {
                 ConversionResult::ParseError => break 'case ConversionResult::ParseError,
                 ConversionResult::Converted(n) => n,
             };
@@ -69,9 +69,9 @@ pub fn convert_number_base(from:u8, to:u8, num:String) -> String {
 /// // If radix isnt between 2 and 36 (inclusive):
 /// asserteq!(to_decimal(1, "9"), ParseError);
 /// ```
-pub fn convert_to_decimal(from: u8, num: String) -> ConversionResult<u32> {
+pub fn convert_to_decimal(from: usize, num: &String) -> ConversionResult<u32> {
 
-    return match u32::from_str_radix(num.as_str(), from.into()) {
+    return match u32::from_str_radix(num.as_str(), from.try_into().unwrap()) {
         Ok(n) => ConversionResult::Converted(n),
         Err(e) => ConversionResult::ParseError,
     };
@@ -93,7 +93,7 @@ pub fn convert_to_decimal(from: u8, num: String) -> ConversionResult<u32> {
 /// // If radix isnt between 2 and 36 (inclusive):
 /// asserteq!(from_decimal(1, "9"), ParseError);
 /// ```
-pub fn convert_from_decimal(to: u8, num:u32) -> ConversionResult<Vec<String>> {
+pub fn convert_from_decimal(to: usize, num: u32) -> ConversionResult<Vec<String>> {
 
     let mut result = vec![];
     let mut number = num;
