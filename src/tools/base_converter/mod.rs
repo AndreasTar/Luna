@@ -2,7 +2,7 @@ mod BE_base_converter;
 
 use std::cell::RefCell;
 
-use egui::{Align, Grid, Label, Rangef, TextEdit, Ui, Vec2};
+use egui::{Align, Grid, Label, Rangef, Rect, TextEdit, Ui, Vec2};
 
 use crate::ui::ToolPage;
 
@@ -38,20 +38,21 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
     let layout = egui::Layout::top_down(egui::Align::Center)
         .with_main_wrap(false)
-        .with_cross_align(Align::Center);
+        .with_cross_align(Align::Center)
+        .with_main_align(Align::Center);
 
-    ui.debug_paint_cursor();
+    // ui.debug_paint_cursor();
     
+    // ui.with_layout(layout, |ui| {
+    //     ui.add(Label::new("temp 1"));
+    //     ui.label("temp 2");
+    // });
+
     ui.with_layout(layout, |ui| {
-        ui.add(Label::new("temp 1"));
-        ui.label("temp 2");
-    });
 
-
-    ui.with_layout(layout, |ui| {
-
-        ui.debug_paint_cursor();
+        // ui.debug_paint_cursor();
         egui::TopBottomPanel::top("base_converter_top")
+            .resizable(true)
             .show_inside(ui, |ui| {
 
                 egui::Grid::min_col_width(
@@ -62,13 +63,14 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                 .spacing(Vec2::new(50.0,50.0))
                 .show(ui, |ui| {
                     
+                    // ui.debug_paint_cursor();
+
                     ui.centered_and_justified(|ui|{
                         let tl_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.tl)
                                 .clip_text(false)
                                 .hint_text("Base 10")
                                 .min_size(Vec2::new(100.0, 30.0))
-                                .desired_width(190.0)
                         );
 
                         if tl_box.has_focus() && tl_box.changed(){
@@ -96,6 +98,8 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                     ui.end_row();
 
+                    
+
                     ui.vertical_centered(|ui|{
                         let bl_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.bl)
@@ -111,6 +115,8 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                         };
                     });
 
+                    // ui.debug_paint_cursor();
+
                     ui.vertical_centered(|ui|{
                         let br_box = ui.add(
                             egui::TextEdit::singleline(&mut bc.br)
@@ -120,7 +126,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                                 .char_limit(8)
                         );
 
-                        br_box.paint_debug_info();
+                        // br_box.paint_debug_info();
 
                         if br_box.has_focus() && br_box.changed(){
                             bc.tl = convert_number(16, 10, &bc.br);
@@ -139,7 +145,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
             .resizable(true)
             .show_inside(ui, |ui| {
 
-                ui.debug_paint_cursor();
+                // ui.debug_paint_cursor();
                 egui::ScrollArea::vertical()
 
                     .auto_shrink(false)

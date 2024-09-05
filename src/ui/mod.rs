@@ -44,6 +44,9 @@ impl eframe::App for Luna {
         egui::CentralPanel::default()
             .show(ctx, |ui|{
                 //ui.text_edit_singleline(&mut "text")
+                // ui.label(RichText::new(
+                //     self.get_active_tool().main_title.clone()).size(20.0)
+                // );
                 self.show_active_tool(ui)
             });
     }
@@ -93,12 +96,16 @@ impl Luna {
     }
 
     pub fn show_active_tool(&self, ui: &mut egui::Ui){
-        let page = match self.pages.get(self.active_index){
-            Some(p) => p,
-            None => todo!(),
-        };
+        let page = self.get_active_tool();
         page.show_page(ui);
 
+    }
+
+    pub fn get_active_tool(&self) -> &ToolPage {
+        match self.pages.get(self.active_index){
+            Some(p) => p,
+            None => todo!(),
+        }
     }
 }
 
