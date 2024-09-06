@@ -50,6 +50,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
     ui.with_layout(layout, |ui| {
 
+        egui::TopBottomPanel::top("base_converter_title")
+            .show_inside(ui, |ui| {
+                ui.label("Base Converter");
+            }
+        );
+
         // ui.debug_paint_cursor();
         egui::TopBottomPanel::top("base_converter_top")
             .resizable(true)

@@ -43,6 +43,7 @@ impl eframe::App for Luna {
         // Main window
         egui::CentralPanel::default()
             .show(ctx, |ui|{
+                // NOTE for some reason, RichText gets flagged as a Trojan by the AV
                 //ui.text_edit_singleline(&mut "text")
                 // ui.label(RichText::new(
                 //     self.get_active_tool().main_title.clone()).size(20.0)
@@ -79,6 +80,8 @@ impl Luna {
     }
 
     fn change_active(&mut self, to: &mut ToolPage){
+        
+        // check out radio values like ui.radio_value()
         self.pages.get_mut(self.active_index)
             .expect("ERROR")
             .set_enabled(false);
