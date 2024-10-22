@@ -28,7 +28,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Luna",
         native_options,
-        Box::new(|cc| Box::new(Luna::default())),
+        Box::new(|cc| Ok(Box::new(Luna::default()))),
     )
 }
 
