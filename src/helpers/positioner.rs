@@ -2,6 +2,8 @@ use egui::{Rect, Ui, Widget};
 
 // NOTE i could do these like slint has, with a Rectangle{} struct that contains params like preffered-width and horizontal-stretch
 
+// HACK this may all be useless, cause it may already be implemented. check https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/demo/window_options.rs
+
 
 /// Where to anchor the widget. 
 /// 
@@ -103,7 +105,9 @@ pub enum AnchorAt {
 /// What axis should the widget be scaled, when the app window gets resized OR the UI area changes
 /// 
 /// Numbers are percentile, meaning a value of `ScaledOn::RightDown(2, 0.5)` will scale the widget twice as fast on
-/// the right axis, and half as fast downwards, relative to the amount of resizing on each axis accordingly
+/// the right axis, and half as fast downwards, relative to the amount of resizing on each axis accordingly.
+/// If right wall increases by 4 pixels, the widget will increase by 8.
+/// If bottom wall increases by 4 pixels, the widget will increase by 2.
 pub enum ScaledOn {
     /// Dont scale this widget at all; keep the dimensions constant
     Nothing,
@@ -123,7 +127,7 @@ pub enum ScaledOn {
     LeftDown(i8, i8),
     /// Scale this widget diagonally towards Top-Left corner by `(x, y)` amount (percentile)
     LeftUp(i8, i8),
-    /// Scale this widget in all directions by `(x, y, z, w)` amount (percentile) respectively
+    /// Scale this widget in all directions by `(x, y, z, w)` amount (percentile) respectively, `x` being right wall and going clockwise
     All(i8,i8,i8,i8)
 }
 
