@@ -1,13 +1,18 @@
-use egui::{Rect, Ui, Widget};
+use egui::{Pos2, Rect, Ui, Vec2, Widget};
 
 // NOTE i could do these like slint has, with a Rectangle{} struct that contains params like preffered-width and horizontal-stretch
 
 // HACK this may all be useless, cause it may already be implemented. check https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/demo/window_options.rs
 
+// let widget_rect =
+//     egui::Rect::from_min_size(ui.min_rect().min + *widget_offset, *widget_size);
+//
+//  ui.put(widget_rect, egui::Button::new("Example button"));
+
 
 /// Where to anchor the widget. 
 /// 
-/// This means that when the app gets resized, the anchor point of the widget will remain still relative to the app window.
+/// This means that when the app gets resized, the anchor point of the widget will remain still, relative to the app window area.
 pub enum AnchorAt {
     /// Equivalent to `VerticalAlign::Top` + `HorizontalAlign::Left`
     /// aka this point:
@@ -131,7 +136,7 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, wid: impl Widget, anchor: AnchorAt, scaled: ScaledOn) -> Rect {
+pub fn create_rectangle(ui: &Ui, size: [u8;2], anchor: AnchorAt, scaled: ScaledOn) -> Rect {
 
     // TODO i need to add controls for 
     //  - min height and width
@@ -139,8 +144,16 @@ pub fn create_rectangle(ui: &Ui, wid: impl Widget, anchor: AnchorAt, scaled: Sca
     //  - preferred height and width
     //  
 
+    let uiSize = ui.available_size();
+    let uitl = ui.min_rect().min;
+    let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0);
+    let tl = center - Vec2::new((size[0]/2).into(),(size[1]/2).into());
+    let br = center + Vec2::new((size[0]/2).into(),(size[1]/2).into());
+
+    println!("{tl} {br} {center} {uiSize} {uitl}");
+
     match anchor {
-        AnchorAt::TopLeft => todo!(), //Rect::from_min_size(ui.min_rect().min, ),
+        AnchorAt::TopLeft => todo!(),
         AnchorAt::TopRight => todo!(),
         AnchorAt::BottomLeft => todo!(),
         AnchorAt::BottomRight => todo!(),
@@ -148,9 +161,9 @@ pub fn create_rectangle(ui: &Ui, wid: impl Widget, anchor: AnchorAt, scaled: Sca
         AnchorAt::BottomCenter => todo!(),
         AnchorAt::CenterLeft => todo!(),
         AnchorAt::CenterRight => todo!(),
-        AnchorAt::Center => todo!(),
+        AnchorAt::Center => return Rect::from_two_pos(tl, br).translate(uitl.to_vec2()),
     };
     
 
-    todo!()
+    //todo!()
 }

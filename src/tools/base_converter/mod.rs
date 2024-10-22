@@ -2,9 +2,10 @@ mod BE_base_converter;
 
 use std::cell::RefCell;
 
-use egui::{Align, Grid, Label, Rangef, Rect, TextEdit, Ui, Vec2};
+use eframe::glow::Context;
+use egui::{Align, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
 
-use crate::ui::ToolPage;
+use crate::{helpers::positioner, ui::ToolPage};
 
 
 struct UI_BaseConverter{
@@ -70,14 +71,17 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                 .show(ui, |ui| {
                     
                     // ui.debug_paint_cursor();
-
+                    //let mut temp = Rect::from_two_pos(Pos2::new(0.0, 0.0), Pos2::new(40.0,20.0)).translate(Vec2::new(ui.min_rect().min.x, ui.min_rect().min.y));
+                    //println!("{} {}", ui.min_rect().min, ui.min_rect().max);
+                    let rect = positioner::create_rectangle(ui, [50,30], positioner::AnchorAt::Center, positioner::ScaledOn::Down(1));
                     ui.centered_and_justified(|ui|{
-                        let tl_box = ui.add(
+                        let tl_box = ui.put(rect,
                             egui::TextEdit::singleline(&mut bc.tl)
                                 .clip_text(false)
                                 .hint_text("Base 10")
-                                .min_size(Vec2::new(100.0, 30.0))
+                                //.min_size(Vec2::new(100.0, 30.0))
                         );
+                        tl_box.paint_debug_info();
 
                         if tl_box.has_focus() && tl_box.changed(){
                             bc.tr = convert_number(10, 2, &bc.tl);
