@@ -53,7 +53,9 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
         egui::TopBottomPanel::top("base_converter_title")
             .show_inside(ui, |ui| {
-                ui.label("Base Converter");
+                ui.put(positioner::create_rectangle(ui, [100,30], [0;4], positioner::AnchorAt::Center, positioner::ScaledOn::Nothing), 
+                    Label::new("Base Converter")
+                );
             }
         );
 
@@ -73,9 +75,14 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     // ui.debug_paint_cursor();
                     //let mut temp = Rect::from_two_pos(Pos2::new(0.0, 0.0), Pos2::new(40.0,20.0)).translate(Vec2::new(ui.min_rect().min.x, ui.min_rect().min.y));
                     //println!("{} {}", ui.min_rect().min, ui.min_rect().max);
-                    let rect = positioner::create_rectangle(ui, [50,30], positioner::AnchorAt::Center, positioner::ScaledOn::Down(1));
+
                     ui.centered_and_justified(|ui|{
-                        let tl_box = ui.put(rect,
+
+                        let tl_box = ui.put(
+                            positioner::create_rectangle(
+                                ui, [100,30], [0;4],
+                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
+                            ),
                             egui::TextEdit::singleline(&mut bc.tl)
                                 .clip_text(false)
                                 .hint_text("Base 10")
@@ -91,7 +98,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     });
 
                     ui.vertical_centered(|ui|{
-                        let tr_box = ui.add(
+
+                        let tr_box = ui.put(
+                            positioner::create_rectangle(
+                                ui, [100,30], [0;4],
+                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
+                            ),
                             egui::TextEdit::singleline(&mut bc.tr)
                                 .clip_text(false)
                                 .hint_text("Base 2")
@@ -111,7 +123,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     
 
                     ui.vertical_centered(|ui|{
-                        let bl_box = ui.add(
+
+                        let bl_box = ui.put(
+                            positioner::create_rectangle(
+                                ui, [100,30], [0;4],
+                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
+                            ),
                             egui::TextEdit::singleline(&mut bc.bl)
                                 .clip_text(false)
                                 .hint_text("Base 8")
@@ -128,7 +145,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     // ui.debug_paint_cursor();
 
                     ui.vertical_centered(|ui|{
-                        let br_box = ui.add(
+
+                        let br_box = ui.put(
+                            positioner::create_rectangle(
+                                ui, [100,30], [0;4],
+                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
+                            ),
                             egui::TextEdit::singleline(&mut bc.br)
                                 .clip_text(false)
                                 .hint_text("Base 16")
