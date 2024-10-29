@@ -136,7 +136,7 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, size: [u8;2], offset: [u8;4], anchor: AnchorAt, scaled: ScaledOn) -> Rect {
+pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt, scaled: ScaledOn) -> Rect {
 
     // TODO i need to add controls for 
     //  - min height and width
@@ -151,27 +151,30 @@ pub fn create_rectangle(ui: &Ui, size: [u8;2], offset: [u8;4], anchor: AnchorAt,
     //      - center of area
     //      - corners of widget
 
-    let uiSize = ui.available_size();
+    let uiSize = ui.available_size(); // size of available area
     let uitl = ui.min_rect().min; // top left corner of available area
-    let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0);
-    let tl = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2();
-    let br = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2();
+    let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0); // center of available area
+    let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
+    let fullsize = Vec2::new(size[0].into(), size[1].into());
+    // let tl = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2(); // top left corner of widget area
+    // let br = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2(); // bottom right corner of widget area
 
 
     //println!("{tl} {br} {center} {uiSize} {uitl}");
 
-    match anchor {
-        AnchorAt::TopLeft => return Rect::from_two_pos(Pos2::new(0.0, 0.0), br).translate(uitl.to_vec2()),
-        AnchorAt::TopRight => todo!(),
-        AnchorAt::BottomLeft => todo!(),
-        AnchorAt::BottomRight => todo!(),
-        AnchorAt::TopCenter => todo!(),
-        AnchorAt::BottomCenter => todo!(),
-        AnchorAt::CenterLeft => todo!(),
-        AnchorAt::CenterRight => todo!(),
-        AnchorAt::Center => return Rect::from_two_pos(tl, br).translate(uitl.to_vec2()),
+    let res = match anchor {
+        AnchorAt::TopLeft =>        Rect::from_two_pos(Pos2::new(0.0, 0.0),                                     fullsize.to_pos2()),
+        AnchorAt::TopRight =>       Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, 0.0),                   Pos2::new(uiSize.x, fullsize.y)),
+        AnchorAt::BottomLeft =>     Rect::from_two_pos(Pos2::new(0.0, uiSize.y - fullsize.y),                   Pos2::new(fullsize.x, uiSize.y)),
+        AnchorAt::BottomRight =>    Rect::from_two_pos((uiSize - fullsize).to_pos2(),                                uiSize.to_pos2()),
+        AnchorAt::TopCenter =>      Rect::from_two_pos(Pos2::new(center.x - halfsize.x, 0.0),                   Pos2::new(center.x + halfsize.x, fullsize.y)),
+        AnchorAt::BottomCenter =>   Rect::from_two_pos(Pos2::new(center.x - halfsize.x, uiSize.y - fullsize.y), Pos2::new(center.x + halfsize.x, uiSize.y)),
+        AnchorAt::CenterLeft =>     Rect::from_two_pos(Pos2::new(0.0, center.y - halfsize.y),                   Pos2::new(fullsize.x, center.y + halfsize.y)),
+        AnchorAt::CenterRight =>    Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, center.y - halfsize.y), Pos2::new(uiSize.x, center.y + halfsize.y)),
+        AnchorAt::Center =>         Rect::from_two_pos(center - halfsize,                                            center + halfsize),
     };
-    
+
+    return res.translate(uitl.to_vec2());
 
     //todo!()
 }
