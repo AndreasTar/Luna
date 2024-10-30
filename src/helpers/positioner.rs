@@ -136,7 +136,7 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt, scaled: ScaledOn, debug: bool) -> Rect {
+pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [i16;2], anchor: AnchorAt, scaled: ScaledOn, debug: bool) -> Rect {
 
     // TODO i need to add controls for 
     //  - min height and width
@@ -162,7 +162,6 @@ pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt
         println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
     }
 
-
     let res = match anchor {
         AnchorAt::TopLeft =>        Rect::from_two_pos(Pos2::new(0.0, 0.0),                                     fullsize.to_pos2()),
         AnchorAt::TopRight =>       Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, 0.0),                   Pos2::new(uiSize.x, fullsize.y)),
@@ -175,5 +174,5 @@ pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt
         AnchorAt::Center =>         Rect::from_two_pos(center - halfsize,                                            center + halfsize),
     };
 
-    return res.translate(uitl.to_vec2());
+    return res.translate(uitl.to_vec2() + Vec2::new(offset[0].into(), offset[1].into()));
 } 
