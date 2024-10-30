@@ -136,7 +136,7 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt, scaled: ScaledOn) -> Rect {
+pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt, scaled: ScaledOn, debug: bool) -> Rect {
 
     // TODO i need to add controls for 
     //  - min height and width
@@ -151,16 +151,17 @@ pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt
     //      - center of area
     //      - corners of widget
 
-    let uiSize = ui.available_size(); // size of available area
     let uitl = ui.min_rect().min; // top left corner of available area
+    let uibr = ui.min_rect().max; // bottom right corner of available area
+    let uiSize = uibr - uitl; // size of available area
     let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0); // center of available area
     let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
     let fullsize = Vec2::new(size[0].into(), size[1].into());
-    // let tl = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2(); // top left corner of widget area
-    // let br = Vec2::new((size[0]/2).into(),(size[1]/2).into()).to_pos2(); // bottom right corner of widget area
 
+    if debug{
+        println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
+    }
 
-    //println!("{tl} {br} {center} {uiSize} {uitl}");
 
     let res = match anchor {
         AnchorAt::TopLeft =>        Rect::from_two_pos(Pos2::new(0.0, 0.0),                                     fullsize.to_pos2()),
@@ -175,6 +176,4 @@ pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [u8;4], anchor: AnchorAt
     };
 
     return res.translate(uitl.to_vec2());
-
-    //todo!()
-}
+} 

@@ -53,140 +53,135 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
         egui::TopBottomPanel::top("base_converter_title")
             .show_inside(ui, |ui| {
-                ui.put(positioner::create_rectangle(ui, [100,30], [0;4], positioner::AnchorAt::Center, positioner::ScaledOn::Nothing), 
+                ui.put(positioner::create_rectangle(
+                    ui, [100,30], [0;4], 
+                    positioner::AnchorAt::Center, positioner::ScaledOn::Nothing,
+                    false
+                ), 
                     Label::new("Base Converter")
-                );
+                ).paint_debug_info();
             }
         );
 
         // ui.debug_paint_cursor();
-        egui::TopBottomPanel::top("base_converter_top")
+        egui::TopBottomPanel::top("base_converter_center")
             .resizable(true)
+            .min_height(180.0)
             .show_inside(ui, |ui| {
 
-                egui::Grid::min_col_width(
-                    egui::Grid::new("base_converter_inner_top"), 300_f32
-                )
-                .num_columns(2)
-                .striped(true)
-                .spacing(Vec2::new(50.0,50.0))
-                .show(ui, |ui| {
-                    
-                    // ui.debug_paint_cursor();
-                    //let mut temp = Rect::from_two_pos(Pos2::new(0.0, 0.0), Pos2::new(40.0,20.0)).translate(Vec2::new(ui.min_rect().min.x, ui.min_rect().min.y));
-                    //println!("{} {}", ui.min_rect().min, ui.min_rect().max);
+                let tl_box = ui.put(
+                    positioner::create_rectangle(
+                        &ui, [300,50], [0;4],
+                        positioner::AnchorAt::TopLeft, positioner::ScaledOn::Nothing,
+                        false
+                    ),
+                    egui::TextEdit::singleline(&mut bc.tl)
+                        .clip_text(false)
+                        .hint_text("Base 10")
+                        .min_size(Vec2::new(100.0, 30.0))
+                );
+                
+                //tl_box.paint_debug_info();
 
-                    ui.centered_and_justified(|ui|{
+                if tl_box.has_focus() && tl_box.changed(){
+                    bc.tr = convert_number(10, 2, &bc.tl);
+                    bc.bl = convert_number(10, 8, &bc.tl);
+                    bc.br = convert_number(10, 16, &bc.tl);
+                };
 
-                        let tl_box = ui.put(
-                            positioner::create_rectangle(
-                                ui, [100,30], [0;4],
-                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
-                            ),
-                            egui::TextEdit::singleline(&mut bc.tl)
-                                .clip_text(false)
-                                .hint_text("Base 10")
-                                //.min_size(Vec2::new(100.0, 30.0))
-                        );
-                        tl_box.paint_debug_info();
+                let tr_box = ui.put(
+                    positioner::create_rectangle(
+                        &ui, [301,50], [0;4],
+                        positioner::AnchorAt::TopRight, positioner::ScaledOn::Nothing,
+                        false
+                    ),
+                    egui::TextEdit::singleline(&mut bc.tr)
+                        .clip_text(false)
+                        .hint_text("Base 2")
+                        .min_size(Vec2::new(100.0, 30.0))
+                        .char_limit(32)
+                );
 
-                        if tl_box.has_focus() && tl_box.changed(){
-                            bc.tr = convert_number(10, 2, &bc.tl);
-                            bc.bl = convert_number(10, 8, &bc.tl);
-                            bc.br = convert_number(10, 16, &bc.tl);
-                        };
-                    });
+                //tr_box.paint_debug_info();
 
-                    ui.vertical_centered(|ui|{
+                if tr_box.has_focus() && tr_box.changed(){
+                    bc.tl = convert_number(2, 10, &bc.tr);
+                    bc.bl = convert_number(2, 8, &bc.tr);
+                    bc.br = convert_number(2, 16, &bc.tr);
+                };
 
-                        let tr_box = ui.put(
-                            positioner::create_rectangle(
-                                ui, [100,30], [0;4],
-                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
-                            ),
-                            egui::TextEdit::singleline(&mut bc.tr)
-                                .clip_text(false)
-                                .hint_text("Base 2")
-                                .min_size(Vec2::new(100.0, 30.0))
-                                .char_limit(32)
-                        );
+                let bl_box = ui.put(
+                    positioner::create_rectangle(
+                        &ui, [302,50], [0;4],
+                        positioner::AnchorAt::BottomLeft, positioner::ScaledOn::Nothing,
+                        false
+                    ),
+                    egui::TextEdit::singleline(&mut bc.bl)
+                        .clip_text(false)
+                        .hint_text("Base 8")
+                        .min_size(Vec2::new(100.0, 30.0))
+                );
 
-                        if tr_box.has_focus() && tr_box.changed(){
-                            bc.tl = convert_number(2, 10, &bc.tr);
-                            bc.bl = convert_number(2, 8, &bc.tr);
-                            bc.br = convert_number(2, 16, &bc.tr);
-                        };
-                    });
+                //bl_box.paint_debug_info();
 
-                    ui.end_row();
+                if bl_box.has_focus() && bl_box.changed(){
+                    bc.tl = convert_number(8, 10, &bc.bl);
+                    bc.tr = convert_number(8, 2, &bc.bl);
+                    bc.br = convert_number(8, 16, &bc.bl);
+                };
+                
 
-                    
+                let br_box = ui.put(
+                    positioner::create_rectangle(
+                        &ui, [303,50], [0;4],
+                        positioner::AnchorAt::BottomRight, positioner::ScaledOn::Nothing,
+                        false
+                    ),
+                    egui::TextEdit::singleline(&mut bc.br)
+                        .clip_text(false)
+                        .hint_text("Base 16")
+                        .min_size(Vec2::new(100.0, 30.0))
+                        .char_limit(8)
+                );
 
-                    ui.vertical_centered(|ui|{
+                //br_box.paint_debug_info();
 
-                        let bl_box = ui.put(
-                            positioner::create_rectangle(
-                                ui, [100,30], [0;4],
-                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
-                            ),
-                            egui::TextEdit::singleline(&mut bc.bl)
-                                .clip_text(false)
-                                .hint_text("Base 8")
-                                .min_size(Vec2::new(100.0, 30.0))
-                        );
+                if br_box.has_focus() && br_box.changed(){
+                    bc.tl = convert_number(16, 10, &bc.br);
+                    bc.tr = convert_number(16, 2, &bc.br);
+                    bc.bl = convert_number(16, 8, &bc.br);
+                };
 
-                        if bl_box.has_focus() && bl_box.changed(){
-                            bc.tl = convert_number(8, 10, &bc.bl);
-                            bc.tr = convert_number(8, 2, &bc.bl);
-                            bc.br = convert_number(8, 16, &bc.bl);
-                        };
-                    });
-
-                    // ui.debug_paint_cursor();
-
-                    ui.vertical_centered(|ui|{
-
-                        let br_box = ui.put(
-                            positioner::create_rectangle(
-                                ui, [100,30], [0;4],
-                                positioner::AnchorAt::Center, positioner::ScaledOn::Down(1)
-                            ),
-                            egui::TextEdit::singleline(&mut bc.br)
-                                .clip_text(false)
-                                .hint_text("Base 16")
-                                .min_size(Vec2::new(100.0, 30.0))
-                                .char_limit(8)
-                        );
-
-                        // br_box.paint_debug_info();
-
-                        if br_box.has_focus() && br_box.changed(){
-                            bc.tl = convert_number(16, 10, &bc.br);
-                            bc.tr = convert_number(16, 2, &bc.br);
-                            bc.bl = convert_number(16, 8, &bc.br);
-                        };
-                    });
-                });
             });
         
         ui.add_space(50.0);
 
-        egui::TopBottomPanel::top("base_converter_bot")
-            .height_range(Rangef::new(10.0, 300.0))
-            .default_height(100.0)
-            .resizable(true)
-            .show_inside(ui, |ui| {
+        egui::ScrollArea::vertical()
 
-                // ui.debug_paint_cursor();
-                egui::ScrollArea::vertical()
-
-                    .auto_shrink(false)
-                    .show(ui, |ui| {
-                        ui.vertical_centered(|ui|{
-                            ui.label("scrollable")
-                        })
-                    });
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            ui.vertical_centered(|ui|{
+                ui.label("scrollable")
             })
+        })
+
+        // egui::TopBottomPanel::top("base_converter_bot")
+        //     .height_range(Rangef::new(10.0, 300.0))
+        //     .default_height(100.0)
+        //     .resizable(true)
+        //     .show_inside(ui, |ui| {
+
+        //         // ui.debug_paint_cursor();
+        //         egui::ScrollArea::vertical()
+
+        //             .auto_shrink(false)
+        //             .show(ui, |ui| {
+        //                 ui.vertical_centered(|ui|{
+        //                     ui.label("scrollable")
+        //                 })
+        //             });
+        //     }
+        // )
         
     });
 }
