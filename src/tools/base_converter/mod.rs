@@ -14,6 +14,9 @@ struct UI_BaseConverter{
     tr: String,
     bl: String,
     br: String,
+    cbCount: usize,
+    cbNums: Vec<String>,
+    cbBases: Vec<String>
 
 }
 
@@ -25,6 +28,9 @@ pub fn get() -> ToolPage {
         tr: String::new().to_owned(),
         bl: String::new().to_owned(),
         br: String::new().to_owned(),
+        cbCount: 1,
+        cbNums: vec![String::new()],
+        cbBases: vec![String::from("9")],
     };
     
     return ToolPage {
@@ -54,7 +60,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
         egui::TopBottomPanel::top("base_converter_title")
             .show_inside(ui, |ui| {
                 ui.put(positioner::create_rectangle(
-                    ui, [100,30], [0;4], 
+                    ui, [100,30], [0;2], 
                     positioner::AnchorAt::Center, positioner::ScaledOn::Nothing,
                     false
                 ), 
@@ -71,7 +77,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                 let tl_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [300,50], [0;4],
+                        &ui, [300,50], [0;2],
                         positioner::AnchorAt::TopLeft, positioner::ScaledOn::Nothing,
                         false
                     ),
@@ -87,11 +93,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     bc.tr = convert_number(10, 2, &bc.tl);
                     bc.bl = convert_number(10, 8, &bc.tl);
                     bc.br = convert_number(10, 16, &bc.tl);
+                    bc.cbNums = manage_customBoxes(10, &bc.tl, bc.cbBases.clone(), bc.cbCount, 0, false);
                 };
 
                 let tr_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [301,50], [0;4],
+                        &ui, [300,50], [0;2],
                         positioner::AnchorAt::TopRight, positioner::ScaledOn::Nothing,
                         false
                     ),
@@ -108,11 +115,12 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     bc.tl = convert_number(2, 10, &bc.tr);
                     bc.bl = convert_number(2, 8, &bc.tr);
                     bc.br = convert_number(2, 16, &bc.tr);
+                    bc.cbNums = manage_customBoxes(2, &bc.tr, bc.cbBases.clone(), bc.cbCount, 0, false);
                 };
 
                 let bl_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [302,50], [0;4],
+                        &ui, [300,50], [0;2],
                         positioner::AnchorAt::BottomLeft, positioner::ScaledOn::Nothing,
                         false
                     ),
@@ -128,12 +136,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     bc.tl = convert_number(8, 10, &bc.bl);
                     bc.tr = convert_number(8, 2, &bc.bl);
                     bc.br = convert_number(8, 16, &bc.bl);
+                    bc.cbNums = manage_customBoxes(8, &bc.bl, bc.cbBases.clone(), bc.cbCount, 0, false);
                 };
                 
 
                 let br_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [303,50], [0;4],
+                        &ui, [300,50], [0;2],
                         positioner::AnchorAt::BottomRight, positioner::ScaledOn::Nothing,
                         false
                     ),
@@ -150,6 +159,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
                     bc.tl = convert_number(16, 10, &bc.br);
                     bc.tr = convert_number(16, 2, &bc.br);
                     bc.bl = convert_number(16, 8, &bc.br);
+                    bc.cbNums = manage_customBoxes(16, &bc.br, bc.cbBases.clone(), bc.cbCount, 0, false);
                 };
 
             });
@@ -161,7 +171,33 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
         .auto_shrink(false)
         .show(ui, |ui| {
             ui.vertical_centered(|ui|{
-                ui.label("scrollable")
+                //ui.label("scrollable");
+
+                for i in 0..bc.cbCount {
+                    ui.put(
+                        positioner::create_rectangle(
+                            &ui, [500,90], [-300, 0],
+                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
+                            false
+                        ),
+                        egui::TextEdit::singleline(bc.cbNums.get_mut(i).unwrap())
+                            .clip_text(false)
+                            .hint_text("Base 9")
+                            .min_size(Vec2::new(100.0, 30.0))
+                    );
+
+                    ui.put(
+                        positioner::create_rectangle(
+                            &ui, [30,30], [500, 0],
+                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
+                            false
+                        ),
+                        egui::TextEdit::singleline(bc.cbBases.get_mut(i).unwrap())
+                            .clip_text(false)
+                            .hint_text("9")
+                            .min_size(Vec2::new(30.0, 30.0))
+                    );
+                }
             })
         })
 
@@ -191,4 +227,19 @@ fn convert_number(from: usize, to: usize, num: &String) -> String {
         return String::new();
     }
     return BE_base_converter::convert_number_base(from, to, num);
+}
+
+fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: usize, currentlyAt: usize, fromCustom: bool) -> Vec<String> {
+
+    let mut newNums: Vec<String> = vec![];
+    for i in 0..cbCount{
+        if fromCustom {
+            if i == currentlyAt {continue;}
+        };
+
+        let cbBase: usize = u32::from_str_radix(cbBases.get(i).unwrap(), 10).unwrap().try_into().unwrap();
+        newNums.push(convert_number(from, cbBase, num));
+        
+    }
+    return newNums;
 }
