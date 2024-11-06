@@ -33,7 +33,7 @@ pub fn convert_number_base(from: usize, to: usize, num: &String) -> String {
 
 
     let result: ConversionResult<Vec<String>> = match (from, to) {
-        (..=1, ..=1)        => return String::from      ("Invalid Base"), // TODO an error?
+        (..=1, ..=1)        => return String::from("Invalid Base"), // TODO an error?
         (2..=36, 2..=36)    => 'case: {
             let res1 = match convert_to_decimal(from, num) {
                 ConversionResult::ParseError => break 'case ConversionResult::ParseError,

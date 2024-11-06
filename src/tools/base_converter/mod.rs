@@ -14,7 +14,7 @@ struct UI_BaseConverter{
     tr: String,
     bl: String,
     br: String,
-    cbCount: usize,
+    cbCount: u8,
     cbNums: Vec<String>,
     cbBases: Vec<String>
 
@@ -30,7 +30,7 @@ pub fn get() -> ToolPage {
         br: String::new().to_owned(),
         cbCount: 1,
         cbNums: vec![String::new()],
-        cbBases: vec![String::from("9")],
+        cbBases: vec![String::new()],
     };
     
     return ToolPage {
@@ -71,7 +71,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
         // ui.debug_paint_cursor();
         egui::TopBottomPanel::top("base_converter_center")
-            .resizable(true)
+            .resizable(false)
             .min_height(180.0)
             .show_inside(ui, |ui| {
 
@@ -167,36 +167,74 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
         ui.add_space(50.0);
 
         egui::ScrollArea::vertical()
-
         .auto_shrink(false)
         .show(ui, |ui| {
             ui.vertical_centered(|ui|{
                 //ui.label("scrollable");
 
                 for i in 0..bc.cbCount {
-                    ui.put(
-                        positioner::create_rectangle(
-                            &ui, [500,90], [-300, 0],
-                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
-                            false
-                        ),
-                        egui::TextEdit::singleline(bc.cbNums.get_mut(i).unwrap())
-                            .clip_text(false)
-                            .hint_text("Base 9")
-                            .min_size(Vec2::new(100.0, 30.0))
-                    );
 
-                    ui.put(
+                    let oldBase = bc.cbBases.get(i as usize).unwrap();
+                    let mut inputBase = oldBase.clone();
+
+                    let cbBase = ui.put(
                         positioner::create_rectangle(
                             &ui, [30,30], [500, 0],
                             positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
                             false
                         ),
-                        egui::TextEdit::singleline(bc.cbBases.get_mut(i).unwrap())
+                        egui::TextEdit::singleline(&mut inputBase)
                             .clip_text(false)
-                            .hint_text("9")
+                            .hint_text(oldBase.clone())
                             .min_size(Vec2::new(30.0, 30.0))
                     );
+
+                    if cbBase.has_focus() && cbBase.changed(){
+                        if (inputBase.is_empty() || inputBase.parse::<u8>().is_err()){
+                            inputBase = String::new();
+                        } else {
+                            inputBase = u32::from_str_radix(&inputBase, 10).unwrap().to_string();
+                        }
+                    }
+
+                    let mut enabled = false;
+                    let mut numboxText: String;
+                    if inputBase.is_empty() {
+                        numboxText = "Input Base -->".to_string();
+                    } else if !(u32::from_str_radix(&inputBase, 10).unwrap() > 1 && u32::from_str_radix(&inputBase, 10).unwrap() < 37) {
+                         numboxText = "Input a valid Base (2-36) -->".to_string();
+                    } else {
+                        numboxText = format!("Base {}", inputBase);
+                        enabled = true;
+                    }; 
+
+                    let mut oldNum = bc.cbNums.get(i as usize).unwrap().clone();
+
+                    let cbBox = ui.put(
+                        positioner::create_rectangle(
+                            &ui, [500,90], [-300, 0],
+                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
+                            false
+                        ),
+                        egui::TextEdit::singleline(&mut oldNum)
+                            .clip_text(false)
+                            .hint_text(numboxText)
+                            .min_size(Vec2::new(100.0, 30.0))
+                    );
+
+                    if cbBox.has_focus() && cbBox.changed() && enabled {
+                        let inputNum = oldNum;
+                        let base = u32::from_str_radix(&inputBase, 10).unwrap();
+                        bc.tl = convert_number(16, 10, &inputNum);
+                        bc.tr = convert_number(16, 2, &inputNum);
+                        bc.bl = convert_number(16, 8, &inputNum);
+                        bc.cbNums = manage_customBoxes(16, &inputNum, bc.cbBases.clone(), bc.cbCount, i, true);
+                        
+                        println!("{}", bc.cbNums.len());
+                        *bc.cbNums.get_mut(i as usize).unwrap() = inputNum;
+                    }
+
+                    *bc.cbBases.get_mut(i as usize).unwrap() = inputBase;
                 }
             })
         })
@@ -229,16 +267,21 @@ fn convert_number(from: usize, to: usize, num: &String) -> String {
     return BE_base_converter::convert_number_base(from, to, num);
 }
 
-fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: usize, currentlyAt: usize, fromCustom: bool) -> Vec<String> {
+fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: u8, currentlyAt: u8, fromCustom: bool) -> Vec<String> {
 
     let mut newNums: Vec<String> = vec![];
     for i in 0..cbCount{
         if fromCustom {
-            if i == currentlyAt {continue;}
+            if i == currentlyAt {newNums.push(num.to_string()); continue;}
         };
 
-        let cbBase: usize = u32::from_str_radix(cbBases.get(i).unwrap(), 10).unwrap().try_into().unwrap();
-        newNums.push(convert_number(from, cbBase, num));
+        let base = cbBases.get(i as usize).unwrap();
+        if !(base.is_empty() || base.parse::<u8>().is_err()) {
+            let cbBase: usize = u32::from_str_radix(base, 10).unwrap().try_into().unwrap();
+            newNums.push(convert_number(from, cbBase, num));
+        } else {
+            newNums.push(String::new());
+        }
         
     }
     return newNums;
