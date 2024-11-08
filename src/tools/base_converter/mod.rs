@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use eframe::glow::Context;
 use egui::{Align, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
 
-use crate::{helpers::positioner, ui::ToolPage};
+use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
 
 
 struct UI_BaseConverter{
@@ -60,8 +60,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
         egui::TopBottomPanel::top("base_converter_title")
             .show_inside(ui, |ui| {
                 ui.put(positioner::create_rectangle(
-                    ui, [100,30], [0;2], 
-                    positioner::AnchorAt::Center, positioner::ScaledOn::Nothing,
+                    ui, PositionInfo {
+                        defaultSize: [100,30], 
+                        offset: [0;2],
+                        anchor: positioner::AnchorAt::Center, 
+                        scaled: positioner::ScaledOn::Nothing,
+                        ..Default::default()
+                    },
                     false
                 ), 
                     Label::new("Base Converter")
@@ -77,8 +82,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                 let tl_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [300,50], [0;2],
-                        positioner::AnchorAt::TopLeft, positioner::ScaledOn::Nothing,
+                        &ui, PositionInfo {
+                            defaultSize: [300,50], 
+                            offset: [0;2],
+                            anchor: positioner::AnchorAt::TopLeft, 
+                            scaled: positioner::ScaledOn::Nothing,
+                            ..Default::default()
+                        },
                         false
                     ),
                     egui::TextEdit::singleline(&mut bc.tl)
@@ -98,8 +108,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                 let tr_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [300,50], [0;2],
-                        positioner::AnchorAt::TopRight, positioner::ScaledOn::Nothing,
+                        &ui, PositionInfo {
+                            defaultSize: [300,50], 
+                            offset: [0;2],
+                            anchor: positioner::AnchorAt::TopRight, 
+                            scaled: positioner::ScaledOn::Nothing,
+                            ..Default::default()
+                        },
                         false
                     ),
                     egui::TextEdit::singleline(&mut bc.tr)
@@ -120,8 +135,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                 let bl_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [300,50], [0;2],
-                        positioner::AnchorAt::BottomLeft, positioner::ScaledOn::Nothing,
+                        &ui, PositionInfo {
+                            defaultSize: [300,50], 
+                            offset: [0;2],
+                            anchor: positioner::AnchorAt::BottomLeft, 
+                            scaled: positioner::ScaledOn::Nothing,
+                            ..Default::default()
+                        },
                         false
                     ),
                     egui::TextEdit::singleline(&mut bc.bl)
@@ -142,8 +162,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                 let br_box = ui.put(
                     positioner::create_rectangle(
-                        &ui, [300,50], [0;2],
-                        positioner::AnchorAt::BottomRight, positioner::ScaledOn::Nothing,
+                        &ui, PositionInfo {
+                            defaultSize: [300,50], 
+                            offset: [0;2],
+                            anchor: positioner::AnchorAt::BottomRight, 
+                            scaled: positioner::ScaledOn::Nothing,
+                            ..Default::default()
+                        },
                         false
                     ),
                     egui::TextEdit::singleline(&mut bc.br)
@@ -179,8 +204,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                     let cbBase = ui.put(
                         positioner::create_rectangle(
-                            &ui, [30,30], [500, 0],
-                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
+                            &ui, PositionInfo {
+                                defaultSize: [30,30], 
+                                offset: [500, 0],
+                                anchor: positioner::AnchorAt::TopCenter, 
+                                scaled: positioner::ScaledOn::Nothing,
+                                ..Default::default()
+                            },
                             false
                         ),
                         egui::TextEdit::singleline(&mut inputBase)
@@ -212,8 +242,13 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
 
                     let cbBox = ui.put(
                         positioner::create_rectangle(
-                            &ui, [500,90], [-300, 0],
-                            positioner::AnchorAt::TopCenter, positioner::ScaledOn::Nothing,
+                            &ui, PositionInfo {
+                                defaultSize: [500,90], 
+                                offset: [-300, 0],
+                                anchor: positioner::AnchorAt::TopCenter, 
+                                scaled: positioner::ScaledOn::Nothing,
+                                ..Default::default()
+                            },
                             false
                         ),
                         egui::TextEdit::singleline(&mut oldNum)

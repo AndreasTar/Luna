@@ -1,13 +1,33 @@
 use egui::{Pos2, Rect, Ui, Vec2, Widget};
 
-// NOTE i could do these like slint has, with a Rectangle{} struct that contains params like preffered-width and horizontal-stretch
-
 // HACK this may all be useless, cause it may already be implemented. check https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/demo/window_options.rs
 
 // let widget_rect =
 //     egui::Rect::from_min_size(ui.min_rect().min + *widget_offset, *widget_size);
 //
 //  ui.put(widget_rect, egui::Button::new("Example button"));
+
+pub struct PositionInfo{
+    pub minSize: [u16;2],
+    pub maxSize: [u16;2],
+    pub defaultSize: [u16;2],
+    pub offset: [i16;2], 
+    pub anchor: AnchorAt, 
+    pub scaled: ScaledOn,
+}
+
+impl Default for PositionInfo {
+    fn default() -> Self {
+        Self { 
+            minSize: [0;2], 
+            maxSize: [u16::MAX;2], 
+            defaultSize: [0;2], 
+            offset: [0;2],
+            anchor: AnchorAt::Center, 
+            scaled: ScaledOn::Nothing,
+        }
+    }
+}
 
 
 /// Where to anchor the widget. 
@@ -136,7 +156,7 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [i16;2], anchor: AnchorAt, scaled: ScaledOn, debug: bool) -> Rect {
+pub fn create_rectangle(ui: &Ui, posinfo: PositionInfo, debug: bool) -> Rect {
 
     // TODO i need to add controls for 
     //  - min height and width
@@ -150,6 +170,9 @@ pub fn create_rectangle(ui: &Ui, size: [u16;2], offset: [i16;2], anchor: AnchorA
     //      - corners of area
     //      - center of area
     //      - corners of widget
+    let size = posinfo.defaultSize;
+    let anchor = posinfo.anchor;
+    let offset = posinfo.offset;
 
     let uitl = ui.min_rect().min; // top left corner of available area
     let uibr = ui.min_rect().max; // bottom right corner of available area
