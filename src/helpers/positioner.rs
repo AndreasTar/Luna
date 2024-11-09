@@ -164,7 +164,6 @@ pub fn create_rectangle(ui: &Ui, posinfo: PositionInfo, debug: bool) -> Rect {
     //  - preferred height and width
     //  
 
-
     // i need
     //      - size of area
     //      - corners of area
