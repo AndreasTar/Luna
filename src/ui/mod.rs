@@ -2,6 +2,7 @@ mod tool_pages;
 mod default_page;
 mod all_pages;
 
+use egui::Context;
 pub use tool_pages::ToolPage;
 
 static mut LUNA_INSTANCE: Luna = Luna{ pages: vec![], active_index: 0 };
@@ -48,7 +49,7 @@ impl eframe::App for Luna {
                 // ui.label(RichText::new(
                 //     self.get_active_tool().main_title.clone()).size(20.0)
                 // );
-                self.show_active_tool(ui)
+                self.show_active_tool(ui, ctx)
             });
     }
 }
@@ -98,9 +99,9 @@ impl Luna {
         );
     }
 
-    pub fn show_active_tool(&self, ui: &mut egui::Ui){
+    pub fn show_active_tool(&self, ui: &mut egui::Ui, ctx: &Context){
         let page = self.get_active_tool();
-        page.show_page(ui);
+        page.show_page(ui, ctx);
 
     }
 

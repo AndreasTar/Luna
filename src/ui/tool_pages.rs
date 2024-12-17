@@ -1,5 +1,7 @@
 use std::{cell::RefCell, default};
 
+use egui::Context;
+
 use super::{add_toolpage, remove_toolpage};
 
 
@@ -8,7 +10,7 @@ pub struct ToolPage{
     pub enabled: bool,
     pub side_title: String,
     pub main_title: String,
-    pub render: Box<RefCell<dyn FnMut(&mut egui::Ui)>>
+    pub render: Box<RefCell<dyn FnMut(&mut egui::Ui, &Context)>>
 }
 
 impl PartialEq for ToolPage {
@@ -48,7 +50,7 @@ impl ToolPage{
         return self;
     }
 
-    pub fn show_page(&self, ui: &mut egui::Ui){
-        (self.render.borrow_mut())(ui);
+    pub fn show_page(&self, ui: &mut egui::Ui, ctx: &Context){
+        (self.render.borrow_mut())(ui, ctx);
     }
 }

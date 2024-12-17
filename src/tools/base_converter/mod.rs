@@ -2,8 +2,7 @@ mod BE_base_converter;
 
 use std::cell::RefCell;
 
-use eframe::glow::Context;
-use egui::{Align, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
+use egui::{Align, Context, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
 
@@ -37,11 +36,14 @@ pub fn get() -> ToolPage {
         enabled: false,
         side_title: "Number Converter".to_string(),
         main_title: "Number Converter".to_string(),
-        render: Box::new(RefCell::new(move |ui: &mut Ui| layout(ui, &mut ui_bc))),
+        render: Box::new(RefCell::new(move |ui: &mut Ui, ctx: &Context| layout(ui, &mut ui_bc, ctx))),
     };
 }
 
-fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
+fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
+
+    ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(500.0, 400.0)));
+    print!("{}", ctx.screen_rect());
 
     //ui.ctx().send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(300.0, 100.0)));
 
