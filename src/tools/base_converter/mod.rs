@@ -4,6 +4,7 @@ use std::cell::RefCell;
 
 use eframe::glow::Context;
 use egui::{Align, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
+use egui_extras::{Size, StripBuilder};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
 
@@ -59,6 +60,8 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
     //     ui.label("temp 2");
     // });
 
+    
+
     egui::TopBottomPanel::top("base_converter_title")
         .show_inside(ui, |ui| {
             ui.put(positioner::create_rectangle(
@@ -76,119 +79,146 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter){
         }
     );
 
-    // ui.debug_paint_cursor();
-    egui::TopBottomPanel::top("base_converter_center")
-        .resizable(false)
-        .min_height(180.0)
-        .show_inside(ui, |ui| {
+    StripBuilder::new(ui)
+        .size(Size::relative(0.3)) // 4 converters
+        .size(Size::relative(0.7)) // custom converters
+        .vertical(|mut strip| {
 
-            let tl_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::TopLeft, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.tl)
-                    .clip_text(false)
-                    .hint_text("Base 10")
-                    .min_size(Vec2::new(100.0, 30.0))
-            );
-            
-            //tl_box.paint_debug_info();
+            strip.strip(|builder| { // whole top row
+                builder.sizes(Size::relative(0.5), 2)
+                .vertical(|mut strip| {
 
-            if tl_box.has_focus() && tl_box.changed(){
-                bc.tr = convert_number(10, 2, &bc.tl);
-                bc.bl = convert_number(10, 8, &bc.tl);
-                bc.br = convert_number(10, 16, &bc.tl);
-                bc.cbNums = manage_customBoxes(10, &bc.tl, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
+                    strip.strip(|builder| { // top 2 converters
+                        builder.sizes(Size::relative(0.5), 2)
+                        .horizontal(|mut strip| {
 
-            let tr_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::TopRight, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.tr)
-                    .clip_text(false)
-                    .hint_text("Base 2")
-                    .min_size(Vec2::new(100.0, 30.0))
-                    .char_limit(32)
-            );
+                            strip.cell(|ui| { // left converter
+                                
+                                let tl_box = ui.put(
+                                    positioner::create_rectangle(
+                                        &ui, PositionInfo {
+                                            defaultSize: [300,50], 
+                                            offset: [0;2],
+                                            anchor: positioner::AnchorAt::TopLeft, 
+                                            scaled: positioner::ScaledOn::Nothing,
+                                            ..Default::default()
+                                        },
+                                        false
+                                    ),
+                                    egui::TextEdit::singleline(&mut bc.tl)
+                                        .clip_text(false)
+                                        .hint_text("Base 10")
+                                        .min_size(Vec2::new(100.0, 30.0))
+                                );
+                                
+                                //tl_box.paint_debug_info();
+                    
+                                if tl_box.has_focus() && tl_box.changed(){
+                                    bc.tr = convert_number(10, 2, &bc.tl);
+                                    bc.bl = convert_number(10, 8, &bc.tl);
+                                    bc.br = convert_number(10, 16, &bc.tl);
+                                    bc.cbNums = manage_customBoxes(10, &bc.tl, bc.cbBases.clone(), bc.cbCount, 0, false);
+                                };
+                            });
 
-            //tr_box.paint_debug_info();
+                            strip.cell(|ui| { // right converter
 
-            if tr_box.has_focus() && tr_box.changed(){
-                bc.tl = convert_number(2, 10, &bc.tr);
-                bc.bl = convert_number(2, 8, &bc.tr);
-                bc.br = convert_number(2, 16, &bc.tr);
-                bc.cbNums = manage_customBoxes(2, &bc.tr, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
+                                let tr_box = ui.put(
+                                    positioner::create_rectangle(
+                                        &ui, PositionInfo {
+                                            defaultSize: [300,50], 
+                                            offset: [0;2],
+                                            anchor: positioner::AnchorAt::TopRight, 
+                                            scaled: positioner::ScaledOn::Nothing,
+                                            ..Default::default()
+                                        },
+                                        false
+                                    ),
+                                    egui::TextEdit::singleline(&mut bc.tr)
+                                        .clip_text(false)
+                                        .hint_text("Base 2")
+                                        .min_size(Vec2::new(100.0, 30.0))
+                                        .char_limit(32)
+                                );
+                    
+                                //tr_box.paint_debug_info();
+                    
+                                if tr_box.has_focus() && tr_box.changed(){
+                                    bc.tl = convert_number(2, 10, &bc.tr);
+                                    bc.bl = convert_number(2, 8, &bc.tr);
+                                    bc.br = convert_number(2, 16, &bc.tr);
+                                    bc.cbNums = manage_customBoxes(2, &bc.tr, bc.cbBases.clone(), bc.cbCount, 0, false);
+                                };
+                            });
+                        });
+                    });
 
-            let bl_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::BottomLeft, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.bl)
-                    .clip_text(false)
-                    .hint_text("Base 8")
-                    .min_size(Vec2::new(100.0, 30.0))
-            );
+                    strip.strip(|builder| { // bot 2 converters
+                        builder.sizes(Size::relative(0.5), 2)
+                        .horizontal(|mut strip| {
+                            
+                            strip.cell(|ui| { // left converter
+                                
+                                let bl_box = ui.put(
+                                    positioner::create_rectangle(
+                                        &ui, PositionInfo {
+                                            defaultSize: [300,50], 
+                                            offset: [0;2],
+                                            anchor: positioner::AnchorAt::BottomLeft, 
+                                            scaled: positioner::ScaledOn::Nothing,
+                                            ..Default::default()
+                                        },
+                                        false
+                                    ),
+                                    egui::TextEdit::singleline(&mut bc.bl)
+                                        .clip_text(false)
+                                        .hint_text("Base 8")
+                                        .min_size(Vec2::new(100.0, 30.0))
+                                );
+                    
+                                //bl_box.paint_debug_info();
+                    
+                                if bl_box.has_focus() && bl_box.changed(){
+                                    bc.tl = convert_number(8, 10, &bc.bl);
+                                    bc.tr = convert_number(8, 2, &bc.bl);
+                                    bc.br = convert_number(8, 16, &bc.bl);
+                                    bc.cbNums = manage_customBoxes(8, &bc.bl, bc.cbBases.clone(), bc.cbCount, 0, false);
+                                };
+                            });
 
-            //bl_box.paint_debug_info();
+                            strip.cell(|ui| { // right converter
 
-            if bl_box.has_focus() && bl_box.changed(){
-                bc.tl = convert_number(8, 10, &bc.bl);
-                bc.tr = convert_number(8, 2, &bc.bl);
-                bc.br = convert_number(8, 16, &bc.bl);
-                bc.cbNums = manage_customBoxes(8, &bc.bl, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-            
-
-            let br_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::BottomRight, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.br)
-                    .clip_text(false)
-                    .hint_text("Base 16")
-                    .min_size(Vec2::new(100.0, 30.0))
-                    .char_limit(8)
-            );
-
-            //br_box.paint_debug_info();
-
-            if br_box.has_focus() && br_box.changed(){
-                bc.tl = convert_number(16, 10, &bc.br);
-                bc.tr = convert_number(16, 2, &bc.br);
-                bc.bl = convert_number(16, 8, &bc.br);
-                bc.cbNums = manage_customBoxes(16, &bc.br, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-
+                                let br_box = ui.put(
+                                    positioner::create_rectangle(
+                                        &ui, PositionInfo {
+                                            defaultSize: [300,50], 
+                                            offset: [0;2],
+                                            anchor: positioner::AnchorAt::BottomRight, 
+                                            scaled: positioner::ScaledOn::Nothing,
+                                            ..Default::default()
+                                        },
+                                        false
+                                    ),
+                                    egui::TextEdit::singleline(&mut bc.br)
+                                        .clip_text(false)
+                                        .hint_text("Base 16")
+                                        .min_size(Vec2::new(100.0, 30.0))
+                                        .char_limit(8)
+                                );
+                    
+                                //br_box.paint_debug_info();
+                    
+                                if br_box.has_focus() && br_box.changed(){
+                                    bc.tl = convert_number(16, 10, &bc.br);
+                                    bc.tr = convert_number(16, 2, &bc.br);
+                                    bc.bl = convert_number(16, 8, &bc.br);
+                                    bc.cbNums = manage_customBoxes(16, &bc.br, bc.cbBases.clone(), bc.cbCount, 0, false);
+                                };
+                            });
+                        }).paint_debug_info();
+                    });
+                }); // 4 converters;
+            });
         });
     
     ui.add_space(50.0);
