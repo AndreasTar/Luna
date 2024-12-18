@@ -2,7 +2,7 @@ mod BE_base_converter;
 
 use std::cell::RefCell;
 
-use egui::{Align, Context, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2};
+use egui::{Align, Context, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2, ViewportCommand};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
 
@@ -15,7 +15,9 @@ struct UI_BaseConverter{
     br: String,
     cbCount: u8,
     cbNums: Vec<String>,
-    cbBases: Vec<String>
+    cbBases: Vec<String>,
+
+    run_once_flag: bool
 
 }
 
@@ -30,6 +32,7 @@ pub fn get() -> ToolPage {
         cbCount: 1,
         cbNums: vec![String::new()],
         cbBases: vec![String::new()],
+        run_once_flag: false
     };
     
     return ToolPage {
@@ -42,8 +45,11 @@ pub fn get() -> ToolPage {
 
 fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
 
-    ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(500.0, 400.0)));
-    print!("{}", ctx.screen_rect());
+    if !bc.run_once_flag {
+        run_once(&ctx);
+        bc.run_once_flag = true;
+    }
+    
 
     //ui.ctx().send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(300.0, 100.0)));
 
@@ -322,4 +328,11 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
         
     }
     return newNums;
+}
+
+fn run_once(ctx: &Context) {
+
+    //ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(500.0, 400.0)));
+    ctx.send_viewport_cmd(ViewportCommand::ResizeIncrements(Some(Vec2::new(10.0,10.0))));
+    //ctx.send_viewport_cmd(ViewportCommand::MinInnerSize(Vec2{x:500.0,y:500.0}));
 }

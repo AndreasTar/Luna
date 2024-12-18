@@ -180,7 +180,7 @@ pub fn create_rectangle(ui: &Ui, posinfo: PositionInfo, debug: bool) -> Rect {
     let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
     let fullsize = Vec2::new(size[0].into(), size[1].into());
 
-    if debug{
+    if debug { // TODO change this to cfg debug
         println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
     }
 
