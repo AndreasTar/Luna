@@ -1,18 +1,33 @@
 use std::cell::RefCell;
 
-use egui::{Context, Ui};
+use super::{tool_pages::ToolPage, Luna, Message};
 
-use super::{tool_pages::ToolPage, Luna};
+pub struct default_page{}
 
-pub fn get() -> ToolPage{
-    return ToolPage {
-        enabled: true,
-        side_title: "temp".to_string(),
-        main_title: "temp".to_string(),
-        render: Box::new(RefCell::new(move |ui: &mut Ui, ctx: &Context| temp())),
-    };
+impl ToolPage for default_page {
+    fn get_side_title(&self) -> String {
+        return "temp".to_string();
+    }
+
+    fn get_main_title(&self) -> String {
+        return "temp".to_string();
+    }
+
+    fn render(&self) -> iced::Element<Message> {
+        return iced::widget::text("temp").into();
+    }
+
+    fn is_enabled(&self) -> bool {
+        return true;
+    }
 }
 
-fn temp(){
+impl PartialEq for dyn ToolPage{
+    fn eq(&self, other: &Self) -> bool {
+        return self.get_main_title() == other.get_main_title();
+    }
+}
 
+pub fn get() -> impl ToolPage{
+    return default_page{};
 }

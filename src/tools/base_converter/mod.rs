@@ -2,12 +2,26 @@ mod BE_base_converter;
 
 use std::cell::RefCell;
 
-use egui::{Align, Context, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2, ViewportCommand};
+use iced::{alignment, widget::{column, container, keyed::column, row, scrollable, Container, Text}, Color, Element};
 
-use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
+use crate::{helpers::positioner::{self, PositionInfo}, ui::{Message, ToolPage}};
 
+
+#[derive(Debug, Clone)]
+enum BC_Message{
+    TLChanged(String),
+    TRChanged(String),
+    BLChanged(String),
+    BRChanged(String),
+    CustomNumChanged(String, u8),
+    CustomBaseChanged(String, String)
+}
 
 struct UI_BaseConverter{
+
+    side_title: String,
+    main_title: String,
+    enabled: bool,
 
     tl: String,
     tr: String,
@@ -16,15 +30,104 @@ struct UI_BaseConverter{
     cbCount: u8,
     cbNums: Vec<String>,
     cbBases: Vec<String>,
+}
 
-    run_once_flag: bool
+impl ToolPage for UI_BaseConverter {
+    fn get_side_title(&self) -> String {
+        return self.side_title.clone();
+    }
 
+    fn get_main_title(&self) -> String {
+        return self.main_title.clone();
+    }
+
+    fn is_enabled(&self) -> bool {
+        return self.enabled;
+    }
+
+    fn render(&self) -> iced::Element<Message> {
+        self.layout();
+        todo!()
+    }
+}
+
+impl UI_BaseConverter {
+    fn layout(&self) {
+
+        let title_section = Container::new(
+            Text::new(&self.main_title)
+                .size(30)
+                .center()
+                .color(Color::WHITE)
+        )
+        .center(0)
+        .width(iced::Length::Fill)
+        .style(container::rounded_box)
+        .padding(10)
+        .into();
+
+        let predef_converters = Container::new(
+            column![
+                row![
+                    iced::widget::text_input("Base 10", &self.tl)
+                        .on_input(BC_Message::TLChanged),
+                    iced::widget::text_input("Base 2", &self.tl)
+                        .on_input(BC_Message::TRChanged),
+                ],
+                row![
+                    iced::widget::text_input("Base 8", &self.tl)
+                        .on_input(BC_Message::BLChanged),
+                    iced::widget::text_input("Base 16", &self.tl)
+                        .on_input(BC_Message::BRChanged),
+                ]
+            ]
+        );
+
+        let custom_converters = Container::new(
+            scrollable(column(
+                (0..self.cbCount).map(|i| {
+                    let base = self.cbBases.get(i as usize).unwrap();
+                    let basestr = "Base ".to_owned() + base;
+                    let mut numstr = String::new();
+                    if base == "" {
+                        numstr = "Input Base -->".to_string();
+                    }
+                    else {
+                        numstr = "Base ".to_owned() + base;
+                    }
+                    let numstr = numstr;
+
+                    row![
+                        iced::widget::text_input(&numstr, &self.tl)
+                            .on_input(BC_Message::TLChanged),
+                        iced::widget::text_input(&basestr, &self.tl)
+                            .on_input(BC_Message::TLChanged),
+                    ].into()
+                })
+            ))
+        );
+
+        Container::new(
+            column![
+                title_section,
+                predef_converters,
+                custom_converters
+            ]
+        );
+
+        
+    }
 }
 
 
-pub fn get() -> ToolPage {
+pub fn get() -> UI_BaseConverter {
 
-    let mut ui_bc = UI_BaseConverter {
+    let ui_bc = UI_BaseConverter {
+
+        side_title: "Base Converter".to_string(),
+        main_title: "Base Converter".to_string(),
+        enabled: true,
+
         tl: String::new().to_owned(),
         tr: String::new().to_owned(),
         bl: String::new().to_owned(),
@@ -32,40 +135,13 @@ pub fn get() -> ToolPage {
         cbCount: 1,
         cbNums: vec![String::new()],
         cbBases: vec![String::new()],
-        run_once_flag: false
+
     };
     
-    return ToolPage {
-        enabled: false,
-        side_title: "Number Converter".to_string(),
-        main_title: "Number Converter".to_string(),
-        render: Box::new(RefCell::new(move |ui: &mut Ui, ctx: &Context| layout(ui, &mut ui_bc, ctx))),
-    };
+    return ui_bc;
 }
 
 fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
-
-    if !bc.run_once_flag {
-        run_once(&ctx);
-        bc.run_once_flag = true;
-    }
-    
-
-    //ui.ctx().send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(300.0, 100.0)));
-
-    //println!("{}", ui.ctx().used_size());
-
-    // let layout = egui::Layout::top_down(egui::Align::Center)
-    //     .with_main_wrap(false)
-    //     .with_cross_align(Align::Center)
-    //     .with_main_align(Align::Center);
-
-    // ui.debug_paint_cursor();
-    
-    // ui.with_layout(layout, |ui| {
-    //     ui.add(Label::new("temp 1"));
-    //     ui.label("temp 2");
-    // });
 
     egui::TopBottomPanel::top("base_converter_title")
         .show_inside(ui, |ui| {
@@ -330,9 +406,6 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
     return newNums;
 }
 
-fn run_once(ctx: &Context) {
-
-    //ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(500.0, 400.0)));
-    ctx.send_viewport_cmd(ViewportCommand::ResizeIncrements(Some(Vec2::new(10.0,10.0))));
-    //ctx.send_viewport_cmd(ViewportCommand::MinInnerSize(Vec2{x:500.0,y:500.0}));
+fn run_once() {
+    // Add tool page dependent stuff here if needed
 }

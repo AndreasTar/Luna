@@ -3,19 +3,13 @@ name = "luna"
 version = "0.1.0"
 authors = ["Andy Pandy <andytgamedev@gmail.com>"]
 edition = "2021"
-rust-version = "1.83.0"
+rust-version = "1.85.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui = "0.30.0"
-eframe = { version = "0.30.0", features = [
-    "default",
-    #"accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
-    "default_fonts", # Embed the default egui fonts.
-    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
-    #"persistence",   # Enable restoring app state when restarting the app.
-] }
+iced = { version = "0.13.1", default-features = true }
+iced_aw = { version = "0.12.0", default-features = false, features = ["tab_bar", "tabs", "sidebar"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
