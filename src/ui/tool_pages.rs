@@ -2,13 +2,13 @@ use std::{cell::RefCell, default};
 
 use iced::Element;
 
-use super::{add_toolpage, remove_toolpage, Message};
+use super::{add_toolpage, remove_toolpage, LunaMessage};
 
 pub trait ToolPage{
     fn get_side_title(&self) -> String;
     fn get_main_title(&self) -> String;
     fn is_enabled(&self) -> bool;
-    fn render(&self) -> Element<Message>;
+    fn render(&self) -> Element<LunaMessage>;
 }
 
 

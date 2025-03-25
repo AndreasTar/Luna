@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use iced::{alignment, widget::{column, container, keyed::column, row, scrollable, Container, Text}, Color, Element};
 
-use crate::{helpers::positioner::{self, PositionInfo}, ui::{Message, ToolPage}};
+use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
 
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ enum BC_Message{
     CustomBaseChanged(String, String)
 }
 
-struct UI_BaseConverter{
+pub struct UI_BaseConverter{
 
     side_title: String,
     main_title: String,
@@ -45,16 +45,16 @@ impl ToolPage for UI_BaseConverter {
         return self.enabled;
     }
 
-    fn render(&self) -> iced::Element<Message> {
-        self.layout();
-        todo!()
+    fn render(&self) -> Element<LunaMessage> {
+        return Element::new(self.layout())
+                        .map(move |msg| LunaMessage::Nothing);
     }
 }
 
 impl UI_BaseConverter {
-    fn layout(&self) {
+    fn layout(&self) -> Container<BC_Message> {
 
-        let title_section = Container::new(
+        let title_section = container(
             Text::new(&self.main_title)
                 .size(30)
                 .center()
@@ -63,22 +63,21 @@ impl UI_BaseConverter {
         .center(0)
         .width(iced::Length::Fill)
         .style(container::rounded_box)
-        .padding(10)
-        .into();
+        .padding(10);
 
         let predef_converters = Container::new(
             column![
                 row![
                     iced::widget::text_input("Base 10", &self.tl)
-                        .on_input(BC_Message::TLChanged),
+                        .on_input(|text| BC_Message::TLChanged(text)),
                     iced::widget::text_input("Base 2", &self.tl)
-                        .on_input(BC_Message::TRChanged),
+                        .on_input(|text| BC_Message::TRChanged(text)),
                 ],
                 row![
                     iced::widget::text_input("Base 8", &self.tl)
-                        .on_input(BC_Message::BLChanged),
+                        .on_input(|text| BC_Message::BLChanged(text)),
                     iced::widget::text_input("Base 16", &self.tl)
-                        .on_input(BC_Message::BRChanged),
+                        .on_input(|text| BC_Message::BRChanged(text)),
                 ]
             ]
         );
@@ -107,15 +106,12 @@ impl UI_BaseConverter {
             ))
         );
 
-        Container::new(
-            column![
-                title_section,
-                predef_converters,
-                custom_converters
-            ]
-        );
 
-        
+        return Container::new(column![
+            title_section,
+            predef_converters,
+            custom_converters
+        ]).into();
     }
 }
 
@@ -141,6 +137,7 @@ pub fn get() -> UI_BaseConverter {
     return ui_bc;
 }
 
+/*
 fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
 
     egui::TopBottomPanel::top("base_converter_title")
@@ -378,6 +375,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
         //     }
         // )
 }
+*/
 
 fn convert_number(from: usize, to: usize, num: &String) -> String {
     if num.is_empty(){

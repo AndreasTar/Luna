@@ -23,23 +23,27 @@ impl Default for Luna {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Message{
+#[derive(Clone, Copy, Debug)]
+pub enum LunaMessage{
+    Nothing,
     PageSelected(usize),
+    //PageDeactivated(usize),
+    //PageActivated(usize),
 }
 
 impl Luna {
 
-    pub fn update(&mut self, msg: Message) {
+    pub fn update(&mut self, msg: LunaMessage) {
         match msg {
-            Message::PageSelected(i) => self.active_index = i,
+            LunaMessage::Nothing => (),
+            LunaMessage::PageSelected(i) => self.active_index = i,
+            
         }
     }
 
-    pub fn view(&self) -> Element<Message>{
+    pub fn view(&self) -> Element<LunaMessage>{
 
-
-        let mut sbwc = SidebarWithContent::new(Message::PageSelected)
+        let mut sbwc = SidebarWithContent::new(LunaMessage::PageSelected)
             .sidebar_position(SidebarPosition::Start);
 
         let mut i = 0;
