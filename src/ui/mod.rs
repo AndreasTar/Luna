@@ -83,10 +83,11 @@ impl Luna {
 }
 
 
+#[allow(static_mut_refs)]
 pub(crate) fn add_toolpage<T: ToolPage + 'static>(tp: T) {
     unsafe { LUNA_INSTANCE.add_page(tp) };
 }
-
+#[allow(static_mut_refs)]
 pub(crate) fn remove_toolpage(tp: Box<dyn ToolPage>) {
     unsafe  { LUNA_INSTANCE.remove_page(tp) };
 }
