@@ -1,6 +1,6 @@
 mod BE_base_converter;
 
-use std::cell::RefCell;
+use std::{any::Any, cell::RefCell};
 
 use iced::{alignment, widget::{column, container, keyed::column, row, scrollable, Container, Text}, Color, Element};
 
@@ -8,16 +8,19 @@ use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPag
 
 
 #[derive(Debug, Clone)]
-enum BC_Message{
+pub enum BC_Message{
+    Nothing,
     TLChanged(String),
     TRChanged(String),
     BLChanged(String),
     BRChanged(String),
-    CustomNumChanged(String, u8),
-    CustomBaseChanged(String, String)
+    CustomNumChanged(String, usize, u8), // num base index
+    CustomBaseChanged(String, u8) // base index
 }
 
 pub struct UI_BaseConverter{
+
+    last_msg: RefCell<Option<BC_Message>>,
 
     side_title: String,
     main_title: String,
@@ -47,11 +50,80 @@ impl ToolPage for UI_BaseConverter {
 
     fn render(&self) -> Element<LunaMessage> {
         return Element::new(self.layout())
-                        .map(move |msg| LunaMessage::Nothing);
+                        .map(move |msg| {
+                            match msg {
+                                BC_Message::Nothing => LunaMessage::Nothing,
+                                _ => {
+                                    self.last_msg.replace(Some(msg));
+                                    LunaMessage::ShouldUpdate(1) // HACK
+                                }
+                            }
+                            
+                        });
+    }
+
+    fn update_state(&mut self) {
+        self.update_state();
     }
 }
 
 impl UI_BaseConverter {
+
+    pub fn update_state(&mut self) {
+        match &self.last_msg.take() {
+            Some(msg) => {
+                match msg {
+                    BC_Message::Nothing => (),
+                    BC_Message::TLChanged(numstr) => {
+                        self.tl = numstr.to_string();
+                        self.tr = convert_number(10, 2, numstr);
+                        self.bl = convert_number(10, 8, numstr);
+                        self.br = convert_number(10, 16, numstr);
+                        self.cbNums = manage_customBoxes(10, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::TRChanged(numstr) => {
+                        self.tl = convert_number(2, 10, numstr);
+                        self.tr = numstr.to_string();
+                        self.bl = convert_number(2, 8, numstr);
+                        self.br = convert_number(2, 16, numstr);
+                        self.cbNums = manage_customBoxes(2, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::BLChanged(numstr) => {
+                        self.tl = convert_number(8, 10, numstr);
+                        self.tr = convert_number(8, 2, numstr);
+                        self.bl = numstr.to_string();
+                        self.br = convert_number(8, 16, numstr);
+                        self.cbNums = manage_customBoxes(8, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::BRChanged(numstr) => {
+                        self.tl = convert_number(16, 10, numstr);
+                        self.tr = convert_number(16, 2, numstr);
+                        self.bl = convert_number(16, 8, numstr);
+                        self.br = numstr.to_string();
+                        self.cbNums = manage_customBoxes(16, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::CustomNumChanged(n, b, i) => {
+                        self.tl = convert_number(*b, 10, n);
+                        self.tr = convert_number(*b, 8, n);
+                        self.bl = convert_number(*b, 8, n);
+                        self.br = convert_number(*b, 16, n);
+                        self.cbNums = manage_customBoxes(*b, n,
+                            self.cbBases.clone(), self.cbCount, *i, true);
+                    },
+                    BC_Message::CustomBaseChanged(b, i) => {
+                        todo!()
+                    },
+
+                }
+            },
+            None => (),
+        }
+    }
+
     fn layout(&self) -> Container<BC_Message> {
 
         let title_section = container(
@@ -70,13 +142,13 @@ impl UI_BaseConverter {
                 row![
                     iced::widget::text_input("Base 10", &self.tl)
                         .on_input(|text| BC_Message::TLChanged(text)),
-                    iced::widget::text_input("Base 2", &self.tl)
+                    iced::widget::text_input("Base 2", &self.tr)
                         .on_input(|text| BC_Message::TRChanged(text)),
                 ],
                 row![
-                    iced::widget::text_input("Base 8", &self.tl)
+                    iced::widget::text_input("Base 8", &self.bl)
                         .on_input(|text| BC_Message::BLChanged(text)),
-                    iced::widget::text_input("Base 16", &self.tl)
+                    iced::widget::text_input("Base 16", &self.br)
                         .on_input(|text| BC_Message::BRChanged(text)),
                 ]
             ]
@@ -97,10 +169,10 @@ impl UI_BaseConverter {
                     let numstr = numstr;
 
                     row![
-                        iced::widget::text_input(&numstr, &self.tl)
-                            .on_input(BC_Message::TLChanged),
-                        iced::widget::text_input(&basestr, &self.tl)
-                            .on_input(BC_Message::TLChanged),
+                        iced::widget::text_input(&numstr, &self.cbNums.get(i as usize).unwrap())
+                            .on_input(move |text| BC_Message::CustomNumChanged(text, base_to_num(base.to_string()), i)),
+                        iced::widget::text_input(&basestr, &self.cbBases.get(i as usize).unwrap())
+                            .on_input(move |text| BC_Message::CustomBaseChanged(text, i)),
                     ].into()
                 })
             ))
@@ -119,6 +191,8 @@ impl UI_BaseConverter {
 pub fn get() -> UI_BaseConverter {
 
     let ui_bc = UI_BaseConverter {
+
+        last_msg: None.into(),
 
         side_title: "Base Converter".to_string(),
         main_title: "Base Converter".to_string(),
@@ -402,6 +476,14 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
         
     }
     return newNums;
+}
+
+fn base_to_num(base: String) -> usize { // TODO change to float or double etc
+    if !(base.is_empty() || base.parse::<u8>().is_err()) {
+        return u32::from_str_radix(&base, 10).unwrap().try_into().unwrap();
+    } else {
+        return 0;
+    }
 }
 
 fn run_once() {

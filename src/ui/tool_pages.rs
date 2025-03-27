@@ -1,14 +1,22 @@
-use std::{cell::RefCell, default};
+use std::{cell::RefCell, default, fmt::Debug};
 
 use iced::Element;
 
 use super::{add_toolpage, remove_toolpage, LunaMessage};
 
 pub trait ToolPage{
+
     fn get_side_title(&self) -> String;
     fn get_main_title(&self) -> String;
     fn is_enabled(&self) -> bool;
     fn render(&self) -> Element<LunaMessage>;
+    fn update_state(&mut self);
+}
+
+impl Debug for dyn ToolPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ToolPage") // HACK
+    }
 }
 
 

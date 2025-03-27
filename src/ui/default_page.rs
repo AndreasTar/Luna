@@ -20,11 +20,19 @@ impl ToolPage for default_page {
     fn is_enabled(&self) -> bool {
         return true;
     }
+    
+    fn update_state(&mut self) {
+        ();
+    }
 }
 
 impl PartialEq for dyn ToolPage{
     fn eq(&self, other: &Self) -> bool {
         return self.get_main_title() == other.get_main_title(); // TODO change this to some ID?
+    }
+    
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
     }
 }
 

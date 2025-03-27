@@ -7,6 +7,8 @@ use iced::Element;
 use iced_aw::{sidebar::SidebarPosition, widget::SidebarWithContent};
 pub use tool_pages::ToolPage;
 
+use crate::tools::base_converter::BC_Message;
+
 static mut LUNA_INSTANCE: Luna = Luna{ pages: vec![], active_index: 0 };
 
 pub(crate) struct Luna {
@@ -23,10 +25,11 @@ impl Default for Luna {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum LunaMessage{
     Nothing,
     PageSelected(usize),
+    ShouldUpdate(usize),
     //PageDeactivated(usize),
     //PageActivated(usize),
 }
@@ -37,7 +40,7 @@ impl Luna {
         match msg {
             LunaMessage::Nothing => (),
             LunaMessage::PageSelected(i) => self.active_index = i,
-            
+            LunaMessage::ShouldUpdate(i) => self.pages[self.active_index].update_state(), // HACK change indexing            
         }
     }
 
@@ -65,6 +68,10 @@ impl Luna {
         self.pages.remove(
             self.pages.iter().position(|x| x.as_ref() == tp.as_ref()).unwrap()
         );
+    }
+
+    pub fn get_page(&self, index: usize) -> &Box<dyn ToolPage> {
+        return &self.pages[index];
     }
 
     pub fn get_active_tool(&self) -> &Box<dyn ToolPage> {
