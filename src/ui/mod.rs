@@ -56,8 +56,6 @@ impl Luna {
         }
         let sbwc = sbwc.set_active_tab(&self.active_index);
         return sbwc.into();
-
-            
     }
 
     pub fn add_page<T: ToolPage + 'static>(&mut self, tp: T) {

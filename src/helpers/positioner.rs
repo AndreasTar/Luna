@@ -1,12 +1,4 @@
 
-
-// HACK this may all be useless, cause it may already be implemented. check https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/demo/window_options.rs
-
-// let widget_rect =
-//     egui::Rect::from_min_size(ui.min_rect().min + *widget_offset, *widget_size);
-//
-//  ui.put(widget_rect, egui::Button::new("Example button"));
-
 pub struct PositionInfo{
     pub minSize: [u16;2],
     pub maxSize: [u16;2],
