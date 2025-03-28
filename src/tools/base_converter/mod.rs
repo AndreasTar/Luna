@@ -1,13 +1,30 @@
 mod BE_base_converter;
 
-use std::cell::RefCell;
+use std::{any::Any, cell::RefCell};
 
-use egui::{Align, Context, Grid, Label, Pos2, Rangef, Rect, TextEdit, Ui, Vec2, ViewportCommand};
+use iced::{alignment, widget::{column, container, keyed::column, row, scrollable, Container, Text}, Color, Element};
 
-use crate::{helpers::positioner::{self, PositionInfo}, ui::ToolPage};
+use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
 
 
-struct UI_BaseConverter{
+#[derive(Debug, Clone)]
+pub enum BC_Message{
+    Nothing,
+    TLChanged(String),
+    TRChanged(String),
+    BLChanged(String),
+    BRChanged(String),
+    CustomNumChanged(String, usize, u8), // num base index
+    CustomBaseChanged(String, u8) // base index
+}
+
+pub struct UI_BaseConverter{
+
+    last_msg: RefCell<Option<BC_Message>>,
+
+    side_title: String,
+    main_title: String,
+    enabled: bool,
 
     tl: String,
     tr: String,
@@ -16,15 +33,171 @@ struct UI_BaseConverter{
     cbCount: u8,
     cbNums: Vec<String>,
     cbBases: Vec<String>,
+}
 
-    run_once_flag: bool
+impl ToolPage for UI_BaseConverter {
+    fn get_side_title(&self) -> String {
+        return self.side_title.clone();
+    }
 
+    fn get_main_title(&self) -> String {
+        return self.main_title.clone();
+    }
+
+    fn is_enabled(&self) -> bool {
+        return self.enabled;
+    }
+
+    fn render(&self) -> Element<LunaMessage> {
+        return Element::new(self.layout())
+                        .map(move |msg| {
+                            match msg {
+                                BC_Message::Nothing => LunaMessage::Nothing,
+                                _ => {
+                                    self.last_msg.replace(Some(msg));
+                                    LunaMessage::ShouldUpdate(1) // HACK
+                                }
+                            }
+                            
+                        });
+    }
+
+    fn update_state(&mut self) {
+        self.update_state();
+    }
+}
+
+impl UI_BaseConverter {
+
+    pub fn update_state(&mut self) {
+        match &self.last_msg.take() {
+            Some(msg) => {
+                match msg {
+                    BC_Message::Nothing => (),
+                    BC_Message::TLChanged(numstr) => {
+                        self.tl = numstr.to_string();
+                        self.tr = convert_number(10, 2, numstr);
+                        self.bl = convert_number(10, 8, numstr);
+                        self.br = convert_number(10, 16, numstr);
+                        self.cbNums = manage_customBoxes(10, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::TRChanged(numstr) => {
+                        self.tl = convert_number(2, 10, numstr);
+                        self.tr = numstr.to_string();
+                        self.bl = convert_number(2, 8, numstr);
+                        self.br = convert_number(2, 16, numstr);
+                        self.cbNums = manage_customBoxes(2, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::BLChanged(numstr) => {
+                        self.tl = convert_number(8, 10, numstr);
+                        self.tr = convert_number(8, 2, numstr);
+                        self.bl = numstr.to_string();
+                        self.br = convert_number(8, 16, numstr);
+                        self.cbNums = manage_customBoxes(8, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::BRChanged(numstr) => {
+                        self.tl = convert_number(16, 10, numstr);
+                        self.tr = convert_number(16, 2, numstr);
+                        self.bl = convert_number(16, 8, numstr);
+                        self.br = numstr.to_string();
+                        self.cbNums = manage_customBoxes(16, numstr,
+                            self.cbBases.clone(), self.cbCount, 0, false);
+                    },
+                    BC_Message::CustomNumChanged(n, b, i) => {
+                        self.tl = convert_number(*b, 10, n);
+                        self.tr = convert_number(*b, 8, n);
+                        self.bl = convert_number(*b, 8, n);
+                        self.br = convert_number(*b, 16, n);
+                        self.cbNums = manage_customBoxes(*b, n,
+                            self.cbBases.clone(), self.cbCount, *i, true);
+                    },
+                    BC_Message::CustomBaseChanged(b, i) => {
+                        todo!()
+                    },
+
+                }
+            },
+            None => (),
+        }
+    }
+
+    fn layout(&self) -> Container<BC_Message> {
+
+        let title_section = container(
+            Text::new(&self.main_title)
+                .size(30)
+                .center()
+                .color(Color::WHITE)
+        )
+        .center(0)
+        .width(iced::Length::Fill)
+        .style(container::rounded_box)
+        .padding(10);
+
+        let predef_converters = Container::new(
+            column![
+                row![
+                    iced::widget::text_input("Base 10", &self.tl)
+                        .on_input(|text| BC_Message::TLChanged(text)),
+                    iced::widget::text_input("Base 2", &self.tr)
+                        .on_input(|text| BC_Message::TRChanged(text)),
+                ],
+                row![
+                    iced::widget::text_input("Base 8", &self.bl)
+                        .on_input(|text| BC_Message::BLChanged(text)),
+                    iced::widget::text_input("Base 16", &self.br)
+                        .on_input(|text| BC_Message::BRChanged(text)),
+                ]
+            ]
+        );
+
+        let custom_converters = Container::new(
+            scrollable(column(
+                (0..self.cbCount).map(|i| {
+                    let base = self.cbBases.get(i as usize).unwrap();
+                    let basestr = "Base ".to_owned() + base;
+                    let mut numstr = String::new();
+                    if base == "" {
+                        numstr = "Input Base -->".to_string();
+                    }
+                    else {
+                        numstr = "Base ".to_owned() + base;
+                    }
+                    let numstr = numstr;
+
+                    row![
+                        iced::widget::text_input(&numstr, &self.cbNums.get(i as usize).unwrap())
+                            .on_input(move |text| BC_Message::CustomNumChanged(text, base_to_num(base.to_string()), i)),
+                        iced::widget::text_input(&basestr, &self.cbBases.get(i as usize).unwrap())
+                            .on_input(move |text| BC_Message::CustomBaseChanged(text, i)),
+                    ].into()
+                })
+            ))
+        );
+
+
+        return Container::new(column![
+            title_section,
+            predef_converters,
+            custom_converters
+        ]).into();
+    }
 }
 
 
-pub fn get() -> ToolPage {
+pub fn get() -> UI_BaseConverter {
 
-    let mut ui_bc = UI_BaseConverter {
+    let ui_bc = UI_BaseConverter {
+
+        last_msg: None.into(),
+
+        side_title: "Base Converter".to_string(),
+        main_title: "Base Converter".to_string(),
+        enabled: true,
+
         tl: String::new().to_owned(),
         tr: String::new().to_owned(),
         bl: String::new().to_owned(),
@@ -32,175 +205,13 @@ pub fn get() -> ToolPage {
         cbCount: 1,
         cbNums: vec![String::new()],
         cbBases: vec![String::new()],
-        run_once_flag: false
+
     };
     
-    return ToolPage {
-        enabled: false,
-        side_title: "Number Converter".to_string(),
-        main_title: "Number Converter".to_string(),
-        render: Box::new(RefCell::new(move |ui: &mut Ui, ctx: &Context| layout(ui, &mut ui_bc, ctx))),
-    };
+    return ui_bc;
 }
 
-fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
-
-    if !bc.run_once_flag {
-        run_once(&ctx);
-        bc.run_once_flag = true;
-    }
-    
-
-    //ui.ctx().send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(300.0, 100.0)));
-
-    //println!("{}", ui.ctx().used_size());
-
-    // let layout = egui::Layout::top_down(egui::Align::Center)
-    //     .with_main_wrap(false)
-    //     .with_cross_align(Align::Center)
-    //     .with_main_align(Align::Center);
-
-    // ui.debug_paint_cursor();
-    
-    // ui.with_layout(layout, |ui| {
-    //     ui.add(Label::new("temp 1"));
-    //     ui.label("temp 2");
-    // });
-
-    egui::TopBottomPanel::top("base_converter_title")
-        .show_inside(ui, |ui| {
-            ui.put(positioner::create_rectangle(
-                ui, PositionInfo {
-                    defaultSize: [100,30], 
-                    offset: [0;2],
-                    anchor: positioner::AnchorAt::Center, 
-                    scaled: positioner::ScaledOn::Nothing,
-                    ..Default::default()
-                },
-                false
-            ), 
-                Label::new("Base Converter")
-            ).paint_debug_info();
-        }
-    );
-
-    // ui.debug_paint_cursor();
-    egui::TopBottomPanel::top("base_converter_center")
-        .resizable(false)
-        .min_height(180.0)
-        .show_inside(ui, |ui| {
-
-            let tl_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::TopLeft, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.tl)
-                    .clip_text(false)
-                    .hint_text("Base 10")
-                    .min_size(Vec2::new(100.0, 30.0))
-            );
-            
-            //tl_box.paint_debug_info();
-
-            if tl_box.has_focus() && tl_box.changed(){
-                bc.tr = convert_number(10, 2, &bc.tl);
-                bc.bl = convert_number(10, 8, &bc.tl);
-                bc.br = convert_number(10, 16, &bc.tl);
-                bc.cbNums = manage_customBoxes(10, &bc.tl, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-
-            let tr_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::TopRight, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.tr)
-                    .clip_text(false)
-                    .hint_text("Base 2")
-                    .min_size(Vec2::new(100.0, 30.0))
-                    .char_limit(32)
-            );
-
-            //tr_box.paint_debug_info();
-
-            if tr_box.has_focus() && tr_box.changed(){
-                bc.tl = convert_number(2, 10, &bc.tr);
-                bc.bl = convert_number(2, 8, &bc.tr);
-                bc.br = convert_number(2, 16, &bc.tr);
-                bc.cbNums = manage_customBoxes(2, &bc.tr, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-
-            let bl_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::BottomLeft, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.bl)
-                    .clip_text(false)
-                    .hint_text("Base 8")
-                    .min_size(Vec2::new(100.0, 30.0))
-            );
-
-            //bl_box.paint_debug_info();
-
-            if bl_box.has_focus() && bl_box.changed(){
-                bc.tl = convert_number(8, 10, &bc.bl);
-                bc.tr = convert_number(8, 2, &bc.bl);
-                bc.br = convert_number(8, 16, &bc.bl);
-                bc.cbNums = manage_customBoxes(8, &bc.bl, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-            
-
-            let br_box = ui.put(
-                positioner::create_rectangle(
-                    &ui, PositionInfo {
-                        defaultSize: [300,50], 
-                        offset: [0;2],
-                        anchor: positioner::AnchorAt::BottomRight, 
-                        scaled: positioner::ScaledOn::Nothing,
-                        ..Default::default()
-                    },
-                    false
-                ),
-                egui::TextEdit::singleline(&mut bc.br)
-                    .clip_text(false)
-                    .hint_text("Base 16")
-                    .min_size(Vec2::new(100.0, 30.0))
-                    .char_limit(8)
-            );
-
-            //br_box.paint_debug_info();
-
-            if br_box.has_focus() && br_box.changed(){
-                bc.tl = convert_number(16, 10, &bc.br);
-                bc.tr = convert_number(16, 2, &bc.br);
-                bc.bl = convert_number(16, 8, &bc.br);
-                bc.cbNums = manage_customBoxes(16, &bc.br, bc.cbBases.clone(), bc.cbCount, 0, false);
-            };
-
-        });
-    
-    ui.add_space(50.0);
-
+/*
     egui::ScrollArea::vertical()
     .auto_shrink(false)
     .show(ui, |ui| {
@@ -283,25 +294,7 @@ fn layout(ui: &mut Ui, bc: &mut UI_BaseConverter, ctx: &Context){
             }
         })
     });
-
-        // egui::TopBottomPanel::top("base_converter_bot")
-        //     .height_range(Rangef::new(10.0, 300.0))
-        //     .default_height(100.0)
-        //     .resizable(true)
-        //     .show_inside(ui, |ui| {
-
-        //         // ui.debug_paint_cursor();
-        //         egui::ScrollArea::vertical()
-
-        //             .auto_shrink(false)
-        //             .show(ui, |ui| {
-        //                 ui.vertical_centered(|ui|{
-        //                     ui.label("scrollable")
-        //                 })
-        //             });
-        //     }
-        // )
-}
+*/
 
 fn convert_number(from: usize, to: usize, num: &String) -> String {
     if num.is_empty(){
@@ -330,9 +323,14 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
     return newNums;
 }
 
-fn run_once(ctx: &Context) {
+fn base_to_num(base: String) -> usize { // TODO change to float or double etc
+    if !(base.is_empty() || base.parse::<u8>().is_err()) {
+        return u32::from_str_radix(&base, 10).unwrap().try_into().unwrap();
+    } else {
+        return 0;
+    }
+}
 
-    //ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(Vec2::new(500.0, 400.0)));
-    ctx.send_viewport_cmd(ViewportCommand::ResizeIncrements(Some(Vec2::new(10.0,10.0))));
-    //ctx.send_viewport_cmd(ViewportCommand::MinInnerSize(Vec2{x:500.0,y:500.0}));
+fn run_once() {
+    // Add tool page dependent stuff here if needed
 }

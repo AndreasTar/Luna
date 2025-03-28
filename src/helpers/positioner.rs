@@ -1,11 +1,3 @@
-use egui::{Pos2, Rect, Ui, Vec2, Widget};
-
-// HACK this may all be useless, cause it may already be implemented. check https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/demo/window_options.rs
-
-// let widget_rect =
-//     egui::Rect::from_min_size(ui.min_rect().min + *widget_offset, *widget_size);
-//
-//  ui.put(widget_rect, egui::Button::new("Example button"));
 
 pub struct PositionInfo{
     pub minSize: [u16;2],
@@ -156,45 +148,45 @@ pub enum ScaledOn {
     All(i8,i8,i8,i8)
 }
 
-pub fn create_rectangle(ui: &Ui, posinfo: PositionInfo, debug: bool) -> Rect {
+// pub fn create_rectangle(ui: &Ui, posinfo: PositionInfo, debug: bool) -> Rect {
 
-    // TODO i need to add controls for 
-    //  - min height and width
-    //  - max height and width
-    //  - preferred height and width
-    //  
+//     // TODO i need to add controls for 
+//     //  - min height and width
+//     //  - max height and width
+//     //  - preferred height and width
+//     //  
 
-    // i need
-    //      - size of area
-    //      - corners of area
-    //      - center of area
-    //      - corners of widget
-    let size = posinfo.defaultSize;
-    let anchor = posinfo.anchor;
-    let offset = posinfo.offset;
+//     // i need
+//     //      - size of area
+//     //      - corners of area
+//     //      - center of area
+//     //      - corners of widget
+//     let size = posinfo.defaultSize;
+//     let anchor = posinfo.anchor;
+//     let offset = posinfo.offset;
 
-    let uitl = ui.min_rect().min; // top left corner of available area
-    let uibr = ui.min_rect().max; // bottom right corner of available area
-    let uiSize = uibr - uitl; // size of available area
-    let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0); // center of available area
-    let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
-    let fullsize = Vec2::new(size[0].into(), size[1].into());
+//     let uitl = ui.min_rect().min; // top left corner of available area
+//     let uibr = ui.min_rect().max; // bottom right corner of available area
+//     let uiSize = uibr - uitl; // size of available area
+//     let center = Pos2::new(uiSize.x / 2.0, uiSize.y / 2.0); // center of available area
+//     let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
+//     let fullsize = Vec2::new(size[0].into(), size[1].into());
 
-    if debug { // TODO change this to cfg debug
-        println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
-    }
+//     if debug { // TODO change this to cfg debug
+//         println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
+//     }
 
-    let res = match anchor {
-        AnchorAt::TopLeft =>        Rect::from_two_pos(Pos2::new(0.0, 0.0),                                     fullsize.to_pos2()),
-        AnchorAt::TopRight =>       Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, 0.0),                   Pos2::new(uiSize.x, fullsize.y)),
-        AnchorAt::BottomLeft =>     Rect::from_two_pos(Pos2::new(0.0, uiSize.y - fullsize.y),                   Pos2::new(fullsize.x, uiSize.y)),
-        AnchorAt::BottomRight =>    Rect::from_two_pos((uiSize - fullsize).to_pos2(),                                uiSize.to_pos2()),
-        AnchorAt::TopCenter =>      Rect::from_two_pos(Pos2::new(center.x - halfsize.x, 0.0),                   Pos2::new(center.x + halfsize.x, fullsize.y)),
-        AnchorAt::BottomCenter =>   Rect::from_two_pos(Pos2::new(center.x - halfsize.x, uiSize.y - fullsize.y), Pos2::new(center.x + halfsize.x, uiSize.y)),
-        AnchorAt::CenterLeft =>     Rect::from_two_pos(Pos2::new(0.0, center.y - halfsize.y),                   Pos2::new(fullsize.x, center.y + halfsize.y)),
-        AnchorAt::CenterRight =>    Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, center.y - halfsize.y), Pos2::new(uiSize.x, center.y + halfsize.y)),
-        AnchorAt::Center =>         Rect::from_two_pos(center - halfsize,                                            center + halfsize),
-    };
+//     let res = match anchor {
+//         AnchorAt::TopLeft =>        Rect::from_two_pos(Pos2::new(0.0, 0.0),                                     fullsize.to_pos2()),
+//         AnchorAt::TopRight =>       Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, 0.0),                   Pos2::new(uiSize.x, fullsize.y)),
+//         AnchorAt::BottomLeft =>     Rect::from_two_pos(Pos2::new(0.0, uiSize.y - fullsize.y),                   Pos2::new(fullsize.x, uiSize.y)),
+//         AnchorAt::BottomRight =>    Rect::from_two_pos((uiSize - fullsize).to_pos2(),                                uiSize.to_pos2()),
+//         AnchorAt::TopCenter =>      Rect::from_two_pos(Pos2::new(center.x - halfsize.x, 0.0),                   Pos2::new(center.x + halfsize.x, fullsize.y)),
+//         AnchorAt::BottomCenter =>   Rect::from_two_pos(Pos2::new(center.x - halfsize.x, uiSize.y - fullsize.y), Pos2::new(center.x + halfsize.x, uiSize.y)),
+//         AnchorAt::CenterLeft =>     Rect::from_two_pos(Pos2::new(0.0, center.y - halfsize.y),                   Pos2::new(fullsize.x, center.y + halfsize.y)),
+//         AnchorAt::CenterRight =>    Rect::from_two_pos(Pos2::new(uiSize.x - fullsize.x, center.y - halfsize.y), Pos2::new(uiSize.x, center.y + halfsize.y)),
+//         AnchorAt::Center =>         Rect::from_two_pos(center - halfsize,                                            center + halfsize),
+//     };
 
-    return res.translate(uitl.to_vec2() + Vec2::new(offset[0].into(), offset[1].into()));
-} 
+//     return res.translate(uitl.to_vec2() + Vec2::new(offset[0].into(), offset[1].into()));
+// } 
