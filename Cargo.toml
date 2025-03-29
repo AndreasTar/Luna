@@ -9,7 +9,7 @@ rust-version = "1.85.0"
 
 [dependencies]
 iced = { version = "0.13.1", default-features = true }
-iced_aw = { version = "0.12.0", default-features = false, features = ["tab_bar", "tabs", "sidebar"] }
+iced_aw = { version = "0.12.0", default-features = false, features = ["tab_bar", "tabs", "sidebar", "number_input"] }
 
 profiling = "1.0.16"
 

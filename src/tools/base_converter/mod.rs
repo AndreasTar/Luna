@@ -2,7 +2,7 @@ mod BE_base_converter;
 
 use std::{any::Any, cell::RefCell};
 
-use iced::{alignment, widget::{column, container, keyed::column, row, scrollable, Container, Text}, Color, Element};
+use iced::{alignment, widget::{button, column, container::{self, Style}, keyed::column, row, scrollable, Container, Text}, Border, Color, Element, Theme};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
 
@@ -15,7 +15,9 @@ pub enum BC_Message{
     BLChanged(String),
     BRChanged(String),
     CustomNumChanged(String, usize, u8), // num base index
-    CustomBaseChanged(String, u8) // base index
+    CustomBaseChanged(String, u8),       // base index
+    CustomBaseAdded,
+    CustomBaseRemoved(u8),               // index
 }
 
 pub struct UI_BaseConverter{
@@ -114,9 +116,20 @@ impl UI_BaseConverter {
                         self.cbNums = manage_customBoxes(*b, n,
                             self.cbBases.clone(), self.cbCount, *i, true);
                     },
-                    BC_Message::CustomBaseChanged(b, i) => {
-                        todo!()
+                    BC_Message::CustomBaseChanged(b, i) => { // HACK this is not good code
+                        self.cbBases[*i as usize] = b.to_string();
+                        let base = base_to_num(b.to_string());
                     },
+                    BC_Message::CustomBaseAdded => {
+                        self.cbCount += 1;
+                        self.cbNums.push(String::new());
+                        self.cbBases.push(String::new());
+                    },
+                    BC_Message::CustomBaseRemoved(i) => {
+                        self.cbBases.remove(*i as usize);
+                        self.cbNums.remove(*i as usize);
+                        self.cbCount -= 1;
+                    }
 
                 }
             },
@@ -126,16 +139,29 @@ impl UI_BaseConverter {
 
     fn layout(&self) -> Container<BC_Message> {
 
-        let title_section = container(
+        let title_section = Container::new(
             Text::new(&self.main_title)
-                .size(30)
+                .size(20)
                 .center()
                 .color(Color::WHITE)
+                .wrapping(iced::widget::text::Wrapping::None)
         )
-        .center(0)
+        .center(50)
         .width(iced::Length::Fill)
-        .style(container::rounded_box)
-        .padding(10);
+        .style(|theme: &Theme| {
+            let mut style = container::Style::default()
+                .background(Color::from_rgb(0.1, 0.1, 0.1))
+                .border(Border::default().rounded(10));
+            return style;
+        })
+        .padding(1);
+
+        // let title_section = 
+        //     Text::new(&self.main_title)
+        //         .size(30)
+        //         .center()
+        //         .color(Color::WHITE)
+        //         .wrapping(iced::widget::text::Wrapping::None);
 
         let predef_converters = Container::new(
             column![
@@ -168,13 +194,24 @@ impl UI_BaseConverter {
                     }
                     let numstr = numstr;
 
+                    let mut buttons = row![
+                        button("-").on_press(BC_Message::CustomBaseRemoved(i)),
+                    ];
+                    if (i == self.cbCount - 1) {
+                        buttons = buttons.push(button("+").on_press(BC_Message::CustomBaseAdded));
+                    }
+                    if self.cbCount == 1 {
+                        buttons = row![button("+").on_press(BC_Message::CustomBaseAdded)];
+                    }
+
                     row![
                         iced::widget::text_input(&numstr, &self.cbNums.get(i as usize).unwrap())
                             .on_input(move |text| BC_Message::CustomNumChanged(text, base_to_num(base.to_string()), i)),
                         iced::widget::text_input(&basestr, &self.cbBases.get(i as usize).unwrap())
                             .on_input(move |text| BC_Message::CustomBaseChanged(text, i)),
+                        buttons,
                     ].into()
-                })
+                }),
             ))
         );
 
@@ -194,8 +231,8 @@ pub fn get() -> UI_BaseConverter {
 
         last_msg: None.into(),
 
-        side_title: "Base Converter".to_string(),
-        main_title: "Base Converter".to_string(),
+        side_title: "Base Converter side".to_string(),
+        main_title: "Base Converter main".to_string(),
         enabled: true,
 
         tl: String::new().to_owned(),

@@ -6,15 +6,15 @@ pub struct default_page{}
 
 impl ToolPage for default_page {
     fn get_side_title(&self) -> String {
-        return "temp".to_string();
+        return "tempside".to_string();
     }
 
     fn get_main_title(&self) -> String {
-        return "temp".to_string();
+        return "tempmain".to_string();
     }
 
     fn render(&self) -> iced::Element<LunaMessage> {
-        return iced::widget::text("temp").into();
+        return iced::widget::text("temptext").into();
     }
 
     fn is_enabled(&self) -> bool {
