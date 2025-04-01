@@ -2,7 +2,7 @@ mod BE_base_converter;
 
 use std::{any::Any, cell::RefCell};
 
-use iced::{alignment, widget::{button, column, container::{self, Style}, keyed::column, row, scrollable, Container, Text}, Border, Color, Element, Theme};
+use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text_input, Container, Text}, Border, Color, Element, Theme};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
 
@@ -148,6 +148,7 @@ impl UI_BaseConverter {
         )
         .center(50)
         .width(iced::Length::Fill)
+        .height(iced::Length::FillPortion(1))
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
                 .background(Color::from_rgb(0.1, 0.1, 0.1))
@@ -167,18 +168,44 @@ impl UI_BaseConverter {
             column![
                 row![
                     iced::widget::text_input("Base 10", &self.tl)
-                        .on_input(|text| BC_Message::TLChanged(text)),
+                        .on_input(|text| BC_Message::TLChanged(text))
+                        .width(iced::Length::FillPortion(2))
+                        .style(|theme: &Theme, status| {
+                            predef_conv_style(theme, status)
+                         }),
                     iced::widget::text_input("Base 2", &self.tr)
-                        .on_input(|text| BC_Message::TRChanged(text)),
+                        .on_input(|text| BC_Message::TRChanged(text))
+                        .width(iced::Length::FillPortion(2))
+                        .style(|theme: &Theme, status| {
+                           predef_conv_style(theme, status)
+                        }),
                 ],
                 row![
                     iced::widget::text_input("Base 8", &self.bl)
-                        .on_input(|text| BC_Message::BLChanged(text)),
+                        .on_input(|text| BC_Message::BLChanged(text))
+                        .width(iced::Length::FillPortion(2))
+                        .style(|theme: &Theme, status| {
+                            predef_conv_style(theme, status)
+                        }),
                     iced::widget::text_input("Base 16", &self.br)
-                        .on_input(|text| BC_Message::BRChanged(text)),
+                        .on_input(|text| BC_Message::BRChanged(text))
+                        .width(iced::Length::FillPortion(2))
+                        .style(|theme: &Theme, status| {
+                            predef_conv_style(theme, status)
+                        }),
                 ]
             ]
-        );
+        )
+        .center(50)
+        .width(iced::Length::Fill)
+        .height(iced::Length::FillPortion(4))
+        .style(|theme: &Theme| {
+            let mut style = container::Style::default()
+                .background(Color::from_rgb(0.1, 0.1, 0.1))
+                .border(Border::default().rounded(10));
+            return style;
+        })
+        .padding(1);
 
         let custom_converters = Container::new(
             scrollable(column(
@@ -213,7 +240,17 @@ impl UI_BaseConverter {
                     ].into()
                 }),
             ))
-        );
+        )
+        .center(50)
+        .width(iced::Length::Fill)
+        .height(iced::Length::FillPortion(4))
+        .style(|theme: &Theme| {
+            let mut style = container::Style::default()
+                .background(Color::from_rgb(0.1, 0.1, 0.1))
+                .border(Border::default().rounded(10));
+            return style;
+        })
+        .padding(1);
 
 
         return Container::new(column![
@@ -370,4 +407,24 @@ fn base_to_num(base: String) -> usize { // TODO change to float or double etc
 
 fn run_once() {
     // Add tool page dependent stuff here if needed
+}
+
+fn predef_conv_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
+    let palette = theme.extended_palette();
+
+    match status {
+        text_input::Status::Active => text_input::Style {
+            background: Color::from_rgb(0.1, 0.1, 0.1).into(),
+            border: Border::default()
+                .width(1)
+                .color(Color::from_rgb(0.1, 0.1, 0.1)),
+            icon: todo!(),
+            placeholder: todo!(),
+            value: todo!(),
+            selection: todo!(),
+        },
+        text_input::Status::Hovered => todo!(),
+        text_input::Status::Focused => todo!(),
+        text_input::Status::Disabled => todo!(),
+    }
 }
