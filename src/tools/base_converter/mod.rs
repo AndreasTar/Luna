@@ -2,7 +2,7 @@ mod BE_base_converter;
 
 use std::{any::Any, cell::RefCell};
 
-use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text_input, Container, Text}, Border, Color, Element, Theme};
+use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text::LineHeight, text_input, Container, Text, TextInput}, Border, Color, Element, Theme};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
 
@@ -167,86 +167,200 @@ impl UI_BaseConverter {
         let predef_converters = Container::new(
             column![
                 row![
+                    container("").width(iced::Length::FillPortion(1)),
                     iced::widget::text_input("Base 10", &self.tl)
                         .on_input(|text| BC_Message::TLChanged(text))
                         .width(iced::Length::FillPortion(2))
+                        .line_height(LineHeight::Absolute(iced::Pixels(40.0)))
                         .style(|theme: &Theme, status| {
-                            predef_conv_style(theme, status)
-                         }),
+                            converter_style(theme, status)
+                        }),
+                    container("").width(iced::Length::FillPortion(1)),
                     iced::widget::text_input("Base 2", &self.tr)
                         .on_input(|text| BC_Message::TRChanged(text))
                         .width(iced::Length::FillPortion(2))
+                        .line_height(LineHeight::Absolute(iced::Pixels(40.0)))
                         .style(|theme: &Theme, status| {
-                           predef_conv_style(theme, status)
+                           converter_style(theme, status)
                         }),
-                ],
+                    container("").width(iced::Length::FillPortion(1))
+                ].height(iced::Length::FillPortion(2)),
+
+                container("").height(iced::Length::FillPortion(1)),
+                
                 row![
+                    container("").width(iced::Length::FillPortion(1)),
                     iced::widget::text_input("Base 8", &self.bl)
                         .on_input(|text| BC_Message::BLChanged(text))
                         .width(iced::Length::FillPortion(2))
+                        .line_height(LineHeight::Absolute(iced::Pixels(40.0)))
                         .style(|theme: &Theme, status| {
-                            predef_conv_style(theme, status)
+                            converter_style(theme, status)
                         }),
+                    container("").width(iced::Length::FillPortion(1)),
                     iced::widget::text_input("Base 16", &self.br)
                         .on_input(|text| BC_Message::BRChanged(text))
                         .width(iced::Length::FillPortion(2))
+                        .line_height(LineHeight::Absolute(iced::Pixels(40.0)))
                         .style(|theme: &Theme, status| {
-                            predef_conv_style(theme, status)
+                            converter_style(theme, status)
                         }),
+                    container("").width(iced::Length::FillPortion(1)),
                 ]
+                .height(iced::Length::FillPortion(2))
+            ]
+        )
+        .center(50)
+        .height(iced::Length::FillPortion(2))
+        .width(iced::Length::Fill)
+        .style(|theme: &Theme| {
+            let mut style = container::Style::default()
+                .background(Color::from_rgb8(22,2,54))
+                .border(Border::default().rounded(10));
+            return style;
+        })
+        .padding(10);
+
+        let custom_converters = Container::new(
+            row![
+                container("").width(iced::Length::FillPortion(1)).height(iced::Length::Fill), // TODO theres a `vertical_space` function
+
+                scrollable(column(
+                    (0..self.cbCount).map(|i| {
+                        let base = self.cbBases.get(i as usize).unwrap();
+                        let basestr = "Base ".to_owned() + base;
+                        let mut numstr = String::new();
+                        if base == "" {
+                            numstr = "Input a Base first -->".to_string();
+                        }
+                        else {
+                            numstr = "Base ".to_owned() + base;
+                        }
+                        let numstr = numstr;
+
+                        let rem_button = button("-").on_press_maybe(
+                            if self.cbCount <= 1 {
+                                None
+                            } else {
+                                Some(BC_Message::CustomBaseRemoved(i))
+                            }
+                        )
+                            .width(iced::Length::Fixed(30.0))
+                            .height(iced::Length::Fixed(30.0))
+                            .style(|theme: &Theme, status| {
+                                let palette = theme.extended_palette();
+
+                                let mut style = button::Style { 
+                                    background: Some(Color::from_rgb8(43,10,94).into()), 
+                                    text_color: Color::from_rgb8(219, 197, 252).into(), 
+                                    border: Border::default().rounded(5), 
+                                    shadow: iced::Shadow::default() // NOTE typo in the desc
+                                };
+
+                                match status {
+                                    button::Status::Active => (),
+                                    button::Status::Hovered => style.border = Border::default()
+                                        .width(1)
+                                        .rounded(5)
+                                        .color(Color::from_rgb8(123, 100, 158)),
+                                    button::Status::Pressed => {
+                                        style.background = Some(Color::from_rgb8(51, 17, 102).into());
+                                        style.border = Border::default()
+                                            .width(1)
+                                            .rounded(5)
+                                            .color(Color::from_rgb8(167, 145, 201));
+                                    },
+                                    button::Status::Disabled => {
+                                        style.background = Some(Color::from_rgb8(28, 8, 59).into());
+                                        style.text_color = Color::from_rgb8(199, 58, 161).into();
+                                        style.border = Border::default()
+                                            .width(1)
+                                            .rounded(5)
+                                            .color(Color::from_rgb8(87, 26, 70));
+                                    },
+                                }
+
+                                return style;
+                            });
+                            
+                        let add_button = button("+").on_press(BC_Message::CustomBaseAdded)
+                            .width(iced::Length::Fixed(30.0))
+                            .height(iced::Length::Fixed(30.0))
+                            .style(|theme: &Theme, status| {
+                                let palette = theme.extended_palette();
+
+                                let mut style = button::Style { 
+                                    background: Some(Color::from_rgb8(43,10,94).into()), 
+                                    text_color: Color::from_rgb8(219, 197, 252).into(), 
+                                    border: Border::default().rounded(5), 
+                                    shadow: iced::Shadow::default() // NOTE typo in the desc
+                                };
+
+                                match status {
+                                    button::Status::Active => (),
+                                    button::Status::Hovered => style.border = Border::default()
+                                        .width(1)
+                                        .rounded(5)
+                                        .color(Color::from_rgb8(123, 100, 158)),
+                                    button::Status::Pressed => {
+                                        style.background = Some(Color::from_rgb8(51, 17, 102).into());
+                                        style.border = Border::default()
+                                            .width(1)
+                                            .rounded(5)
+                                            .color(Color::from_rgb8(167, 145, 201));
+                                    },
+                                    button::Status::Disabled => (),
+                                }
+                                
+                                return style;
+                            });
+    
+                        row![
+                            iced::widget::text_input(&numstr, &self.cbNums.get(i as usize).unwrap()) // TODO convert to text_editor
+                                .on_input_maybe(
+                                    if base.is_empty() {
+                                        None
+                                    } else {
+                                        Some( move |text| BC_Message::CustomNumChanged(text, base_to_num(base.to_string()), i))
+                                    },
+                                )
+                                .align_x(alignment::Horizontal::Left)
+                                .width(iced::Length::FillPortion(7))
+                                .line_height(LineHeight::Absolute(iced::Pixels(90.0)))
+                                .style(|theme: &Theme, status| {
+                                    converter_style(theme, status)
+                                }),
+
+                            container("").width(iced::Length::FillPortion(1)),
+
+                            iced::widget::text_input(&basestr, &self.cbBases.get(i as usize).unwrap())
+                                .on_input(move |text| BC_Message::CustomBaseChanged(text, i))
+                                .align_x(alignment::Horizontal::Right)
+                                .width(iced::Length::FillPortion(2))
+                                .line_height(LineHeight::Absolute(iced::Pixels(30.0)))
+                                .style(|theme: &Theme, status| {
+                                    converter_style(theme, status)
+                                }),
+                            
+                            container("").width(iced::Length::FillPortion(1)),
+                            add_button,
+                            rem_button,
+
+                        ].into()
+                    })
+                ))
+                .width(iced::Length::FillPortion(7))
+                .height(iced::Length::FillPortion(5)),
+
+                container("").width(iced::Length::FillPortion(1)).height(iced::Length::Fill),
             ]
         )
         .center(50)
         .width(iced::Length::Fill)
-        .height(iced::Length::FillPortion(4))
+        .height(iced::Length::FillPortion(3))
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
-                .background(Color::from_rgb(0.1, 0.1, 0.1))
-                .border(Border::default().rounded(10));
-            return style;
-        })
-        .padding(1);
-
-        let custom_converters = Container::new(
-            scrollable(column(
-                (0..self.cbCount).map(|i| {
-                    let base = self.cbBases.get(i as usize).unwrap();
-                    let basestr = "Base ".to_owned() + base;
-                    let mut numstr = String::new();
-                    if base == "" {
-                        numstr = "Input Base -->".to_string();
-                    }
-                    else {
-                        numstr = "Base ".to_owned() + base;
-                    }
-                    let numstr = numstr;
-
-                    let mut buttons = row![
-                        button("-").on_press(BC_Message::CustomBaseRemoved(i)),
-                    ];
-                    if (i == self.cbCount - 1) {
-                        buttons = buttons.push(button("+").on_press(BC_Message::CustomBaseAdded));
-                    }
-                    if self.cbCount == 1 {
-                        buttons = row![button("+").on_press(BC_Message::CustomBaseAdded)];
-                    }
-
-                    row![
-                        iced::widget::text_input(&numstr, &self.cbNums.get(i as usize).unwrap())
-                            .on_input(move |text| BC_Message::CustomNumChanged(text, base_to_num(base.to_string()), i)),
-                        iced::widget::text_input(&basestr, &self.cbBases.get(i as usize).unwrap())
-                            .on_input(move |text| BC_Message::CustomBaseChanged(text, i)),
-                        buttons,
-                    ].into()
-                }),
-            ))
-        )
-        .center(50)
-        .width(iced::Length::Fill)
-        .height(iced::Length::FillPortion(4))
-        .style(|theme: &Theme| {
-            let mut style = container::Style::default()
-                .background(Color::from_rgb(0.1, 0.1, 0.1))
+                .background(Color::from_rgb8(22,2,54))
                 .border(Border::default().rounded(10));
             return style;
         })
@@ -257,7 +371,8 @@ impl UI_BaseConverter {
             title_section,
             predef_converters,
             custom_converters
-        ]).into();
+        ])
+        .into();
     }
 }
 
@@ -409,22 +524,59 @@ fn run_once() {
     // Add tool page dependent stuff here if needed
 }
 
-fn predef_conv_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
+#[inline]
+fn converter_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
     let palette = theme.extended_palette();
 
+    // TODO extract the colors into variables, also for the code above
+    // TODO also for the future, extact all style managing into its own widget
     match status {
         text_input::Status::Active => text_input::Style {
-            background: Color::from_rgb(0.1, 0.1, 0.1).into(),
+            background: Color::from_rgb8(43,10,94).into(),
             border: Border::default()
                 .width(1)
-                .color(Color::from_rgb(0.1, 0.1, 0.1)),
-            icon: todo!(),
-            placeholder: todo!(),
-            value: todo!(),
-            selection: todo!(),
+                .color(Color::from_rgb(0.1, 0.1, 0.1))
+                .rounded(10),
+            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
+            placeholder: Color::from_rgb8(123, 96, 166).into(),
+            value: Color::from_rgb8(219, 197, 252).into(),
+            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
         },
-        text_input::Status::Hovered => todo!(),
-        text_input::Status::Focused => todo!(),
-        text_input::Status::Disabled => todo!(),
+
+        text_input::Status::Hovered => text_input::Style {
+            background: Color::from_rgb8(50, 11, 110).into(),
+            border: Border::default()
+                .width(1)
+                .color(Color::from_rgb8(123, 100, 158))
+                .rounded(10),
+            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
+            placeholder: Color::from_rgb8(123, 96, 166).into(),
+            value: Color::from_rgb8(219, 197, 252).into(),
+            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
+        },
+
+        text_input::Status::Focused => text_input::Style {
+            background: Color::from_rgb8(62, 12, 138).into(),
+            border: Border::default()
+                .width(1)
+                .color(Color::from_rgb8(167, 145, 201))
+                .rounded(10),
+            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
+            placeholder: Color::from_rgb8(123, 96, 166).into(),
+            value: Color::from_rgb8(219, 197, 252).into(),
+            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
+        },
+
+        text_input::Status::Disabled => text_input::Style {
+            background: Color::from_rgb8(28, 8, 59).into(),
+            border: Border::default()
+                .width(1)
+                .color(Color::from_rgb8(87, 26, 70))
+                .rounded(10),
+            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
+            placeholder: Color::from_rgb8(199, 58, 161).into(),
+            value: Color::from_rgb(1.0, 0.0, 0.0).into(),
+            selection: Color::from_rgb(1.0, 1.0, 1.0).into(),
+        },
     }
 }
