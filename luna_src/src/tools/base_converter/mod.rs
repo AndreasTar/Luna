@@ -1,10 +1,18 @@
-mod BE_base_converter;
+use luna::number_converter;
 
 use std::{any::Any, cell::RefCell};
 
 use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text::LineHeight, text_input, Container, Text, TextInput}, Border, Color, Element, Theme};
 
 use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
+
+// TODO instead of invalid input on invalid input lmao, make the box red with the text somewhere above or below
+// saying the same thing. i just dont want the other bases to change for whatever reason
+
+// TODO add optional lock for some box, making it not change when other boxes change
+// TODO add copy button
+// TODO add popup for symbols like π, φ, etc
+// TODO add help menu or something that explains the logic behind number conversion
 
 
 #[derive(Debug, Clone)]
@@ -110,13 +118,13 @@ impl UI_BaseConverter {
                     },
                     BC_Message::CustomNumChanged(n, b, i) => {
                         self.tl = convert_number(*b, 10, n);
-                        self.tr = convert_number(*b, 8, n);
+                        self.tr = convert_number(*b, 2, n);
                         self.bl = convert_number(*b, 8, n);
                         self.br = convert_number(*b, 16, n);
                         self.cbNums = manage_customBoxes(*b, n,
                             self.cbBases.clone(), self.cbCount, *i, true);
                     },
-                    BC_Message::CustomBaseChanged(b, i) => { // HACK this is not good code
+                    BC_Message::CustomBaseChanged(b, i) => { // HACK this is not good code, also doesnt check base
                         self.cbBases[*i as usize] = b.to_string();
                         let base = base_to_num(b.to_string());
                     },
@@ -489,7 +497,10 @@ fn convert_number(from: usize, to: usize, num: &String) -> String {
     if num.is_empty(){
         return String::new();
     }
-    return BE_base_converter::convert_number_base(from, to, num);
+    return match number_converter::convert_number_base(from, to, num){
+        Ok(n) => n,
+        Err(_e) => String::from("Invalid Input"),
+    };
 }
 
 fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: u8, currentlyAt: u8, fromCustom: bool) -> Vec<String> {

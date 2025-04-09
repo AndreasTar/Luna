@@ -1,28 +1,17 @@
-[package]
-name = "luna"
-version = "0.1.0"
-authors = ["Andy Pandy <andytgamedev@gmail.com>"]
+[workspace]
+#name = "luna_app" # This is the name of the workspace. It is used to identify the workspace in Cargo commands and in the Cargo.lock file.
+resolver = "2"
+members = [
+    "luna_lib",
+    "luna_src",
+]
+
+[workspace.package]
 edition = "2021"
-rust-version = "1.85.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-iced = { version = "0.13.1", default-features = true }
-iced_aw = { version = "0.12.0", default-features = false, features = ["tab_bar", "tabs", "sidebar", "number_input"] }
-
-profiling = "1.0.16"
-
-# native:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.10"
-
-# to access the DOM (to hide the loading text)
-[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
-version = "0.3.4"
+rust-version = "1.80.0"
 
 [profile.release]
-opt-level = 2 # fast and small wasm
+opt-level = 2 # fast and small binary
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]
