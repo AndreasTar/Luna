@@ -1,5 +1,6 @@
 [package]
 name = "luna"
+description = "A library housing various helpful utilities, originally created for the Luna project: https://github.com/AndreasTar/Luna"
 version = "0.1.0"
 authors = { workspace = true }
 edition = { workspace = true }
