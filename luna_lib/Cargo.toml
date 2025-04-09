@@ -1,11 +1,11 @@
 [package]
 name = "luna"
 version = "0.1.0"
-authors = ["Andy Pandy <andytgamedev@gmail.com>"]
+authors = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
 repository = { workspace = true }
-publish = ["luna"]
+license-file = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]

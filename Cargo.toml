@@ -10,6 +10,9 @@ members = [
 edition = "2021"
 rust-version = "1.85.0"
 repository = "https://github.com/AndreasTar/Luna"
+authors = ["Andy Pandy <andytgamedev@gmail.com>"]
+license-file = "LICENSE"
+#publish = ["luna"] # The name of the package to publish. This is used when publishing the workspace to crates.io.
 
 [profile.release]
 opt-level = 2 # fast and small binary
