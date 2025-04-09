@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Andy Pandy <andytgamedev@gmail.com>"]
 edition = { workspace = true }
 rust-version = { workspace = true }
-repository = "https://github.com/AndreasTar/Luna"
+repository = { workspace = true }
 publish = ["luna"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
