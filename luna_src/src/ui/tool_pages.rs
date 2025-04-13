@@ -19,6 +19,16 @@ impl Debug for dyn ToolPage {
     }
 }
 
+impl PartialEq for dyn ToolPage{
+    fn eq(&self, other: &Self) -> bool {
+        return self.get_main_title() == other.get_main_title(); // TODO change this to some ID?
+    }
+    
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
+
 
 
 // impl ToolPage{

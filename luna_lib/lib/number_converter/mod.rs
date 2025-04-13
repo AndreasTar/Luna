@@ -1,4 +1,3 @@
-//use core::num;
 
 #[derive(Debug, PartialEq)]
 pub enum ConversionError{
@@ -11,6 +10,7 @@ pub enum ConversionError{
 
 // TODO add returns and panics doc sections
 // TODO make try_ versions
+// TODO make arbitrary bases work
 
 /// Converts a string from a radix to a string of a number in another radix.
 /// This is the about same as chaining `convert_to_decimal(..)` and `convert_from_decimal(..)`,
@@ -216,12 +216,3 @@ pub fn convert_from_decimal_joined(to: usize, num: u32) -> Result<String, Conver
     let result = convert_from_decimal(to, num)?;
     return Ok(result.join(""));
 }
-
-
-// // TODO temporary implementation. doesnt work correctly
-// fn custom_conversion_to_decimal(base: u32, num: String) -> Result<Vec<u32>, ParseIntError> {
-//     return match u32::from_str_radix(num.as_str(), base.into()) {
-//         Ok(n) => Ok(vec![n]),
-//         Err(e) => Err(e),
-//     };
-// }

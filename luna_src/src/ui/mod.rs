@@ -40,7 +40,7 @@ impl Luna {
         match msg {
             LunaMessage::Nothing => (),
             LunaMessage::PageSelected(i) => self.active_index = i,
-            LunaMessage::ShouldUpdate(i) => self.pages[self.active_index].update_state(), // HACK change indexing            
+            LunaMessage::ShouldUpdate(i) => self.pages[self.active_index].update_state(), // HACK change indexing to id          
         }
     }
 

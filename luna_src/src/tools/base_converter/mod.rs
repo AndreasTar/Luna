@@ -30,11 +30,11 @@ pub enum BC_Message{
 
 pub struct UI_BaseConverter{
 
-    last_msg: RefCell<Option<BC_Message>>,
-
     side_title: String,
     main_title: String,
     enabled: bool,
+
+    last_msg: RefCell<Option<BC_Message>>,
 
     tl: String,
     tr: String,
@@ -65,7 +65,7 @@ impl ToolPage for UI_BaseConverter {
                                 BC_Message::Nothing => LunaMessage::Nothing,
                                 _ => {
                                     self.last_msg.replace(Some(msg));
-                                    LunaMessage::ShouldUpdate(1) // HACK
+                                    LunaMessage::ShouldUpdate(1) // HACK change to id
                                 }
                             }
                             
@@ -262,7 +262,7 @@ impl UI_BaseConverter {
                                     background: Some(Color::from_rgb8(43,10,94).into()), 
                                     text_color: Color::from_rgb8(219, 197, 252).into(), 
                                     border: Border::default().rounded(5), 
-                                    shadow: iced::Shadow::default() // NOTE typo in the desc
+                                    shadow: iced::Shadow::default()
                                 };
 
                                 match status {
@@ -301,7 +301,7 @@ impl UI_BaseConverter {
                                     background: Some(Color::from_rgb8(43,10,94).into()), 
                                     text_color: Color::from_rgb8(219, 197, 252).into(), 
                                     border: Border::default().rounded(5), 
-                                    shadow: iced::Shadow::default() // NOTE typo in the desc
+                                    shadow: iced::Shadow::default()
                                 };
 
                                 match status {
@@ -389,11 +389,11 @@ pub fn get() -> UI_BaseConverter {
 
     let ui_bc = UI_BaseConverter {
 
-        last_msg: None.into(),
-
         side_title: "Base Converter side".to_string(),
         main_title: "Base Converter main".to_string(),
         enabled: true,
+
+        last_msg: None.into(),
 
         tl: String::new().to_owned(),
         tr: String::new().to_owned(),
@@ -407,91 +407,6 @@ pub fn get() -> UI_BaseConverter {
     
     return ui_bc;
 }
-
-/*
-    egui::ScrollArea::vertical()
-    .auto_shrink(false)
-    .show(ui, |ui| {
-        ui.vertical_centered(|ui|{
-            //ui.label("scrollable");
-
-            for i in 0..bc.cbCount {
-
-                let oldBase = bc.cbBases.get(i as usize).unwrap();
-                let mut inputBase = oldBase.clone();
-
-                let cbBase = ui.put(
-                    positioner::create_rectangle(
-                        &ui, PositionInfo {
-                            defaultSize: [30,30], 
-                            offset: [500, 0],
-                            anchor: positioner::AnchorAt::TopCenter, 
-                            scaled: positioner::ScaledOn::Nothing,
-                            ..Default::default()
-                        },
-                        false
-                    ),
-                    egui::TextEdit::singleline(&mut inputBase)
-                        .clip_text(false)
-                        .hint_text(oldBase.clone())
-                        .min_size(Vec2::new(30.0, 30.0))
-                );
-
-                if cbBase.has_focus() && cbBase.changed(){
-                    if (inputBase.is_empty() || inputBase.parse::<u8>().is_err()){
-                        inputBase = String::new();
-                    } else {
-                        inputBase = u32::from_str_radix(&inputBase, 10).unwrap().to_string();
-                    }
-                }
-
-                let mut enabled = false;
-                let mut numboxText: String;
-                if inputBase.is_empty() {
-                    numboxText = "Input Base -->".to_string();
-                } else if !(u32::from_str_radix(&inputBase, 10).unwrap() > 1 && u32::from_str_radix(&inputBase, 10).unwrap() < 37) {
-                        numboxText = "Input a valid Base (2-36) -->".to_string();
-                } else {
-                    numboxText = format!("Base {}", inputBase);
-                    enabled = true;
-                }; 
-
-                let mut oldNum = bc.cbNums.get(i as usize).unwrap().clone();
-
-                let cbBox = ui.put(
-                    positioner::create_rectangle(
-                        &ui, PositionInfo {
-                            defaultSize: [500,90], 
-                            offset: [-300, 0],
-                            anchor: positioner::AnchorAt::TopCenter, 
-                            scaled: positioner::ScaledOn::Nothing,
-                            ..Default::default()
-                        },
-                        false
-                    ),
-                    egui::TextEdit::singleline(&mut oldNum)
-                        .clip_text(false)
-                        .hint_text(numboxText)
-                        .min_size(Vec2::new(100.0, 30.0))
-                );
-
-                if cbBox.has_focus() && cbBox.changed() && enabled {
-                    let inputNum = oldNum;
-                    let base = u32::from_str_radix(&inputBase, 10).unwrap();
-                    bc.tl = convert_number(16, 10, &inputNum);
-                    bc.tr = convert_number(16, 2, &inputNum);
-                    bc.bl = convert_number(16, 8, &inputNum);
-                    bc.cbNums = manage_customBoxes(16, &inputNum, bc.cbBases.clone(), bc.cbCount, i, true);
-                    
-                    println!("{}", bc.cbNums.len());
-                    *bc.cbNums.get_mut(i as usize).unwrap() = inputNum;
-                }
-
-                *bc.cbBases.get_mut(i as usize).unwrap() = inputBase;
-            }
-        })
-    });
-*/
 
 fn convert_number(from: usize, to: usize, num: &String) -> String {
     if num.is_empty(){

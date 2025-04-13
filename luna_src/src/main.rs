@@ -12,7 +12,7 @@ pub mod helpers;
 
 fn main() -> iced::Result {
     // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    // TODO add tests for each page
+    // TODO add tests for each ui page (tools should have doctests ready)
 
     iced::application("Default Title", Luna::update, Luna::view)
         .theme(|_| Theme::Dark)
