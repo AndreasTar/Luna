@@ -1,10 +1,10 @@
 use luna::number_converter;
 
-use std::{any::Any, cell::RefCell};
+use crate::tools::*;
 
-use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text::LineHeight, text_input, Container, Text, TextInput}, Border, Color, Element, Theme};
+use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Color, Theme};
 
-use crate::{helpers::positioner::{self, PositionInfo}, ui::{LunaMessage, ToolPage}};
+
 
 // TODO instead of invalid input on invalid input lmao, make the box red with the text somewhere above or below
 // saying the same thing. i just dont want the other bases to change for whatever reason

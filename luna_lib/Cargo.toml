@@ -9,6 +9,9 @@ repository = { workspace = true }
 license-file = { workspace = true }
 publish = true
 
+[dependencies]
+image = { version = "0.25.6", optional = true }
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "luna"          # The name of the target.
@@ -19,5 +22,7 @@ doc = true             # Is documented by default.
 crate-type = ["lib"]   # The crate types to generate.
 
 [features]
-default = ["number_converter"]
+default = ["number_converter", "img_manipulator"]
 number_converter = []
+img_manipulator = ["dep:image"]
+img_to_ascii = ["img_manipulator"]
