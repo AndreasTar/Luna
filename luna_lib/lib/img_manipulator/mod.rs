@@ -36,7 +36,9 @@ pub fn contrast(img: &mut DynamicImage, value: f32) {
     colorops::contrast_in_place(img, value);
 }
 
-pub fn dither(){todo!()}
+pub fn dither(){
+    todo!()
+}
 
 pub fn grayscale(img: &mut DynamicImage) {
     *img = DynamicImage::grayscale(&img);

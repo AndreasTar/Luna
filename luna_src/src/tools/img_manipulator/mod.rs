@@ -1,8 +1,23 @@
 use crate::tools::*;
-use iced::widget::Text;
+use iced::{widget::{image, Text}};
+use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
 
 pub enum IM_Message{
-    Nothing,
+    Nothing, // TODO is nothing really needed? or just use None?
+}
+
+pub enum Layer {
+    // TODO add layer types and their values
+    Brighten(i32),
+    Contrast(f32),
+    Dither, // TODO
+    Grayscale,
+    Invert,
+    Blur(f32),
+    FastBlur(f32),
+    Unsharpen(f32, i32),
+    Sharpen, // TODO
+    HueRotate(i32)
 }
 
 pub struct UI_ImgManipulator {
@@ -10,8 +25,11 @@ pub struct UI_ImgManipulator {
     side_title: String,
     main_title: String,
     enabled: bool,
-
     last_msg: RefCell<Option<IM_Message>>,
+
+    // TODO add image buffer and layers
+    layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
+
 
 }
 
@@ -59,8 +77,55 @@ impl UI_ImgManipulator {
     }
 
     fn layout(&self) -> Container<IM_Message> {
-        // TODO implement layout
-        return Container::new(Text::new("TODO implement layout"));
+
+        /*
+        top bar
+        ---------------------------------------
+        image section     | layer section
+        og_btn   |   info | layer options
+        ---------------------------------------
+        bottom section
+        */
+        
+        // TODO add menu items
+
+        // for saving and loading and stuff
+        let top_bar = MenuBar::new(vec![]); 
+
+        // holds the image and info like pixels and format
+        let image_preview = Container::new(
+            self::column![
+                Text::new("Image preview"), // TODO add image preview
+                Text::new("Image info"), // TODO add image info
+            ]).width(Length::FillPortion(2)).height(Length::FillPortion(2)
+        );
+
+        // holds the layers and their on-off toggle and possibly their value
+        let layers = Container::new(
+            self::column![
+                Text::new("Layers"), // TODO add layers
+                Text::new("Layer options"), // TODO add layer info
+            ]).width(Length::FillPortion(1)).height(Length::FillPortion(2)
+        ); 
+
+        // hold the sliders and whatnot for the selected layer
+        //let layer_options = todo!(); 
+
+        // holds the image and the layers
+        let mid_section = self::row![ 
+            image_preview,
+            layers,
+        ];
+
+
+        let bottom_section = self::column![]; // no idea what to put here yet
+
+
+        return Container::new(self::column![
+            top_bar,
+            mid_section,
+            bottom_section,
+        ]).into();
     }
 }
 
@@ -70,6 +135,7 @@ pub fn get() -> UI_ImgManipulator {
         side_title: "Image Manipulator side".to_string(),
         main_title: "Image Manipulator main".to_string(),
         enabled: true,
-        last_msg: RefCell::new(None), 
+        last_msg: RefCell::new(None),
+        layers: vec![], 
     };
 }
