@@ -87,17 +87,26 @@ impl UI_ImgManipulator {
         bottom section
         */
         
+        // TODO add file selector windows thingy
         // TODO add menu items
 
         // for saving and loading and stuff
-        let top_bar = MenuBar::new(vec![]); 
+        let top_bar = MenuBar::new(vec![
+            Item::new("Save"),
+            Item::new("Load"),
+        ])
+        .height(Length::Fixed(20.0))
+        .width(Length::Fill)
+        .padding(0); // BUG slight overshoot on the left over the sidebar, prolly needs .style()
 
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
                 Text::new("Image preview"), // TODO add image preview
                 Text::new("Image info"), // TODO add image info
-            ]).width(Length::FillPortion(2)).height(Length::FillPortion(2)
+            ])
+            .width(Length::FillPortion(4))
+            .height(Length::FillPortion(4)
         );
 
         // holds the layers and their on-off toggle and possibly their value
@@ -105,7 +114,9 @@ impl UI_ImgManipulator {
             self::column![
                 Text::new("Layers"), // TODO add layers
                 Text::new("Layer options"), // TODO add layer info
-            ]).width(Length::FillPortion(1)).height(Length::FillPortion(2)
+            ])
+            .width(Length::FillPortion(1))
+            .height(Length::FillPortion(4)
         ); 
 
         // hold the sliders and whatnot for the selected layer
@@ -118,7 +129,7 @@ impl UI_ImgManipulator {
         ];
 
 
-        let bottom_section = self::column![]; // no idea what to put here yet
+        let bottom_section = Text::new("Section"); // no idea what to put here yet
 
 
         return Container::new(self::column![

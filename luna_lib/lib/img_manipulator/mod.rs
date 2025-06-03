@@ -7,6 +7,8 @@ pub enum ImgOpenResult {
     Failure(ImageError),
 }
 
+// TODO add image info like format, dims, bytesize etc
+
 pub fn open_image_from_path(path: String) -> ImgOpenResult {
     let reader = match image::ImageReader::open(path) {
         Ok(reader) => reader,
@@ -27,7 +29,7 @@ pub fn save_image() { // NOTE should this be here or some IO saving module?
     todo!()
 }
 
-// TODO some of these dont have range, just on off. change them to ranged or implement them as such
+// TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
 pub fn brighten(img: &mut DynamicImage, value: i32) {
     colorops::brighten_in_place(img, value);
 }

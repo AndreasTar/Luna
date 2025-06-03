@@ -2,7 +2,7 @@ use luna::number_converter;
 
 use crate::tools::*;
 
-use iced::{alignment, widget::{button, column, container, keyed::column, row, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Color, Theme};
+use iced::{alignment, widget::{button, container, keyed::column, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Color, Theme};
 
 
 
@@ -173,7 +173,7 @@ impl UI_BaseConverter {
         //         .wrapping(iced::widget::text::Wrapping::None);
 
         let predef_converters = Container::new(
-            column![
+            self::column![
                 row![
                     container("").width(iced::Length::FillPortion(1)),
                     iced::widget::text_input("Base 10", &self.tl)
@@ -375,7 +375,7 @@ impl UI_BaseConverter {
         .padding(1);
 
 
-        return Container::new(column![
+        return Container::new(self::column![
             title_section,
             predef_converters,
             custom_converters
