@@ -15,7 +15,7 @@ pub fn open_image_from_path(path: String) -> ImgOpenResult {
         Err(e) => return ImgOpenResult::Failure(ImageError::IoError(e)),
     };
 
-    return match reader.decode() {
+    return match reader.decode() { // Return format too?
         Ok(img_buff) => ImgOpenResult::Success(img_buff),
         Err(e) => ImgOpenResult::Failure(e),
     };
@@ -25,7 +25,7 @@ pub fn open_image_from_buffer() {
     todo!()
 }
 
-pub fn save_image() { // NOTE should this be here or some IO saving module?
+pub fn save_image() { // NOTE should this be here or some IO saving module? maybe a preprocess before IO module?
     todo!()
 }
 

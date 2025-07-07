@@ -27,8 +27,10 @@ pub struct UI_ImgManipulator {
     enabled: bool,
     last_msg: RefCell<Option<IM_Message>>,
 
-    // TODO add image buffer and layers
+    // TODO add image buffer and layers functionality
     layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
+    og_image: Option<DynamicImage>, // holds the original image, if any
+    res_image: Option<DynamicImage>, // holds the resulting image, if any
 
 
 }
@@ -79,6 +81,7 @@ impl UI_ImgManipulator {
     fn layout(&self) -> Container<IM_Message> {
 
         /*
+        tab (if you wanna process multiple images at once))
         top bar
         ---------------------------------------
         image section     | layer section
@@ -147,6 +150,9 @@ pub fn get() -> UI_ImgManipulator {
         main_title: "Image Manipulator main".to_string(),
         enabled: true,
         last_msg: RefCell::new(None),
-        layers: vec![], 
+
+        layers: vec![],
+        og_image: None,
+        res_image: None, 
     };
 }

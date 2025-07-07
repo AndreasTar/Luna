@@ -1,4 +1,5 @@
 
+// TODO add doc for the errors
 #[derive(Debug, PartialEq)]
 pub enum ConversionError{
     ParseError,
@@ -126,8 +127,8 @@ pub fn convert_to_decimal(from: usize, num: &String) -> Result<u32, ConversionEr
     };
 }
 
-/// Converts a string from base 10 to number in the given radix, as a vector of strings.
-/// Each element represents a digit of the number in order.
+/// Converts a string from base 10 to number in the given radix (aka base), as a vector of strings.
+/// Each string (element of the vector) represents a digit of the number in order from larger to smaller.
 /// 
 /// Radix **must** be an integer between 2 and 36 (inclusive). Otherwise, it panics!
 /// Number **must** be a valid integer.
@@ -136,7 +137,7 @@ pub fn convert_to_decimal(from: usize, num: &String) -> Result<u32, ConversionEr
 /// 
 /// ## Arguments
 /// * `to` - The integer radix of the output number (between 2 and 36 inclusive)
-/// * `num` - The input number
+/// * `num` - The input integer number
 /// 
 /// 
 /// ## Examples
@@ -186,7 +187,7 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
     return Ok(result);
 }
 
-/// Converts a string from base 10 to a number in the given radix as a string.
+/// Converts a string from base 10 to a number in the given radix (aka base) as a string.
 /// Works the same as `convert_from_decimal` but instead of returning a vector,
 /// it returns a single string, with the digits concatenated together.
 /// 
@@ -195,7 +196,7 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
 /// 
 /// ## Arguments
 /// * `to` - The integer radix of the output number (between 2 and 36 inclusive)
-/// * `num` - The input number
+/// * `num` - The input integer number
 /// 
 /// ## Examples
 /// 
