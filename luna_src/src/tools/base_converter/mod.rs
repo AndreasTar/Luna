@@ -68,7 +68,6 @@ impl ToolPage for UI_BaseConverter {
                                     LunaMessage::ShouldUpdate(1) // HACK change to id
                                 }
                             }
-                            
                         });
     }
 
@@ -81,7 +80,7 @@ impl UI_BaseConverter {
 
     pub fn update_state(&mut self) {
         match &self.last_msg.take() {
-            Some(msg) => {
+            Some(msg) =>
                 match msg {
                     BC_Message::Nothing => (),
                     BC_Message::TLChanged(numstr) => {
@@ -139,8 +138,7 @@ impl UI_BaseConverter {
                         self.cbCount -= 1;
                     }
 
-                }
-            },
+                },
             None => (),
         }
     }

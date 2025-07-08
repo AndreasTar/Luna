@@ -1,9 +1,16 @@
 use crate::tools::*;
-use iced::{widget::{image, Text}};
+use iced::{widget::{image as iced_image, Text, button}, advanced};
 use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
 
+use image::DynamicImage;
+use luna::img_manipulator as luna_imgman;
+use rfd::FileDialog;
+
+#[derive(Debug, Clone)]
 pub enum IM_Message{
     Nothing, // TODO is nothing really needed? or just use None?
+    Request_LoadImage,
+    Request_SaveImage,
 }
 
 pub enum Layer {
@@ -59,7 +66,6 @@ impl ToolPage for UI_ImgManipulator {
                                     LunaMessage::ShouldUpdate(1) // HACK change to id
                                 }
                             }
-                            
                         });
     }
     
@@ -71,7 +77,26 @@ impl ToolPage for UI_ImgManipulator {
 impl UI_ImgManipulator {
     pub fn update_state(&mut self) {
         match &self.last_msg.take() {
-            Some(msg) => match msg {
+            Some(msg) => 
+                match msg {
+                    IM_Message::Nothing => (),
+                    IM_Message::Request_LoadImage => {
+                        load_image_rfd().map(|path| {
+                            match luna_imgman::open_image_from_path(path) {
+                                luna_imgman::ImgOpenResult::Success(img) => {
+                                    println!("{}", img.height()); 
+                                    self.og_image = Some(img);
+                                    self.res_image = self.og_image.clone(); // TODO do we need this?
+                                },
+                                luna_imgman::ImgOpenResult::Failure(e) => {
+                                    eprintln!("Failed to load image: {}", e); // HACK change eprintln to show error on screen inside image preview or something
+                                }
+                            }
+                        }).unwrap_or_else(|e| {
+                            eprintln!("Error loading image: {}", e); // HACK change eprintln to show error on screen inside image preview or something
+                        });
+                    },
+                    IM_Message::Request_SaveImage => (),
                     _ => todo!()
             },
             None => (),
@@ -89,41 +114,76 @@ impl UI_ImgManipulator {
         ---------------------------------------
         bottom section
         */
+        // or optionally edited and og side by side
         
         // TODO add file selector windows thingy
         // TODO add menu items
 
+        let menu_item = |items| Menu::new(items).max_width(180.0).offset(0.0).spacing(5.0);
+
         // for saving and loading and stuff
-        let top_bar = MenuBar::new(vec![
-            Item::new("Save"),
-            Item::new("Load"),
+        let top_bar = MenuBar::new(menu_items![
+            (button("File").on_press(IM_Message::Nothing), {
+                menu_item(menu_items!(
+                    (button("Save").on_press(IM_Message::Request_SaveImage).width(Length::Fill))
+                    (button("Load").on_press(IM_Message::Request_LoadImage).width(Length::Fill))
+                    (button("Exit").on_press(IM_Message::Nothing).width(Length::Fill)) // TODO add exit functionality
+                ))
+            })
+
         ])
-        .height(Length::Fixed(20.0))
+        .height(Length::Fixed(28.0))
         .width(Length::Fill)
         .padding(0); // BUG slight overshoot on the left over the sidebar, prolly needs .style()
 
+
+
+
+
+        // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
                 Text::new("Image preview"), // TODO add image preview
+                iced_image(advanced::image::Handle::from_bytes(match &self.res_image {
+                    Some(img) => luna_imgman::into_bytes(img),
+                    None => vec![],
+                })),
                 Text::new("Image info"), // TODO add image info
             ])
             .width(Length::FillPortion(4))
             .height(Length::FillPortion(4)
         );
 
+
+
+
+
+
         // holds the layers and their on-off toggle and possibly their value
         let layers = Container::new(
             self::column![
-                Text::new("Layers"), // TODO add layers
-                Text::new("Layer options"), // TODO add layer info
+                Text::new("Layers").height(Length::FillPortion(1)), // TODO add layers
+                Text::new("Layer options").height(Length::FillPortion(1)), // TODO add layer info
             ])
             .width(Length::FillPortion(1))
             .height(Length::FillPortion(4)
         ); 
 
+
+
+
+
+
         // hold the sliders and whatnot for the selected layer
         //let layer_options = todo!(); 
+
+
+
+
+
+
+
 
         // holds the image and the layers
         let mid_section = self::row![ 
@@ -156,3 +216,19 @@ pub fn get() -> UI_ImgManipulator {
         res_image: None, 
     };
 }
+
+// TODO add load image by drag and drop
+
+fn load_image_rfd() -> Result<String, String> {
+    let file =  FileDialog::new()
+        .set_title("Open Image")
+        .add_filter("Images", &["png", "jpg", "jpeg", "gif", "bmp"])
+        .set_directory(std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")))
+        .pick_file();
+
+    return file.map(|file| file.as_path().to_string_lossy().to_string()) // HACK make it not lossy
+        .ok_or_else(|| "No file selected".to_string()); // NOTE can be used to present error to user
+
+}
+
+       

@@ -29,6 +29,15 @@ pub fn save_image() { // NOTE should this be here or some IO saving module? mayb
     todo!()
 }
 
+pub fn into_bytes(img: &DynamicImage) -> Vec<u8> {
+    return img.as_bytes().to_owned().to_vec();
+}
+
+pub fn from_bytes(bytes: &[u8]) -> Result<DynamicImage, ImageError> {
+    let img = image::load_from_memory(bytes)?;
+    return Ok(img)
+}
+
 // TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
 pub fn brighten(img: &mut DynamicImage, value: i32) {
     colorops::brighten_in_place(img, value);
