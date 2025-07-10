@@ -7,6 +7,23 @@ pub enum ImgOpenResult {
     Failure(ImageError),
 }
 
+impl ImgOpenResult {
+    pub fn is_success(&self) -> bool {
+        match self {
+            ImgOpenResult::Success(_) => true,
+            ImgOpenResult::Failure(_) => false,
+        }
+    }
+
+    pub fn unwrap(self) -> DynamicImage {
+        match self {
+            ImgOpenResult::Success(img) => img,
+            ImgOpenResult::Failure(e) => panic!("Tried to unwrap a failed image open result: {}", e),
+        }
+    }
+    
+}
+
 // TODO add image info like format, dims, bytesize etc
 
 pub fn open_image_from_path(path: String) -> ImgOpenResult {
@@ -30,7 +47,7 @@ pub fn save_image() { // NOTE should this be here or some IO saving module? mayb
 }
 
 pub fn into_bytes(img: &DynamicImage) -> Vec<u8> {
-    return img.as_bytes().to_owned().to_vec();
+    return img.as_bytes().to_owned();
 }
 
 pub fn from_bytes(bytes: &[u8]) -> Result<DynamicImage, ImageError> {

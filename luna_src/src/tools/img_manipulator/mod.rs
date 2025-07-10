@@ -63,7 +63,7 @@ impl ToolPage for UI_ImgManipulator {
                                 IM_Message::Nothing => LunaMessage::Nothing,
                                 _ => {
                                     self.last_msg.replace(Some(msg));
-                                    LunaMessage::ShouldUpdate(1) // HACK change to id
+                                    LunaMessage::ShouldUpdate(2) // HACK change to id
                                 }
                             }
                         });
@@ -140,23 +140,38 @@ impl UI_ImgManipulator {
 
 
         let mut img_info = "NA".to_string();
+
+        let img_handle = advanced::image::Handle::from_bytes(
+            match &self.og_image {
+                    Some(img) => {
+                        println!("found image");
+                        img_info = format!("{}x{}", img.width(), img.height()); // TODO add more info like format, bytesize, etc
+                        println!("{:?}", luna_imgman::into_bytes(img)[0]);
+                        println!("{:?}", img.color());
+
+                        luna_imgman::into_bytes(img)
+                    },
+                    None => {
+                        vec![0_u8; 0]
+                    },
+            }
+        );
+
+        let temp = std::fs::read("FORTESTING/square.png").unwrap();
+        println!("{:?}", temp[0]);
+
         // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
                 Text::new("Image preview"), // TODO add image preview
-                iced_image(advanced::image::Handle::from_bytes(match &self.res_image {
-                    Some(img) => {
-                        img_info = format!("{}x{}", img.width(), img.height()); // TODO add more info like format, bytesize, etc
-                        luna_imgman::into_bytes(img)
-                    },
-                    None => vec![],
-                })),
+                iced_image(img_handle)
+                    .width(Length::Fill)
+                    .height(Length::Fill),
                 Text::new(img_info), // TODO add image info
             ])
             .width(Length::FillPortion(4))
-            .height(Length::FillPortion(4)
-        );
+            .height(Length::FillPortion(4));
 
 
 
