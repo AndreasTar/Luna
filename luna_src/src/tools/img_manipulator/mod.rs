@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use crate::tools::*;
 use iced::{widget::{image as iced_image, Text, button}, advanced};
 use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
@@ -118,6 +120,7 @@ impl UI_ImgManipulator {
         
         // TODO add file selector windows thingy
         // TODO add menu items
+        // TODO either disable zoom or add fit to screen buttons etc
 
         let menu_item = |items| Menu::new(items).max_width(180.0).offset(0.0).spacing(5.0);
 
@@ -141,33 +144,58 @@ impl UI_ImgManipulator {
 
         let mut img_info = "NA".to_string();
 
-        let img_handle = advanced::image::Handle::from_bytes(
-            match &self.og_image {
-                    Some(img) => {
-                        println!("found image");
-                        img_info = format!("{}x{}", img.width(), img.height()); // TODO add more info like format, bytesize, etc
-                        println!("{:?}", luna_imgman::into_bytes(img)[0]);
-                        println!("{:?}", img.color());
+        // let img_handle = advanced::image::Handle::from_bytes(
+        //     match &self.og_image {
+        //             Some(img) => {
+        //                 println!("found image");
+        //                 img_info = format!("{}x{}", img.width(), img.height()); // TODO add more info like format, bytesize, etc
+        //                 println!("{:?}", luna_imgman::into_bytes(img)[0]);
+        //                 println!("{:?}", img.color());
 
-                        luna_imgman::into_bytes(img)
-                    },
-                    None => {
-                        vec![0_u8; 0]
-                    },
-            }
-        );
+        //                 luna_imgman::into_bytes(img)
+        //             },
+        //             None => {
+        //                 vec![0_u8; 0]
+        //             },
+        //     }
+        // );
 
-        let temp = std::fs::read("FORTESTING/square.png").unwrap();
-        println!("{:?}", temp[0]);
+        let idk = match luna_imgman::open_image_from_path("FORTESTING/rgba.png".to_string()){
+                luna_imgman::ImgOpenResult::Success(img) => img,
+                luna_imgman::ImgOpenResult::Failure(e) => todo!(),
+            };
+
+        // BUG dynamic_image.into_bytes/as_bytes doesnt work properly
+        // i saw here : https://github.com/iced-rs/iced/issues/906#issuecomment-856118219
+        // that the format of the bytes must be BGRA
+        // will prolly need to create functions for that
+       
+
+        let raw_pixels: Vec<u8> = [128, 255, 0, 255]
+            .iter()
+            .cycle()
+            .take(4 * 2 * 2)
+            .copied()
+            .collect();
+
+        //println!("bytes raw {:?}", raw_pixels);
+        //println!("bytes into {:?}", idk.clone().into_bytes());
+        println!("dims idk {} {} length {}", idk.height(), idk.width(), idk.clone().to_rgba8().into_vec().len());
+
+        let image_handle_1 = iced_image::Handle::from_rgba(2, 2, raw_pixels);
+        let image_handle_2 = advanced::image::Handle::from_rgba(idk.width(), idk.height(), idk.to_rgba8().into_vec());
+
 
         // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
                 Text::new("Image preview"), // TODO add image preview
-                iced_image(img_handle)
+                iced_image::viewer(image_handle_2)
+                    .filter_method(iced_image::FilterMethod::Nearest)
                     .width(Length::Fill)
-                    .height(Length::Fill),
+                    .height(Length::Fill)
+                    ,
                 Text::new(img_info), // TODO add image info
             ])
             .width(Length::FillPortion(4))

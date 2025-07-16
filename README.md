@@ -4,7 +4,7 @@ Readme is under development, check again later.
 
 This project is licensed under the PolyForm Noncommercial License 1.0.0.  
 You may use, modify, and share the software for noncommercial purposes only.
-Full license document can be found [here](LICENSE).
+Full license document can be found in the [LICENSE](LICENSE) tab.
 
 **Commercial use requires a separate license and explicit written permission from the author.**
 
