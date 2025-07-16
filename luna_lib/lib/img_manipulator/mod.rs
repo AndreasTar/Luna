@@ -25,6 +25,7 @@ impl ImgOpenResult {
 }
 
 // TODO add image info like format, dims, bytesize etc
+// TODO create conversions for rgba to any other combo and format like bgra or lume etc
 
 pub fn open_image_from_path(path: String) -> ImgOpenResult {
     let reader = match image::ImageReader::open(path) {
@@ -48,6 +49,10 @@ pub fn save_image() { // NOTE should this be here or some IO saving module? mayb
 
 pub fn into_bytes(img: &DynamicImage) -> Vec<u8> {
     return img.as_bytes().to_owned();
+}
+
+pub fn into_rgba8(img: &DynamicImage) -> Vec<u8> {
+    return img.to_rgba8().into_vec();
 }
 
 pub fn from_bytes(bytes: &[u8]) -> Result<DynamicImage, ImageError> {

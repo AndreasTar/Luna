@@ -39,7 +39,7 @@ pub struct UI_ImgManipulator {
     // TODO add image buffer and layers functionality
     layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
     og_image: Option<DynamicImage>, // holds the original image, if any
-    res_image: Option<DynamicImage>, // holds the resulting image, if any
+    res_image: Option<DynamicImage>, // holds the resulting image after changes, if any
 
 
 }
@@ -142,61 +142,37 @@ impl UI_ImgManipulator {
 
 
 
-        let mut img_info = "NA".to_string();
+        let mut img_info = (0, 0);
 
-        // let img_handle = advanced::image::Handle::from_bytes(
-        //     match &self.og_image {
-        //             Some(img) => {
-        //                 println!("found image");
-        //                 img_info = format!("{}x{}", img.width(), img.height()); // TODO add more info like format, bytesize, etc
-        //                 println!("{:?}", luna_imgman::into_bytes(img)[0]);
-        //                 println!("{:?}", img.color());
+        let img_rgba = match &self.res_image {
+            Some(img) => { 
+                img_info = (img.width(), img.height()); // TODO add more info like format, bytesize, etc
 
-        //                 luna_imgman::into_bytes(img)
-        //             },
-        //             None => {
-        //                 vec![0_u8; 0]
-        //             },
-        //     }
-        // );
+                luna_imgman::into_rgba8(img)
+            },
+            None => {
+                vec![0_u8; 0]
+            },
+        };
 
-        let idk = match luna_imgman::open_image_from_path("FORTESTING/rgba.png".to_string()){
-                luna_imgman::ImgOpenResult::Success(img) => img,
-                luna_imgman::ImgOpenResult::Failure(e) => todo!(),
-            };
+        let img_handle = advanced::image::Handle::from_rgba(
+            img_info.0, 
+            img_info.1, 
+            img_rgba
+        );
 
-        // BUG dynamic_image.into_bytes/as_bytes doesnt work properly
-        // i saw here : https://github.com/iced-rs/iced/issues/906#issuecomment-856118219
-        // that the format of the bytes must be BGRA
-        // will prolly need to create functions for that
-       
-
-        let raw_pixels: Vec<u8> = [128, 255, 0, 255]
-            .iter()
-            .cycle()
-            .take(4 * 2 * 2)
-            .copied()
-            .collect();
-
-        //println!("bytes raw {:?}", raw_pixels);
-        //println!("bytes into {:?}", idk.clone().into_bytes());
-        println!("dims idk {} {} length {}", idk.height(), idk.width(), idk.clone().to_rgba8().into_vec().len());
-
-        let image_handle_1 = iced_image::Handle::from_rgba(2, 2, raw_pixels);
-        let image_handle_2 = advanced::image::Handle::from_rgba(idk.width(), idk.height(), idk.to_rgba8().into_vec());
-
+        let img_info_text = format!("{}x{}", img_info.0, img_info.1); // TODO Check for 0 and do NA or something
 
         // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
-                Text::new("Image preview"), // TODO add image preview
-                iced_image::viewer(image_handle_2)
-                    .filter_method(iced_image::FilterMethod::Nearest)
+                Text::new("Image preview"), // TODO add image previewl
+                iced_image::viewer(img_handle)
+                    .filter_method(iced_image::FilterMethod::Nearest) // TODO add button for nearest or linear
                     .width(Length::Fill)
-                    .height(Length::Fill)
-                    ,
-                Text::new(img_info), // TODO add image info
+                    .height(Length::Fill),
+                Text::new(img_info_text), // TODO add image info
             ])
             .width(Length::FillPortion(4))
             .height(Length::FillPortion(4));
