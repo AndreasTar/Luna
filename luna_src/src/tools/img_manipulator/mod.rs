@@ -86,7 +86,6 @@ impl UI_ImgManipulator {
                         load_image_rfd().map(|path| {
                             match luna_imgman::open_image_from_path(path) {
                                 luna_imgman::ImgOpenResult::Success(img) => {
-                                    println!("{}", img.height()); 
                                     self.og_image = Some(img);
                                     self.res_image = self.og_image.clone(); // TODO do we need this?
                                 },
