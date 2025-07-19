@@ -98,11 +98,16 @@ pub fn huerotate(img: &mut DynamicImage, degrees: i32) {
     *img = DynamicImage::huerotate(img, degrees);
 }
 
+
+/// This module provides a function to convert a vector of bytes representing pixel data from one color model to another.
+/// 
+/// The conversion is done by mapping the channels of the source color model to the destination color model.
 pub mod color_conversion {
     #![allow(dead_code, reason="This module is for color conversion utilities, not all functions are used internally.")]
 
 
     // TODO maybe add lume and other formats? needs calculations etc but its fine i think
+    /// Packed-byte color models.
     #[repr(usize)]
     #[derive(PartialEq, Debug, Clone, Copy)]
     pub enum ColorFormat {
@@ -116,6 +121,8 @@ pub mod color_conversion {
         GBR,
     }
 
+    /// A color channel identifier.
+    /// Used to specify the order of channels in a color model.
     #[derive(PartialEq, Debug, Clone, Copy)]
     enum Channel {
         R,
@@ -124,6 +131,7 @@ pub mod color_conversion {
         A,
     }
 
+    /// The per-pixel channel order.
     fn channel_order(format: ColorFormat) -> &'static [Channel] { // TODO why is this static?
         match format {
             ColorFormat::RGBA => &[Channel::R, Channel::G, Channel::B, Channel::A],

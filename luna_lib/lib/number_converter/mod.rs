@@ -90,8 +90,6 @@ pub fn convert_number_base(from: usize, to: usize, num: &String) -> Result<Strin
     return result;
 }
 
-
-
 /// Converts a string from a radix to a number in base 10.
 /// 
 /// Radix **must** be an integer between 2 and 36 (inclusive). Otherwise, it panics!

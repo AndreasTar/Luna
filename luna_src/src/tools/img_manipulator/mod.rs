@@ -36,7 +36,7 @@ pub struct UI_ImgManipulator {
     enabled: bool,
     last_msg: RefCell<Option<IM_Message>>,
 
-    // TODO add image buffer and layers functionality
+
     layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
     og_image: Option<DynamicImage>, // holds the original image, if any
     res_image: Option<DynamicImage>, // holds the resulting image after changes, if any
@@ -107,7 +107,7 @@ impl UI_ImgManipulator {
     fn layout(&self) -> Container<IM_Message> {
 
         /*
-        tab (if you wanna process multiple images at once))
+        tab (if you wanna process multiple images at once)
         top bar
         ---------------------------------------
         image section     | layer section
@@ -115,11 +115,19 @@ impl UI_ImgManipulator {
         ---------------------------------------
         bottom section
         */
-        // or optionally edited and og side by side
+
+        // NOTE what will the bottom section be?
+        // maybe you can open a folder and it shows all images in it, and you can select one to edit?
+        // or maybe contains the layers and stuff? that may be an add button instead
+
         
-        // TODO add file selector windows thingy
-        // TODO add menu items
+        // TODO add menu items (save layers etc)
         // TODO either disable zoom or add fit to screen buttons etc
+        // TODO add load image by drag and drop
+        // TODO add 'show original' button AND/OR split view with original and edited side by side, with extra toggle to match movement of the two or not
+        // TODO add image buffer and layers functionality
+
+        // ---------------- FOR TOP MENU BAR ----------------
 
         let menu_item = |items| Menu::new(items).max_width(180.0).offset(0.0).spacing(5.0);
 
@@ -129,7 +137,7 @@ impl UI_ImgManipulator {
                 menu_item(menu_items!(
                     (button("Save").on_press(IM_Message::Request_SaveImage).width(Length::Fill))
                     (button("Load").on_press(IM_Message::Request_LoadImage).width(Length::Fill))
-                    (button("Exit").on_press(IM_Message::Nothing).width(Length::Fill)) // TODO add exit functionality
+                    (button("Clear").on_press(IM_Message::Nothing).width(Length::Fill)) // TODO add clear functionality, reseting the image and layers
                 ))
             })
 
@@ -139,7 +147,7 @@ impl UI_ImgManipulator {
         .padding(0); // BUG slight overshoot on the left over the sidebar, prolly needs .style()
 
 
-
+        // ---------------- FOR IMAGE PREVIEW ----------------
 
         let mut img_info = (0, 0);
 
@@ -179,7 +187,7 @@ impl UI_ImgManipulator {
 
 
 
-
+        // ---------------- FOR LAYERS ----------------
 
         // holds the layers and their on-off toggle and possibly their value
         let layers = Container::new(
@@ -238,7 +246,6 @@ pub fn get() -> UI_ImgManipulator {
     };
 }
 
-// TODO add load image by drag and drop
 
 fn load_image_rfd() -> Result<String, String> {
     let file =  FileDialog::new()
