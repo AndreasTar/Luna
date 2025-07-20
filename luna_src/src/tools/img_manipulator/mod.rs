@@ -1,7 +1,7 @@
 use std::io::Read;
 
 use crate::tools::*;
-use iced::{widget::{image as iced_image, Text, button}, advanced};
+use iced::{advanced::{self, graphics::layer}, widget::{button, image as iced_image, scrollable, Text}};
 use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
 
 use image::DynamicImage;
@@ -13,6 +13,8 @@ pub enum IM_Message{
     Nothing, // TODO is nothing really needed? or just use None?
     Request_LoadImage,
     Request_SaveImage,
+    Request_ClearImage,
+    Request_UpdateImage(DynamicImage),
 }
 
 pub enum Layer {
@@ -98,6 +100,9 @@ impl UI_ImgManipulator {
                         });
                     },
                     IM_Message::Request_SaveImage => (),
+                    IM_Message::Request_UpdateImage(img) => {
+                        self.res_image = Some(img.clone());
+                    }
                     _ => todo!()
             },
             None => (),
@@ -151,10 +156,15 @@ impl UI_ImgManipulator {
 
         let mut img_info = (0, 0);
 
+        let res = self.apply_edit_layers(self.og_image.clone());
+        match res {
+            Some(img) => _ = self.last_msg.replace(Some(IM_Message::Request_UpdateImage(img))),
+            None => (),
+        };
+
         let img_rgba = match &self.res_image {
             Some(img) => { 
                 img_info = (img.width(), img.height()); // TODO add more info like format, bytesize, etc
-
                 luna_imgman::into_rgba8(img)
             },
             None => {
@@ -192,6 +202,27 @@ impl UI_ImgManipulator {
         // holds the layers and their on-off toggle and possibly their value
         let layers = Container::new(
             self::column![
+                scrollable(column(
+                    (0..self.layers.len()).map(|i| {
+                        let layer = &self.layers[i];
+                        let layer_name = match &layer.0 {
+                            Layer::Brighten(_) => "Brighten",
+                            Layer::Contrast(_) => "Contrast",
+                            Layer::Dither => "Dither",
+                            Layer::Grayscale => "Grayscale",
+                            Layer::Invert => "Invert",
+                            Layer::Blur(_) => "Blur",
+                            Layer::FastBlur(_) => "Fast Blur",
+                            Layer::Unsharpen(_, _) => "Unsharpen",
+                            Layer::Sharpen => "Sharpen",
+                            Layer::HueRotate(_) => "Hue Rotate",
+                        };
+
+                        button(layer_name)
+                            .on_press(IM_Message::Nothing) // TODO add functionality to toggle layer on/off
+                            .width(Length::Fill)
+                    })
+                )),
                 Text::new("Layers").height(Length::FillPortion(1)), // TODO add layers
                 Text::new("Layer options").height(Length::FillPortion(1)), // TODO add layer info
             ])
@@ -221,7 +252,7 @@ impl UI_ImgManipulator {
         ];
 
 
-        let bottom_section = Text::new("Section"); // no idea what to put here yet
+        let bottom_section = Text::new("Section"); // TODO no idea what to put here yet
 
 
         return Container::new(self::column![
@@ -229,6 +260,33 @@ impl UI_ImgManipulator {
             mid_section,
             bottom_section,
         ]).into();
+    }
+
+    fn apply_edit_layers(&self, og_img: Option<DynamicImage>) -> Option<DynamicImage> {
+        if og_img.is_none() {
+            return None; 
+        }
+
+        let mut img = og_img.unwrap().clone();
+
+        for layer in self.layers.iter() {
+            if layer.1 == false { continue; } // skip if layer is off
+
+            match &layer.0 {
+                Layer::Brighten(amount) => luna_imgman::brighten(&mut img, *amount),
+                Layer::Contrast(amount) => luna_imgman::contrast(&mut img, *amount),
+                Layer::Dither => todo!(),
+                Layer::Grayscale => luna_imgman::grayscale(&mut img),
+                Layer::Invert => luna_imgman::invert(&mut img),
+                Layer::Blur(amount) => luna_imgman::blur(&mut img, *amount),
+                Layer::FastBlur(amount) => luna_imgman::fast_blur(&mut img, *amount),
+                Layer::Unsharpen(value, thresh) => luna_imgman::unsharpen(&mut img, *value, *thresh),
+                Layer::Sharpen => todo!(),
+                Layer::HueRotate(degrees) => luna_imgman::huerotate(&mut img, *degrees),
+            }
+        };
+
+        return Some(img);
     }
 }
 
@@ -258,5 +316,7 @@ fn load_image_rfd() -> Result<String, String> {
         .ok_or_else(|| "No file selected".to_string()); // NOTE can be used to present error to user
 
 }
+
+
 
        

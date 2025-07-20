@@ -149,11 +149,11 @@ pub mod color_conversion {
     ///
     /// ## Parameters
     /// - `data`: input byte-slice, length must be a multiple of `src.channel_count()`
-    /// - `src`: source color model (e.g. `ColorModel::RGBA`)
-    /// - `dst`: destination color model (e.g. `ColorModel::BGR`)
+    /// - `from`: source color model (e.g. `ColorFormat::RGBA`)
+    /// - `to`: destination color model (e.g. `ColorFormat::BGR`)
     ///
     /// ## Returns
-    /// A new `Vec<u8>` whose length is `pixel_count * dst.channel_count()`, or an empty vector
+    /// A new `Vec<u8>` whose length is `pixel_count * to.channel_count()`, or an empty vector
     /// if the input length isn’t a multiple of the source channel count.
     ///
     /// ## Examples
