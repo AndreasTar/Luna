@@ -14,9 +14,12 @@ pub enum IM_Message{
     Request_LoadImage,
     Request_SaveImage,
     Request_ClearImage,
-    Request_UpdateImage(DynamicImage),
+    Request_ToggleLayer(usize),
+    Request_AddLayer(Layer), // TODO add layer
+    Request_RemoveLayer(usize), // TODO remove layer
 }
 
+#[derive(Debug, Clone)]
 pub enum Layer {
     // TODO add layer types and their values
     Brighten(i32),
@@ -90,6 +93,7 @@ impl UI_ImgManipulator {
                                 luna_imgman::ImgOpenResult::Success(img) => {
                                     self.og_image = Some(img);
                                     self.res_image = self.og_image.clone(); // TODO do we need this?
+                                    self.update_image();
                                 },
                                 luna_imgman::ImgOpenResult::Failure(e) => {
                                     eprintln!("Failed to load image: {}", e); // HACK change eprintln to show error on screen inside image preview or something
@@ -100,13 +104,33 @@ impl UI_ImgManipulator {
                         });
                     },
                     IM_Message::Request_SaveImage => (),
-                    IM_Message::Request_UpdateImage(img) => {
-                        self.res_image = Some(img.clone());
-                    }
+                    IM_Message::Request_ToggleLayer(i) => {
+                        if let Some(layer) = self.layers.get_mut(*i) {
+                            layer.1 = !layer.1; // toggle the layer on/off
+                        };
+                        self.update_image();
+                    },
+                    IM_Message::Request_AddLayer(layer) => {
+                        self.layers.push((layer.clone(), true)); // add layer enabled
+                        self.update_image();
+                    }, 
+                    IM_Message::Request_RemoveLayer(i) => {
+                        if *i < self.layers.len() {
+                            self.layers.remove(*i); // remove layer
+                        };
+                        self.update_image();
+                    },
                     _ => todo!()
             },
             None => (),
         }
+    }
+    
+    fn update_image(&mut self) {
+        match self.apply_edit_layers(self.og_image.clone()) { // TODO this can be optimized, apply only the new layers instead of everything every frame
+            Some(img) => self.res_image = self.apply_edit_layers(self.og_image.clone()),
+            None => (),
+        };
     }
 
     fn layout(&self) -> Container<IM_Message> {
@@ -132,7 +156,7 @@ impl UI_ImgManipulator {
         // TODO add 'show original' button AND/OR split view with original and edited side by side, with extra toggle to match movement of the two or not
         // TODO add image buffer and layers functionality
 
-        // ---------------- FOR TOP MENU BAR ----------------
+        // -------------------------------- FOR TOP MENU BAR --------------------------------
 
         let menu_item = |items| Menu::new(items).max_width(180.0).offset(0.0).spacing(5.0);
 
@@ -152,15 +176,9 @@ impl UI_ImgManipulator {
         .padding(0); // BUG slight overshoot on the left over the sidebar, prolly needs .style()
 
 
-        // ---------------- FOR IMAGE PREVIEW ----------------
+        // -------------------------------- FOR IMAGE PREVIEW --------------------------------
 
         let mut img_info = (0, 0);
-
-        let res = self.apply_edit_layers(self.og_image.clone());
-        match res {
-            Some(img) => _ = self.last_msg.replace(Some(IM_Message::Request_UpdateImage(img))),
-            None => (),
-        };
 
         let img_rgba = match &self.res_image {
             Some(img) => { 
@@ -197,11 +215,20 @@ impl UI_ImgManipulator {
 
 
 
-        // ---------------- FOR LAYERS ----------------
+        // -------------------------------- FOR LAYERS --------------------------------
 
         // holds the layers and their on-off toggle and possibly their value
         let layers = Container::new(
             self::column![
+                
+                row![
+                    Text::new("Layers").width(Length::FillPortion(3)).height(Length::Fill),
+                    button("+")
+                        .on_press(IM_Message::Request_AddLayer(Layer::Invert)) // TODO add functionality to add layers
+                        .width(Length::FillPortion(1))
+                        .height(Length::Fill)
+                ].height(Length::FillPortion(1)),
+                
                 scrollable(column(
                     (0..self.layers.len()).map(|i| {
                         let layer = &self.layers[i];
@@ -219,12 +246,16 @@ impl UI_ImgManipulator {
                         };
 
                         button(layer_name)
-                            .on_press(IM_Message::Nothing) // TODO add functionality to toggle layer on/off
+                            .on_press(IM_Message::Request_ToggleLayer(i)) // TODO add functionality to toggle layer on/off
                             .width(Length::Fill)
+                            .into()
                     })
-                )),
-                Text::new("Layers").height(Length::FillPortion(1)), // TODO add layers
-                Text::new("Layer options").height(Length::FillPortion(1)), // TODO add layer info
+                ))
+                
+                .height(Length::FillPortion(4)),
+
+                
+                Text::new("Layer options").height(Length::FillPortion(4)), // TODO add layer info
             ])
             .width(Length::FillPortion(1))
             .height(Length::FillPortion(4)
@@ -267,7 +298,7 @@ impl UI_ImgManipulator {
             return None; 
         }
 
-        let mut img = og_img.unwrap().clone();
+        let mut img = og_img.unwrap();
 
         for layer in self.layers.iter() {
             if layer.1 == false { continue; } // skip if layer is off
