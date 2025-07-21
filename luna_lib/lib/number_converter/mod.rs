@@ -1,16 +1,46 @@
 
-// TODO add doc for the errors
+/// An error which can be returned when attempting to convert a number to a different radix (base).
+/// 
+/// This error is used as the error type for the functions in the `number_converter` module,
+/// such as [`convert_number_base`], [`convert_to_decimal`], and [`convert_from_decimal`].
+/// 
+/// ## Potential causes
+/// `ConversionError` can be thrown because of an invalid usage of the functions in this module.
+/// For example:
+/// * If the input number is not a valid number in the given radix, e.g. trying to convert "9" in base 2 to any other radix.
+/// * If the input radix is not valid, e.g. trying to convert a number from and/or to base 1.
+/// * If the input number is too large to fit in the target type, e.g. trying to convert "10e33" in base 10 to base 2, which would overflow a `u32`. 
+///     * This is not currently handled, but it will be in the future.
+/// * If the current target base is not implemented. (Currently, bases 2 to 36 are supported.)
+/// 
+/// # Examples
+/// ```
+/// # use luna::number_converter::convert_number_base;
+/// # use luna::number_converter::ConversionError;
+/// 
+/// assert_eq!(convert_number_base(2, 10, &"9".to_string()), Err(ConversionError::ParseError));
+/// assert_eq!(convert_number_base(1, 10, &"5".to_string()), Err(ConversionError::BaseError));
+/// ```
 #[derive(Debug, PartialEq)]
 pub enum ConversionError{
     ParseError,
     BaseError,
 }
 
+impl std::fmt::Display for ConversionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return match self {
+            ConversionError::ParseError => write!(f, "Failed to parse the input number in the given base."),
+            ConversionError::BaseError => write!(f, "The base is not supported or is invalid."),
+        };
+    }
+    
+}
+
 //const VALUES: [&str; 36] = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 
-// TODO add returns and panics doc sections
-// TODO make try_ versions
+// TODO make try_ versions | NO NEED cause i return errors either way
 // TODO make arbitrary bases work
 
 /// Converts a string from a radix to a string of a number in another radix.
@@ -33,22 +63,25 @@ pub enum ConversionError{
 /// * `to`   - The integer radix of the output number (between 2 and 36 inclusive)
 /// * `num`  - The input number as a string
 /// 
-/// ## Examples
+/// ## Returns
+/// A `Result<String, ConversionError>`, where the `Ok` variant contains the converted number as a string in the target radix,
+/// and the `Err` variant contains a `ConversionError` if the conversion failed.
 /// 
+/// ## Examples
 /// ```rust
 /// # use luna::number_converter::convert_number_base;
 /// # use luna::number_converter::ConversionError;
 /// 
 /// let n = convert_number_base(16, 10, &"e".to_string());
-/// assert_eq!(n.unwrap(), "14");
+/// assert_eq!(n, Ok("14".to_string()));
 /// let n = convert_number_base(2, 16, &"1111".to_string());
-/// assert_eq!(n.unwrap(), "f");
+/// assert_eq!(n, Ok("f".to_string()));
 /// 
-/// // If radix isnt between 2 and 36 (inclusive):
+/// // If radix isn't between 2 and 36 (inclusive):
 /// let n = convert_number_base(1, 8, &"9".to_string());
 /// assert_eq!(n, Err(ConversionError::BaseError));
 /// 
-/// // If number isnt within the `from` radix:
+/// // If number isn't within the `from` radix:
 /// let n = convert_number_base(2, 8, &"9".to_string());
 /// assert_eq!(n, Err(ConversionError::ParseError));
 /// ```
@@ -99,8 +132,11 @@ pub fn convert_number_base(from: usize, to: usize, num: &String) -> Result<Strin
 /// * `from` - The integer radix of the input number (between 2 and 36 inclusive)
 /// * `num` - The input number
 /// 
-/// ## Examples
+/// ## Returns
+/// A `Result<u32, ConversionError>`, where the `Ok` variant contains the converted number as a `u32` in base 10,
+/// and the `Err` variant contains a `ConversionError` if the conversion failed.
 /// 
+/// ## Examples
 /// ```rust
 /// # use luna::number_converter::convert_to_decimal;
 /// # use luna::number_converter::ConversionError::*;
@@ -137,9 +173,12 @@ pub fn convert_to_decimal(from: usize, num: &String) -> Result<u32, ConversionEr
 /// * `to` - The integer radix of the output number (between 2 and 36 inclusive)
 /// * `num` - The input integer number
 /// 
+/// ## Returns
+/// A `Result<Vec<String>, ConversionError>`, where the `Ok` variant contains a vector of strings,
+/// each string representing a digit of the number in the target radix,
+/// and the `Err` variant contains a `ConversionError` if the conversion failed.
 /// 
 /// ## Examples
-/// 
 /// ```rust
 /// # use luna::number_converter::convert_from_decimal;
 /// # use luna::number_converter::ConversionError::*;
@@ -153,6 +192,7 @@ pub fn convert_to_decimal(from: usize, num: &String) -> Result<u32, ConversionEr
 /// # use luna::number_converter::convert_from_decimal;
 /// // If radix isnt between 2 and 36 (inclusive) it panics:
 /// convert_from_decimal(37, 5);
+/// // This panic will be removed in the future, and an error will be returned instead.
 /// ```
 pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, ConversionError> { // HACK the vec may need to be changed
 
@@ -196,8 +236,11 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
 /// * `to` - The integer radix of the output number (between 2 and 36 inclusive)
 /// * `num` - The input integer number
 /// 
-/// ## Examples
+/// ## Returns
+/// A `Result<String, ConversionError>`, where the `Ok` variant contains the converted number as a string in the target radix,
+/// and the `Err` variant contains a `ConversionError` if the conversion failed.
 /// 
+/// ## Examples
 /// ```rust
 /// # use luna::number_converter::convert_from_decimal_joined;
 /// # use luna::number_converter::ConversionError::*;
@@ -210,8 +253,9 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
 /// # use luna::number_converter::convert_from_decimal_joined;
 /// // If radix isnt between 2 and 36 (inclusive) it panics:
 /// convert_from_decimal_joined(37, 5);
+/// // This panic will be removed in the future, and an error will be returned instead.
 /// ```
 pub fn convert_from_decimal_joined(to: usize, num: u32) -> Result<String, ConversionError> {
-    let result = convert_from_decimal(to, num)?;
-    return Ok(result.join(""));
+    let result = convert_from_decimal(to, num)?; 
+    return Ok(result.join("")); // TODO add custom join seperator?
 }
