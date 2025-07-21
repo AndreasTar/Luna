@@ -1,7 +1,7 @@
 use std::io::Read;
 
 use crate::tools::*;
-use iced::{advanced::{self, graphics::layer}, widget::{button, image as iced_image, scrollable, Text}};
+use iced::{advanced::{self, graphics::layer}, widget::{button, image as iced_image, scrollable, Text, pick_list}};
 use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
 
 use image::DynamicImage;
@@ -19,7 +19,7 @@ pub enum IM_Message{
     Request_RemoveLayer(usize), // TODO remove layer
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Layer {
     // TODO add layer types and their values
     Brighten(i32),
@@ -32,6 +32,40 @@ pub enum Layer {
     Unsharpen(f32, i32),
     Sharpen, // TODO
     HueRotate(i32)
+}
+
+impl Layer {
+    const ALL: [Layer; 9] = [
+        Layer::Brighten(0),
+        Layer::Contrast(0.0),
+        Layer::Dither,
+        Layer::Grayscale,
+        Layer::Invert,
+        Layer::Blur(0.0),
+        Layer::FastBlur(0.0),
+        Layer::Unsharpen(0.0, 0),
+        Layer::HueRotate(0),
+    ];
+}
+
+impl std::fmt::Display for Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f, "{}",
+            match self {
+                Layer::Brighten(_) => "Brighten",
+                Layer::Contrast(_) => "Contrast",
+                Layer::Dither => "Dither",
+                Layer::Grayscale => "Grayscale",
+                Layer::Invert => "Invert",
+                Layer::Blur(_) => "Blur",
+                Layer::FastBlur(_) => "Fast Blur",
+                Layer::Unsharpen(_, _) => "Unsharpen",
+                Layer::Sharpen => "Sharpen",
+                Layer::HueRotate(_) => "Hue Rotate",
+            }
+        )
+    }
 }
 
 pub struct UI_ImgManipulator {
@@ -155,6 +189,7 @@ impl UI_ImgManipulator {
         // TODO add load image by drag and drop
         // TODO add 'show original' button AND/OR split view with original and edited side by side, with extra toggle to match movement of the two or not
         // TODO add image buffer and layers functionality
+        // TODO style needs changing for everything
 
         // -------------------------------- FOR TOP MENU BAR --------------------------------
 
@@ -218,15 +253,20 @@ impl UI_ImgManipulator {
         // -------------------------------- FOR LAYERS --------------------------------
 
         // holds the layers and their on-off toggle and possibly their value
+
+        let selected_layer: Option<Layer> = None;
+        let pick_layer_list = pick_list( 
+                        Layer::ALL,
+                        selected_layer,
+                        IM_Message::Request_AddLayer,
+        );
         let layers = Container::new(
             self::column![
                 
                 row![
                     Text::new("Layers").width(Length::FillPortion(3)).height(Length::Fill),
-                    button("+")
-                        .on_press(IM_Message::Request_AddLayer(Layer::Invert)) // TODO add functionality to add layers
+                    pick_layer_list
                         .width(Length::FillPortion(1))
-                        .height(Length::Fill)
                 ].height(Length::FillPortion(1)),
                 
                 scrollable(column(
