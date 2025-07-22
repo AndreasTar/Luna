@@ -1,14 +1,14 @@
 use std::io::Read;
 
 use crate::tools::*;
-use iced::{advanced::{self, graphics::layer}, widget::{button, image as iced_image, scrollable, Text, pick_list}};
+use iced::{advanced::{self, graphics::layer}, widget::{button, checkbox, image as iced_image, pick_list, scrollable, Text}};
 use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
 
 use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-const VERSION: luna::Version = luna::Version::new(0, 2, 2);
+const VERSION: luna::Version = luna::Version::new(0, 2, 3);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
@@ -22,6 +22,7 @@ pub enum IM_Message{
     Request_RemoveLayer(usize), // TODO remove layer
     Request_SelectLayer(usize),
     Request_UpdateLayer(Layer, Option<usize>),
+    Request_ClearLayers,
 
 }
 
@@ -190,12 +191,15 @@ impl UI_ImgManipulator {
                         }
                         self.update_image();
                     },
-                    IM_Message::Request_ClearImage => { // HACK this will only clear image, not layers
+                    IM_Message::Request_ClearImage => {
                         self.og_image = None;
                         self.res_image = None; // BUG image isnt cleared, it is inactive tho
+                        self.update_image();
+                    },
+                    IM_Message::Request_ClearLayers => {
                         self.layers.clear();
                         self.selected_layer = None;
-                        self.selected_layer_index = None;
+                        self.selected_layer_index = None; 
                         self.update_image();
                     },
                     _ => todo!()
@@ -246,7 +250,7 @@ impl UI_ImgManipulator {
                 menu_item(menu_items!(
                     (button("Save").on_press(IM_Message::Request_SaveImage).width(Length::Fill))
                     (button("Load").on_press(IM_Message::Request_LoadImage).width(Length::Fill))
-                    (button("Clear").on_press(IM_Message::Request_ClearImage).width(Length::Fill)) // TODO add clear functionality, reseting the image and layers
+                    (button("Clear").on_press(IM_Message::Request_ClearImage).width(Length::Fill))
                 ))
             })
 
@@ -310,29 +314,38 @@ impl UI_ImgManipulator {
             self::column![
                 
                 row![
-                    Text::new("Layers").width(Length::FillPortion(3)).height(Length::Fill),
-                    pick_layer_list
-                        .width(Length::FillPortion(1))
-                ].height(Length::FillPortion(1)),
-                
+                    Text::new("Layers").width(Length::Fill).height(Length::Fill),
+                    button(Text::new("Clear Layers")) // TODO change to a trashcan or something
+                        .on_press(IM_Message::Request_ClearLayers)
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                ],
+                    
                 scrollable(column(
                     (0..self.layers.len()).map(|i| {
                         let layer = &self.layers[i];
                         let layer_name = layer.0.as_str();
 
-                        button(layer_name)
+                        let layer_button = button(layer_name)
                             .on_press(IM_Message::Request_SelectLayer(i)) 
-                            .width(Length::Fill)
-                            .into()
+                            .width(Length::Fill);
+                            
+                        let toggle = checkbox("", layer.1)
+                            .on_toggle(move |enabled| IM_Message::Request_ToggleLayerEnable(i));
+
+                        row![layer_button, toggle].width(Length::Fill).into()
                     })
                 ))
                 .height(Length::FillPortion(4)),
+
+                pick_layer_list
+                    .width(Length::Fill),
 
                 
                 get_layer_options_container(
                     self.selected_layer.clone(),
                     self.selected_layer_index.clone()
-                ).height(Length::FillPortion(4)), // TODO add layer info
+                ).height(Length::FillPortion(4)),
             ])
             .width(Length::FillPortion(1))
             .height(Length::FillPortion(4)
@@ -430,13 +443,12 @@ fn load_image_rfd() -> Result<String, String> {
 }
 
 fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>) -> Container<'static, IM_Message> {
-    // TODO add functionality to toggle layer on/off, a button or something
     // BUG visuals dont update until you select a different layer then select the same one again
     return match layer {
         Some(l) => match l {
             Layer::Brighten(amount) => {
                 Container::new(self::column![
-                    Text::new("Brighten Layer options container"),
+                    Text::new("Brighten"),
                     iced::widget::slider(
                         -255 ..= 255,
                         amount,
@@ -450,7 +462,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             },
             Layer::Contrast(amount) => {
                 Container::new(self::column![
-                    Text::new("Contrast Layer options container"),
+                    Text::new("Contrast"),
                     iced::widget::slider(
                         -100_f32 ..= 100_f32,
                         amount,
@@ -466,7 +478,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             Layer::Grayscale => todo!(),
             Layer::Invert => {
                 Container::new(self::column![
-                    Text::new("Invert Layer options container"),
+                    Text::new("Invert"),
                     button(Text::new("Invert"))
                         .on_press(IM_Message::Request_UpdateLayer(Layer::Invert, layer_index))
                         .width(Length::Fill)
@@ -475,7 +487,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             },
             Layer::Blur(amount) => {
                 Container::new(self::column![
-                    Text::new("Blur Layer options container"),
+                    Text::new("Blur"),
                     iced::widget::slider(
                         0_f32 ..= 255_f32,
                         amount,
@@ -489,7 +501,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             },
             Layer::FastBlur(amount) => {
                 Container::new(self::column![
-                    Text::new("Fast Blur Layer options container"),
+                    Text::new("Fast Blur"),
                     iced::widget::slider(
                         0_f32 ..= 255_f32,
                         amount,
@@ -505,7 +517,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             Layer::Sharpen => {todo!()},
             Layer::HueRotate(amount) => {
                 Container::new(self::column![
-                    Text::new("Hue Rotate Layer options container"),
+                    Text::new("Hue Rotate"),
                     iced::widget::slider(
                         0 ..= 360,
                         amount,
@@ -520,7 +532,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             },
             Layer::Flip_Horizontal => {
                 Container::new(self::column![
-                    Text::new("Horizontal Flip Layer options container"),
+                    Text::new("Horizontal Flip"),
                     button(Text::new("Invert"))
                         .on_press(IM_Message::Request_UpdateLayer(Layer::Flip_Horizontal, layer_index))
                         .width(Length::Fill)
@@ -529,7 +541,7 @@ fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>)
             },
             Layer::Flip_Vertical => {
                 Container::new(self::column![
-                    Text::new("Vertical Flip Layer options container"),
+                    Text::new("Vertical Flip"),
                     button(Text::new("Invert"))
                         .on_press(IM_Message::Request_UpdateLayer(Layer::Flip_Vertical, layer_index))
                         .width(Length::Fill)
