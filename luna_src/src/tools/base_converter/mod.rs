@@ -14,6 +14,7 @@ use iced::{alignment, widget::{button, container, keyed::column, scrollable, tex
 // TODO add popup for symbols like π, φ, etc
 // TODO add help menu or something that explains the logic behind number conversion
 
+const VERSION: luna::Version = luna::Version::new(1, 0, 0);
 
 #[derive(Debug, Clone)]
 pub enum BC_Message{
@@ -29,7 +30,7 @@ pub enum BC_Message{
 }
 
 pub struct UI_BaseConverter{
-
+    
     side_title: String,
     main_title: String,
     enabled: bool,
@@ -73,6 +74,10 @@ impl ToolPage for UI_BaseConverter {
 
     fn update_state(&mut self) {
         self.update_state();
+    }
+    
+    fn version(&self) -> luna::Version {
+        return VERSION;
     }
 }
 
@@ -453,7 +458,7 @@ fn converter_style(theme: &Theme, status: text_input::Status) -> text_input::Sty
     let palette = theme.extended_palette();
 
     // TODO extract the colors into variables, also for the code above
-    // TODO also for the future, extact all style managing into its own widget
+    // TODO also for the future, extract all style managing into its own widget
     match status {
         text_input::Status::Active => text_input::Style {
             background: Color::from_rgb8(43,10,94).into(),

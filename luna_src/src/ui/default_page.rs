@@ -24,6 +24,10 @@ impl ToolPage for default_page {
     fn update_state(&mut self) {
         ();
     }
+    
+    fn version(&self) -> luna::Version {
+        return luna::Version::new(0, 0, 0);
+    }
 }
 
 pub fn get() -> impl ToolPage{

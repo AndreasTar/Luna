@@ -1,4 +1,6 @@
 
+pub const VERSION: crate::Version = crate::Version::new(1, 0, 0);
+
 /// An error which can be returned when attempting to convert a number to a different radix (base).
 /// 
 /// This error is used as the error type for the functions in the `number_converter` module,

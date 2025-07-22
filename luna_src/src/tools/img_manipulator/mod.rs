@@ -8,6 +8,8 @@ use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
+const VERSION: luna::Version = luna::Version::new(0, 2, 1);
+
 #[derive(Debug, Clone)]
 pub enum IM_Message{
     Nothing, // TODO is nothing really needed? or just use None?
@@ -31,7 +33,9 @@ pub enum Layer {
     FastBlur(f32),
     Unsharpen(f32, i32),
     Sharpen, // TODO
-    HueRotate(i32)
+    HueRotate(i32),
+    Flip_Horizontal,
+    Flip_Vertical,
 }
 
 impl Layer {
@@ -46,25 +50,28 @@ impl Layer {
         Layer::Unsharpen(0.0, 0),
         Layer::HueRotate(0),
     ];
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Layer::Brighten(_)     => "Brighten",
+            Layer::Contrast(_)     => "Contrast",
+            Layer::Dither          => "Dither",
+            Layer::Grayscale       => "Grayscale",
+            Layer::Invert          => "Invert",
+            Layer::Blur(_)         => "Blur",
+            Layer::FastBlur(_)     => "Fast Blur",
+            Layer::Unsharpen(_,_)  => "Unsharpen",
+            Layer::Sharpen         => "Sharpen",
+            Layer::HueRotate(_)    => "Hue Rotate",
+            Layer::Flip_Horizontal => "Flip Horizontal",
+            Layer::Flip_Vertical   => "Flip Vertical",
+        }
+    }
 }
 
 impl std::fmt::Display for Layer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f, "{}",
-            match self {
-                Layer::Brighten(_) => "Brighten",
-                Layer::Contrast(_) => "Contrast",
-                Layer::Dither => "Dither",
-                Layer::Grayscale => "Grayscale",
-                Layer::Invert => "Invert",
-                Layer::Blur(_) => "Blur",
-                Layer::FastBlur(_) => "Fast Blur",
-                Layer::Unsharpen(_, _) => "Unsharpen",
-                Layer::Sharpen => "Sharpen",
-                Layer::HueRotate(_) => "Hue Rotate",
-            }
-        )
+        return write!(f, "{}", self.as_str());
     }
 }
 
@@ -112,6 +119,10 @@ impl ToolPage for UI_ImgManipulator {
     
     fn update_state(&mut self) {
         self.update_state();
+    }
+    
+    fn version(&self) -> luna::Version {
+        return VERSION;
     }
 }
 
@@ -237,12 +248,12 @@ impl UI_ImgManipulator {
         // holds the image and info like pixels and format
         let image_preview = Container::new(
             self::column![
-                Text::new("Image preview"), // TODO add image previewl
+                Text::new("Image preview"), // TODO make it look better, as a title or something
                 iced_image::viewer(img_handle)
                     .filter_method(iced_image::FilterMethod::Nearest) // TODO add button for nearest or linear
                     .width(Length::Fill)
                     .height(Length::Fill),
-                Text::new(img_info_text), // TODO add image info
+                Text::new(img_info_text), // TODO add more image info
             ])
             .width(Length::FillPortion(4))
             .height(Length::FillPortion(4));
@@ -273,18 +284,7 @@ impl UI_ImgManipulator {
                 scrollable(column(
                     (0..self.layers.len()).map(|i| {
                         let layer = &self.layers[i];
-                        let layer_name = match &layer.0 {
-                            Layer::Brighten(_) => "Brighten",
-                            Layer::Contrast(_) => "Contrast",
-                            Layer::Dither => "Dither",
-                            Layer::Grayscale => "Grayscale",
-                            Layer::Invert => "Invert",
-                            Layer::Blur(_) => "Blur",
-                            Layer::FastBlur(_) => "Fast Blur",
-                            Layer::Unsharpen(_, _) => "Unsharpen",
-                            Layer::Sharpen => "Sharpen",
-                            Layer::HueRotate(_) => "Hue Rotate",
-                        };
+                        let layer_name = layer.0.as_str();
 
                         button(layer_name)
                             .on_press(IM_Message::Request_ToggleLayer(i)) // TODO add functionality to toggle layer on/off
@@ -355,6 +355,8 @@ impl UI_ImgManipulator {
                 Layer::Unsharpen(value, thresh) => luna_imgman::unsharpen(&mut img, *value, *thresh),
                 Layer::Sharpen => todo!(),
                 Layer::HueRotate(degrees) => luna_imgman::huerotate(&mut img, *degrees),
+                Layer::Flip_Horizontal => luna_imgman::flip_horizontal(&mut img),
+                Layer::Flip_Vertical => luna_imgman::flip_vertical(&mut img),
             }
         };
 
