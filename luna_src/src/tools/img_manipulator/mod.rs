@@ -8,7 +8,7 @@ use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-const VERSION: luna::Version = luna::Version::new(0, 2, 1);
+const VERSION: luna::Version = luna::Version::new(0, 2, 2);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
@@ -16,9 +16,13 @@ pub enum IM_Message{
     Request_LoadImage,
     Request_SaveImage,
     Request_ClearImage,
-    Request_ToggleLayer(usize),
-    Request_AddLayer(Layer), // TODO add layer
+    Request_ToggleLayerEnable(usize),
+    Request_ToggleLayerLock(usize),
+    Request_AddLayer(Layer),
     Request_RemoveLayer(usize), // TODO remove layer
+    Request_SelectLayer(usize),
+    Request_UpdateLayer(Layer, Option<usize>),
+
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,6 +88,8 @@ pub struct UI_ImgManipulator {
 
 
     layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
+    selected_layer: Option<Layer>, // holds the currently selected layer, if any
+    selected_layer_index: Option<usize>, // holds the index of the selected layer, if any
     og_image: Option<DynamicImage>, // holds the original image, if any
     res_image: Option<DynamicImage>, // holds the resulting image after changes, if any
 
@@ -149,7 +155,7 @@ impl UI_ImgManipulator {
                         });
                     },
                     IM_Message::Request_SaveImage => (),
-                    IM_Message::Request_ToggleLayer(i) => {
+                    IM_Message::Request_ToggleLayerEnable(i) => {
                         if let Some(layer) = self.layers.get_mut(*i) {
                             layer.1 = !layer.1; // toggle the layer on/off
                         };
@@ -157,12 +163,39 @@ impl UI_ImgManipulator {
                     },
                     IM_Message::Request_AddLayer(layer) => {
                         self.layers.push((layer.clone(), true)); // add layer enabled
+                        self.selected_layer = Some(layer.clone());
+                        self.selected_layer_index = Some(self.layers.len() - 1);
                         self.update_image();
                     }, 
                     IM_Message::Request_RemoveLayer(i) => {
                         if *i < self.layers.len() {
                             self.layers.remove(*i); // remove layer
                         };
+                        self.update_image();
+                    },
+                    IM_Message::Request_SelectLayer(i) => {
+                        if self.selected_layer_index.is_some_and(|idx| idx == *i) {
+                            self.selected_layer = None; // deselect layer
+                            self.selected_layer_index = None; // reset index
+                        } else {
+                            self.selected_layer = Some(self.layers[*i].0.clone()); // select layer
+                            self.selected_layer_index = Some(*i); // store index of selected layer
+                        }
+                    },
+                    IM_Message::Request_UpdateLayer(l, i) => {
+                        if let Some(idx) = i {
+                            if let Some(layer) = self.layers.get_mut(*idx) {
+                                layer.0 = l.clone(); // update layer
+                            }
+                        }
+                        self.update_image();
+                    },
+                    IM_Message::Request_ClearImage => { // HACK this will only clear image, not layers
+                        self.og_image = None;
+                        self.res_image = None; // BUG image isnt cleared, it is inactive tho
+                        self.layers.clear();
+                        self.selected_layer = None;
+                        self.selected_layer_index = None;
                         self.update_image();
                     },
                     _ => todo!()
@@ -199,8 +232,9 @@ impl UI_ImgManipulator {
         // TODO either disable zoom or add fit to screen buttons etc
         // TODO add load image by drag and drop
         // TODO add 'show original' button AND/OR split view with original and edited side by side, with extra toggle to match movement of the two or not
-        // TODO add image buffer and layers functionality
+        // TODO add image buffer (what will this do, why is it here? maybe for undo/redo?)
         // TODO style needs changing for everything
+        // TODO async applying of layers?
 
         // -------------------------------- FOR TOP MENU BAR --------------------------------
 
@@ -212,7 +246,7 @@ impl UI_ImgManipulator {
                 menu_item(menu_items!(
                     (button("Save").on_press(IM_Message::Request_SaveImage).width(Length::Fill))
                     (button("Load").on_press(IM_Message::Request_LoadImage).width(Length::Fill))
-                    (button("Clear").on_press(IM_Message::Nothing).width(Length::Fill)) // TODO add clear functionality, reseting the image and layers
+                    (button("Clear").on_press(IM_Message::Request_ClearImage).width(Length::Fill)) // TODO add clear functionality, reseting the image and layers
                 ))
             })
 
@@ -287,16 +321,18 @@ impl UI_ImgManipulator {
                         let layer_name = layer.0.as_str();
 
                         button(layer_name)
-                            .on_press(IM_Message::Request_ToggleLayer(i)) // TODO add functionality to toggle layer on/off
+                            .on_press(IM_Message::Request_SelectLayer(i)) 
                             .width(Length::Fill)
                             .into()
                     })
                 ))
-                
                 .height(Length::FillPortion(4)),
 
                 
-                Text::new("Layer options").height(Length::FillPortion(4)), // TODO add layer info
+                get_layer_options_container(
+                    self.selected_layer.clone(),
+                    self.selected_layer_index.clone()
+                ).height(Length::FillPortion(4)), // TODO add layer info
             ])
             .width(Length::FillPortion(1))
             .height(Length::FillPortion(4)
@@ -373,6 +409,8 @@ pub fn get() -> UI_ImgManipulator {
         last_msg: RefCell::new(None),
 
         layers: vec![],
+        selected_layer: None,
+        selected_layer_index: None,
         og_image: None,
         res_image: None, 
     };
@@ -389,6 +427,120 @@ fn load_image_rfd() -> Result<String, String> {
     return file.map(|file| file.as_path().to_string_lossy().to_string()) // HACK make it not lossy
         .ok_or_else(|| "No file selected".to_string()); // NOTE can be used to present error to user
 
+}
+
+fn get_layer_options_container(layer: Option<Layer>, layer_index: Option<usize>) -> Container<'static, IM_Message> {
+    // TODO add functionality to toggle layer on/off, a button or something
+    // BUG visuals dont update until you select a different layer then select the same one again
+    return match layer {
+        Some(l) => match l {
+            Layer::Brighten(amount) => {
+                Container::new(self::column![
+                    Text::new("Brighten Layer options container"),
+                    iced::widget::slider(
+                        -255 ..= 255,
+                        amount,
+                        move |change| IM_Message::Request_UpdateLayer(
+                            Layer::Brighten(change), 
+                            layer_index
+                        )
+                    ).width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::Contrast(amount) => {
+                Container::new(self::column![
+                    Text::new("Contrast Layer options container"),
+                    iced::widget::slider(
+                        -100_f32 ..= 100_f32,
+                        amount,
+                        move |change| IM_Message::Request_UpdateLayer(
+                            Layer::Contrast(change), 
+                            layer_index
+                        )
+                    ).width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::Dither => todo!(),
+            Layer::Grayscale => todo!(),
+            Layer::Invert => {
+                Container::new(self::column![
+                    Text::new("Invert Layer options container"),
+                    button(Text::new("Invert"))
+                        .on_press(IM_Message::Request_UpdateLayer(Layer::Invert, layer_index))
+                        .width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::Blur(amount) => {
+                Container::new(self::column![
+                    Text::new("Blur Layer options container"),
+                    iced::widget::slider(
+                        0_f32 ..= 255_f32,
+                        amount,
+                        move |change| IM_Message::Request_UpdateLayer(
+                            Layer::Blur(change), 
+                            layer_index
+                        )
+                    ).width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::FastBlur(amount) => {
+                Container::new(self::column![
+                    Text::new("Fast Blur Layer options container"),
+                    iced::widget::slider(
+                        0_f32 ..= 255_f32,
+                        amount,
+                        move |change| IM_Message::Request_UpdateLayer(
+                            Layer::FastBlur(change), 
+                            layer_index
+                        )
+                    ).width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::Unsharpen(_, _) => todo!(),
+            Layer::Sharpen => {todo!()},
+            Layer::HueRotate(amount) => {
+                Container::new(self::column![
+                    Text::new("Hue Rotate Layer options container"),
+                    iced::widget::slider(
+                        0 ..= 360,
+                        amount,
+                        move |change| IM_Message::Request_UpdateLayer(
+                            Layer::HueRotate(change), 
+                            layer_index
+                        )
+                    ).width(Length::Fill)
+
+                    ]
+                ).into()
+            },
+            Layer::Flip_Horizontal => {
+                Container::new(self::column![
+                    Text::new("Horizontal Flip Layer options container"),
+                    button(Text::new("Invert"))
+                        .on_press(IM_Message::Request_UpdateLayer(Layer::Flip_Horizontal, layer_index))
+                        .width(Length::Fill)
+                    ]
+                ).into()
+            },
+            Layer::Flip_Vertical => {
+                Container::new(self::column![
+                    Text::new("Vertical Flip Layer options container"),
+                    button(Text::new("Invert"))
+                        .on_press(IM_Message::Request_UpdateLayer(Layer::Flip_Vertical, layer_index))
+                        .width(Length::Fill)
+                    ]
+                ).into()
+            },
+        },
+        None => {
+            Container::new(Text::new("No Layer Selected")).into()
+        },
+    };
 }
 
 

@@ -64,14 +64,16 @@ pub fn from_bytes(bytes: &[u8]) -> Result<DynamicImage, ImageError> {
 
 // TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
 pub fn brighten(img: &mut DynamicImage, value: i32) {
-    imageops::colorops::brighten_in_place(img, value);
+    // imageops::colorops::brighten_in_place(img, value);
+    *img = img.brighten(value);
 }
 
 pub fn contrast(img: &mut DynamicImage, value: f32) {
-    imageops::colorops::contrast_in_place(img, value);
+    // imageops::colorops::contrast_in_place(img, value);
+    *img = img.adjust_contrast(value);
 }
 
-pub fn dither(){
+pub fn dither() {
     todo!()
 }
 

@@ -411,6 +411,7 @@ pub fn get() -> UI_BaseConverter {
     return ui_bc;
 }
 
+#[inline]
 fn convert_number(from: usize, to: usize, num: &String) -> String {
     if num.is_empty(){
         return String::new();
@@ -426,7 +427,10 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
     let mut newNums: Vec<String> = vec![];
     for i in 0..cbCount{
         if fromCustom {
-            if i == currentlyAt {newNums.push(num.to_string()); continue;}
+            if i == currentlyAt { 
+                newNums.push(num.to_string()); 
+                continue; 
+            }
         };
 
         let base = cbBases.get(i as usize).unwrap();
@@ -441,6 +445,7 @@ fn manage_customBoxes(from: usize, num: &String, cbBases: Vec<String>, cbCount: 
     return newNums;
 }
 
+#[inline]
 fn base_to_num(base: String) -> usize { // TODO change to float or double etc
     if !(base.is_empty() || base.parse::<u8>().is_err()) {
         return u32::from_str_radix(&base, 10).unwrap().try_into().unwrap();
