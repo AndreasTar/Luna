@@ -1,5 +1,5 @@
 
-pub const VERSION: crate::Version = crate::Version::new(1, 0, 0);
+pub const VERSION: crate::Version = crate::Version::new(1, 0, 1);
 
 /// An error which can be returned when attempting to convert a number to a different radix (base).
 /// 
@@ -13,7 +13,7 @@ pub const VERSION: crate::Version = crate::Version::new(1, 0, 0);
 /// * If the input radix is not valid, e.g. trying to convert a number from and/or to base 1.
 /// * If the input number is too large to fit in the target type, e.g. trying to convert "10e33" in base 10 to base 2, which would overflow a `u32`. 
 ///     * This is not currently handled, but it will be in the future.
-/// * If the current target base is not implemented. (Currently, bases 2 to 36 are supported.)
+/// * If the current target base is not implemented. (Currently, integer bases 2 to 36 are supported.)
 /// 
 /// # Examples
 /// ```
@@ -42,7 +42,6 @@ impl std::fmt::Display for ConversionError {
 //const VALUES: [&str; 36] = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 
-// TODO make try_ versions | NO NEED cause i return errors either way
 // TODO make arbitrary bases work
 
 /// Converts a string from a radix to a string of a number in another radix.
@@ -91,7 +90,7 @@ pub fn convert_number_base(from: usize, to: usize, num: &String) -> Result<Strin
 
     /*
     take number and its base
-    if base  <= 36, use our own with the letters
+    if base <= 36, use our own with the letters
     if base > 36, convert each digit to decimal and return each digit like
         [58] [95] [1] [18]
         
@@ -99,12 +98,46 @@ pub fn convert_number_base(from: usize, to: usize, num: &String) -> Result<Strin
         number FF26
         [15] [15] [2] [6]
     
+    for bases > 36, as an input, we can seperate each digit with space, and then convert each digit to decimal
+        example, for base 38, we dont have single-digit numbers or enough letters for it
+        so instead, the user would input like 37 5 10 35 for each digit
+        or maybe even Z2 5 A Z
+        where Z2 = 35+2 = 37, 5 = 5, A = 10, Z = 35
+        this needs a bit extra handling to recognize between 37 = 37 in base 10 and 37 = 115 = 3*36 + 7 = 108+7
+        maybe a toggle on the UI, and a bool parameter on the function
+        
+        assuming we only had in total 10 digits and no letters for the sake of the example,
+        for the number 255 which is FF in base 16, the user would input 15 15
+    
     if base isnt integer, we must make our own system (remember that one vid)
+
+    this whole thing will need a bit of changing the types of the functions
+    if i have for example i8 numbers, aka 128 max num, and the user inputs a base 127
+    then the number 1 2 is equal to 129, which overflows the i8.
+    Now extrapolate to numbers like i128 which is 1.7e38, which is a lot of digits, 39 to be exact.
+    instead, i64 is 9.2e18, which is still a lot, but not as much.
+    additionally, this doesnt work for fractions and decimals, which need f64 etc.
+    maybe convert each digit to string to be able to handle *almost* any number?
+    maybe this will fix the input/output problem, but the bases are still a problem,
+    which means i will probably need to restrict them to maximum f128 OR implement my own number type,
+    which is a lot of work and math that i dont know well enough currently.
+
+    the system implementing these will be able to handle any valid number, potentially also 
+    making the currently implemented ones obsolete.
+    However, it will most likely be slower, so it will be optional.
+    I will keep all versions most likely
+
+    also remember, there are ways to quickly calculate large numbers, for example the 1.7e38 from before,
+    with reduced accuracy but much faster. it can be an optional function.
+
+    also, larger numbers will need to have a seperator, like _ or . to make them easier to read.
+
+    also, optional handling of scientific notation, like 1.7e38, which is 1.7 * 10^38.
     */
 
     // check if bases are between currently implemented ones
     // if they are, get string, seperate into each digit, and get the int value of it
-    //      for example, in hex, num ef would become [14][15]
+    //      for example, in hex, num EF would become [14][15]
     // then convert each digit and add em together
     // if output base is <= 36, use proper representation
     // if its > 36, then output each number seperately in base 10 (or base 36 optionally?)
@@ -202,7 +235,7 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
     let mut number = num;
     let radix = to as u32;
 
-    let mut tries = 64; // TODO remove this, its just for testing
+    let mut tries: u8 = 64; // TODO remove this, its just for testing
     loop {
         tries -= 1;
         let digit = number % radix;

@@ -88,11 +88,11 @@ pub struct UI_ImgManipulator {
     last_msg: RefCell<Option<IM_Message>>,
 
 
-    layers: Vec<(Layer, bool)>, // holds the layers and their on-off toggle
-    selected_layer: Option<Layer>, // holds the currently selected layer, if any
+    layers: Vec<(Layer, bool)>,          // holds the layers and their on-off toggle
+    selected_layer: Option<Layer>,       // holds the currently selected layer, if any
     selected_layer_index: Option<usize>, // holds the index of the selected layer, if any
-    og_image: Option<DynamicImage>, // holds the original image, if any
-    res_image: Option<DynamicImage>, // holds the resulting image after changes, if any
+    og_image: Option<DynamicImage>,      // holds the original image, if any
+    res_image: Option<DynamicImage>,     // holds the resulting image after changes, if any
 
 
 }
