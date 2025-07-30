@@ -13,8 +13,8 @@ publish = false
 [dependencies]
 iced = { version = "0.13.1", default-features = true, features = ["image", "tokio", "advanced"]}
 
-#luna = { path = "../luna_lib" } # local dependency
-luna = "*" # its published, so we can use it like this
+luna = { path = "../luna_lib" } # local dependency
+#luna = "*" # its published, so we can use it like this
 image = { version = "0.25.6" }
 
 rfd = "0.15.3" # file dialogs, open/save files, etc.

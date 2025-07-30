@@ -262,11 +262,10 @@ impl UI_ImgManipulator {
 
         // -------------------------------- FOR IMAGE PREVIEW --------------------------------
 
-        let mut img_info = (0, 0);
+        let img_info = luna_imgman::get_image_info(&self.res_image);
 
         let img_rgba = match &self.res_image {
             Some(img) => { 
-                img_info = (img.width(), img.height()); // TODO add more info like format, bytesize, etc
                 luna_imgman::into_rgba8(img)
             },
             None => {
@@ -275,12 +274,10 @@ impl UI_ImgManipulator {
         };
 
         let img_handle = advanced::image::Handle::from_rgba(
-            img_info.0, 
-            img_info.1, 
+            img_info.dimensions.0, 
+            img_info.dimensions.1, 
             img_rgba
         );
-
-        let img_info_text = format!("{}x{}", img_info.0, img_info.1); // TODO Check for 0 and do NA or something
 
         // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
@@ -291,7 +288,7 @@ impl UI_ImgManipulator {
                     .filter_method(iced_image::FilterMethod::Nearest) // TODO add button for nearest or linear
                     .width(Length::Fill)
                     .height(Length::Fill),
-                Text::new(img_info_text), // TODO add more image info
+                Text::new(img_info.to_string()), // TODO add more image info
             ])
             .width(Length::FillPortion(4))
             .height(Length::FillPortion(4));

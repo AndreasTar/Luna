@@ -1,5 +1,5 @@
 
-use image::{self, DynamicImage, ImageError, imageops};
+use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
 
 pub const VERSION: crate::Version = crate::Version::new(0, 2, 1);
 
@@ -59,7 +59,83 @@ impl ImgOpenResult {
     
 }
 
-// TODO add image info like format, dims, bytesize etc
+
+/// A struct which contains information about an image, such as its format, dimensions, aspect ratio, etc.
+#[derive(Clone, Debug)]
+pub struct ImageInfo {
+    pub format: Option<ImageFormat>,
+    pub dimensions: (u32, u32),
+    pub aspect_ratio: f32,
+    pub bytesize: usize,
+}
+
+impl ImageInfo {
+    pub fn new(
+        format: Option<ImageFormat>,
+        dimensions: (u32, u32),
+        aspect_ratio: f32,
+        bytesize: usize
+    ) -> Self {
+
+        return Self {
+            format,
+            dimensions,
+            aspect_ratio,
+            bytesize
+        };
+    }
+}
+
+impl Default for ImageInfo {
+    fn default() -> Self {
+        return Self {
+            format: None,
+            dimensions: (0, 0),
+            aspect_ratio: 0.0,
+            bytesize: 0
+        };
+    }
+}
+
+impl ToString for ImageInfo {
+    fn to_string(&self) -> String {
+
+        let form = if self.format.is_some() {
+            match self.format.unwrap() {
+                ImageFormat::Png => "PNG",
+                ImageFormat::Jpeg => "JPEG",
+                ImageFormat::Gif => "GIF",
+                ImageFormat::WebP => "WEBP",
+                ImageFormat::Pnm => "PNM",
+                ImageFormat::Tiff => "TIFF",
+                ImageFormat::Tga => "TGA",
+                ImageFormat::Dds => "DDS",
+                ImageFormat::Bmp => "BMP",
+                ImageFormat::Ico => "ICO",
+                ImageFormat::Hdr => "HDR",
+                ImageFormat::OpenExr => "OpenEXR",
+                ImageFormat::Farbfeld => "Farbfeld",
+                ImageFormat::Avif => "AVIF",
+                ImageFormat::Qoi => "QOI",
+                ImageFormat::Pcx => "PCX",
+                _ => "Unknown",
+            }
+        } else {
+            "Unknown"
+        };
+
+        return format!(
+            "Format: {:?}, Dimensions: {}, Aspect Ratio: {:.3}, Bytesize: {}",
+            form, 
+            if self.dimensions.0 > 0 && self.dimensions.1 > 0 { format!("{}x{}", self.dimensions.0, self.dimensions.1) } else { "Unknown".to_string() }, 
+            if self.aspect_ratio > 0.0 { self.aspect_ratio.to_string() } else { "Unknown".to_string() }, 
+            if self.bytesize > 0 { self.bytesize.to_string() } else { "Unknown".to_string() }
+        );
+    }
+}
+
+// TODO implement to string
+
 // TODO add docs for all of these
 // TODO better error handling
 // TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
@@ -83,6 +159,20 @@ pub fn open_image_from_buffer() {
 
 pub fn save_image() { // NOTE should this be here or some IO saving module? maybe a preprocess before IO module?
     todo!()
+}
+
+pub fn get_image_info(img: &Option<DynamicImage>) -> ImageInfo {
+    if img.is_none() {
+        return ImageInfo::default();
+    }
+    let img = img.as_ref().unwrap();
+
+    let format = None; // HACK hardcoded
+    let dimensions = (img.width(), img.height());
+    let aspect_ratio = dimensions.0 as f32 / dimensions.1 as f32;
+    let bytesize = img.as_bytes().len();
+
+    return ImageInfo::new(format, dimensions, aspect_ratio, bytesize);
 }
 
 pub fn into_bytes(img: &DynamicImage) -> Vec<u8> {
