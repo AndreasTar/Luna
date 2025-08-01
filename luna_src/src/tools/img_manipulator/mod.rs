@@ -307,7 +307,7 @@ impl UI_ImgManipulator {
                         Layer::ALL,
                         selected_layer,
                         IM_Message::Request_AddLayer,
-        );
+        ).placeholder("Add New Layer");
         
         let layers = Container::new(
             self::column![

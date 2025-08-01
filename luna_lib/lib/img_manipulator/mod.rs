@@ -2,7 +2,7 @@
 use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
 use bytesize::ByteSize;
 
-pub const VERSION: crate::Version = crate::Version::new(0, 2, 2);
+pub const VERSION: crate::Version = crate::Version::new(0, 3, 0);
 
 /// An enum which can be returned when attempting to open an image from a path and decode it.
 /// It can either be a success with the decoded image, or a failure with an [ImageError].
@@ -60,17 +60,35 @@ impl ImgOpenResult {
     
 }
 
-
+// NOTE maybe convert to Option for all parameters instead of 0?
 /// A struct which contains information about an image, such as its format, dimensions, aspect ratio, etc.
 #[derive(Clone, Debug)]
 pub struct ImageInfo {
+    /// The format of the image, if known. If the format is unknown, this will be `None`.
+    /// Currently supported formats are all formats supported by the `image` crate, under `ImageFormat` enum.
+    /// See [ImageFormat](https://docs.rs/image/latest/image/enum.ImageFormat.html) for more details.
     pub format: Option<ImageFormat>,
+    /// The dimensions of the image, represented as a tuple of (width, height), as u32 values.
+    /// If the dimensions are unknown, this will be (0, 0).
     pub dimensions: (u32, u32),
+    /// The aspect ratio of the image, represented as a f32 value.
+    /// If the aspect ratio is unknown, this will be 0.0.
     pub aspect_ratio: f32,
+    /// The size of the image in bytes, represented using the `ByteSize` struct.
+    /// If the size is unknown, this will be `ByteSize(0)`.
+    /// See [ByteSize](https://docs.rs/bytesize/latest/bytesize/struct.ByteSize.html) for more details.
     pub bytesize: ByteSize,
 }
 
 impl ImageInfo {
+    /// Creates a new `ImageInfo` instance with the given parameters.
+    /// ## Arguments
+    /// * `format`: An optional `ImageFormat` representing the format of the image. If the format is unknown, this can be `None`.
+    /// * `dimensions`: A tuple of (width, height) representing the dimensions of the image as u32 values. If the dimensions are unknown, this can be (0, 0).
+    /// * `aspect_ratio`: A f32 value representing the aspect ratio of the image. If the aspect ratio is unknown, this can be 0.0.
+    /// * `bytesize`: A u64 value representing the size of the image in *bytes*. If the size is unknown, this can be 0. Will be converted to `ByteSize` internally.
+    /// ## Returns
+    /// A new `ImageInfo` instance with the provided parameters.
     pub fn new(
         format: Option<ImageFormat>,
         dimensions: (u32, u32),
@@ -134,8 +152,6 @@ impl ToString for ImageInfo {
         );
     }
 }
-
-// TODO implement to string
 
 // TODO add docs for all of these
 // TODO better error handling
