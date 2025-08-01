@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 image = { version = "0.25.6", optional = true }
+bytesize = { version = "2.0.1", optional = true}
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 # cargo publish -p luna             # to publish this crate
@@ -27,6 +28,6 @@ crate-type = ["lib"]   # The crate types to generate.
 [features]
 default = ["number_converter", "img_manipulator"]
 number_converter = []
-img_manipulator = ["dep:image"]
+img_manipulator = ["dep:image", "bytesize"]
 img_to_ascii = ["img_manipulator"]
 color_format_converter = []

@@ -8,7 +8,7 @@ use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-const VERSION: luna::Version = luna::Version::new(0, 2, 3);
+const VERSION: luna::Version = luna::Version::new(0, 2, 4);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
@@ -93,6 +93,7 @@ pub struct UI_ImgManipulator {
     selected_layer_index: Option<usize>, // holds the index of the selected layer, if any
     og_image: Option<DynamicImage>,      // holds the original image, if any
     res_image: Option<DynamicImage>,     // holds the resulting image after changes, if any
+    res_image_info: Option<luna_imgman::ImageInfo>,   // holds the resulting image info, if any
 
 
 }
@@ -142,12 +143,13 @@ impl UI_ImgManipulator {
                     IM_Message::Request_LoadImage => {
                         load_image_rfd().map(|path| {
                             match luna_imgman::open_image_from_path(path) {
-                                luna_imgman::ImgOpenResult::Success(img) => {
+                                (luna_imgman::ImgOpenResult::Success(img), form) => {
                                     self.og_image = Some(img);
                                     self.res_image = self.og_image.clone(); // TODO do we need this?
+                                    self.res_image_info = Some(luna_imgman::get_image_info(&self.og_image, form));
                                     self.update_image();
                                 },
-                                luna_imgman::ImgOpenResult::Failure(e) => {
+                                (luna_imgman::ImgOpenResult::Failure(e), _ )=> {
                                     eprintln!("Failed to load image: {}", e); // HACK change eprintln to show error on screen inside image preview or something
                                 }
                             }
@@ -262,7 +264,7 @@ impl UI_ImgManipulator {
 
         // -------------------------------- FOR IMAGE PREVIEW --------------------------------
 
-        let img_info = luna_imgman::get_image_info(&self.res_image);
+        let img_info = self.res_image_info.clone().unwrap_or_default();
 
         let img_rgba = match &self.res_image {
             Some(img) => { 
@@ -423,6 +425,7 @@ pub fn get() -> UI_ImgManipulator {
         selected_layer_index: None,
         og_image: None,
         res_image: None, 
+        res_image_info: None,
     };
 }
 

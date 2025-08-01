@@ -1,7 +1,8 @@
 
 use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
+use bytesize::ByteSize;
 
-pub const VERSION: crate::Version = crate::Version::new(0, 2, 1);
+pub const VERSION: crate::Version = crate::Version::new(0, 2, 2);
 
 /// An enum which can be returned when attempting to open an image from a path and decode it.
 /// It can either be a success with the decoded image, or a failure with an [ImageError].
@@ -66,7 +67,7 @@ pub struct ImageInfo {
     pub format: Option<ImageFormat>,
     pub dimensions: (u32, u32),
     pub aspect_ratio: f32,
-    pub bytesize: usize,
+    pub bytesize: ByteSize,
 }
 
 impl ImageInfo {
@@ -74,14 +75,14 @@ impl ImageInfo {
         format: Option<ImageFormat>,
         dimensions: (u32, u32),
         aspect_ratio: f32,
-        bytesize: usize
+        bytesize: u64
     ) -> Self {
 
         return Self {
             format,
             dimensions,
             aspect_ratio,
-            bytesize
+            bytesize: ByteSize(bytesize),
         };
     }
 }
@@ -92,7 +93,7 @@ impl Default for ImageInfo {
             format: None,
             dimensions: (0, 0),
             aspect_ratio: 0.0,
-            bytesize: 0
+            bytesize: ByteSize(0),
         };
     }
 }
@@ -121,15 +122,15 @@ impl ToString for ImageInfo {
                 _ => "Unknown",
             }
         } else {
-            "Unknown"
+            "NA"
         };
 
         return format!(
-            "Format: {:?}, Dimensions: {}, Aspect Ratio: {:.3}, Bytesize: {}",
+            "Format: {}, Dimensions: {}, Aspect Ratio: {:.3}, Bytesize: {}",
             form, 
-            if self.dimensions.0 > 0 && self.dimensions.1 > 0 { format!("{}x{}", self.dimensions.0, self.dimensions.1) } else { "Unknown".to_string() }, 
-            if self.aspect_ratio > 0.0 { self.aspect_ratio.to_string() } else { "Unknown".to_string() }, 
-            if self.bytesize > 0 { self.bytesize.to_string() } else { "Unknown".to_string() }
+            if self.dimensions.0 > 0 && self.dimensions.1 > 0 { format!("{}x{}", self.dimensions.0, self.dimensions.1) } else { "NA".to_string() }, 
+            if self.aspect_ratio > 0.0 { self.aspect_ratio.to_string() } else { "NA".to_string() }, 
+            if self.bytesize > bytesize::ByteSize(0) { self.bytesize.display().iec().to_string() } else { "NA".to_string() }
         );
     }
 }
@@ -141,15 +142,17 @@ impl ToString for ImageInfo {
 // TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
 
 
-pub fn open_image_from_path(path: String) -> ImgOpenResult {
+pub fn open_image_from_path(path: String) -> (ImgOpenResult, Option<ImageFormat>) {
     let reader = match image::ImageReader::open(path) {
         Ok(reader) => reader,
-        Err(e) => return ImgOpenResult::Failure(ImageError::IoError(e)),
+        Err(e) => return (ImgOpenResult::Failure(ImageError::IoError(e)), None),
     };
+    
+    let form = reader.format();
 
     return match reader.decode() { // Return format too?
-        Ok(img_buff) => ImgOpenResult::Success(img_buff),
-        Err(e) => ImgOpenResult::Failure(e),
+        Ok(img_buff) => (ImgOpenResult::Success(img_buff), form),
+        Err(e) => (ImgOpenResult::Failure(e), None),
     };
 }
 
@@ -161,16 +164,15 @@ pub fn save_image() { // NOTE should this be here or some IO saving module? mayb
     todo!()
 }
 
-pub fn get_image_info(img: &Option<DynamicImage>) -> ImageInfo {
+pub fn get_image_info(img: &Option<DynamicImage>, format: Option<ImageFormat>) -> ImageInfo {
     if img.is_none() {
         return ImageInfo::default();
     }
     let img = img.as_ref().unwrap();
 
-    let format = None; // HACK hardcoded
     let dimensions = (img.width(), img.height());
     let aspect_ratio = dimensions.0 as f32 / dimensions.1 as f32;
-    let bytesize = img.as_bytes().len();
+    let bytesize = img.as_bytes().len() as u64;
 
     return ImageInfo::new(format, dimensions, aspect_ratio, bytesize);
 }
