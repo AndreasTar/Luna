@@ -1,7 +1,7 @@
 use iced::{theme::Palette, Color, Background};
 
 
-pub const VERSION: luna::Version = luna::Version::new(0, 0, 3);
+pub const VERSION: luna::Version = luna::Version::new(0, 1, 0);
 
 /// Custom colors for use in Luna UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +41,16 @@ impl LunaColor {
     /// Pure `CYAN` color, rgb: 255 0 255
     #[inline]
     pub const CYAN: Self = Self             { r: 0  , g: 255, b: 255, a: 255 };
+    /// Pure `PURPLE` color, rgb: 128 0 128
+    #[inline]
+    pub const PURPLE: Self = Self           { r: 128, g: 0  , b: 128, a: 255 };
+    /// Pure `GRASS` color, rgb: 0 128 0
+    #[inline]
+    pub const GRASS: Self = Self            { r: 0  , g: 128, b: 0  , a: 255 };
+    /// Pure `ORANGE` color, rgb: 255 128 0
+    #[inline]
+    pub const ORANGE: Self = Self           { r: 255, g: 128, b: 0  , a: 255 };
+
 
 
     /// Slightly off-black color, rgb: 25 25 25
@@ -49,20 +59,21 @@ impl LunaColor {
     /// Dark gray color, rgb: 50 50 50
     #[inline]
     pub const DARK_GRAY: Self = Self        { r: 50 , g: 50 , b: 50 , a: 255 };
+    /// Faded gray color, rgb: 80 80 80
+    #[inline]
+    pub const FADED_GRAY: Self = Self        { r: 80 , g: 80 , b: 80 , a: 255 };
     /// Gray color, rgb: 100 100 100
     #[inline]
     pub const GRAY: Self = Self             { r: 100, g: 100, b: 100, a: 255 };
     /// Light gray color, rgb: 150 150 150
     #[inline]
     pub const LIGHT_GRAY: Self = Self       { r: 150, g: 150, b: 150, a: 255 };
+    /// Lighter gray color, rgb: 180 180 180
+    #[inline]
+    pub const LIGHTER_GRAY: Self = Self       { r: 180, g: 180, b: 180, a: 255 };
     /// Slighty gray white color, rgb: 200 200 200
     #[inline]
     pub const GRAYISH_WHITE: Self = Self    { r: 200, g: 200, b: 200, a: 255 };
-
-
-    /// Pure `PURPLE` color, rgb: 128 0 128
-    #[inline]
-    pub const PURPLE: Self = Self           { r: 128, g: 0  , b: 128, a: 255 };
 
 
     /// A deep purple-blue color mix, like the sea on a night clear sky, rgb: 43 10 94
@@ -89,6 +100,10 @@ impl LunaColor {
     /// A very light purple color, rgb: 167 145 201
     #[inline]
     pub const LILY: Self = Self             { r: 167, g: 145, b: 201, a: 255 };
+
+    /// A slightly reddish pink color, rgb: 255 20 147
+    #[inline]
+    pub const BRIGHT_PINK: Self = Self      { r: 255, g: 20 , b: 147, a: 255 };
 
 
     /// A deep dark blue with a hint of purple, rgb: 28 8 59
@@ -146,7 +161,7 @@ impl Into<Background> for LunaColor {
     }
 }
 
-// TODO convert these to LunaColor, and then add a method to convert them to iced::Color
+
 pub struct LunaPallete {
     pub primary: LunaColor,
     pub secondary: LunaColor,
@@ -182,6 +197,8 @@ pub struct LunaPallete {
 
 impl LunaPallete {
 
+    /// Purely white, black and gray colors **EXCEPT** for the important ones, like `success`, `warning` etc.
+    /// For the **pure** monochrome, check out [PURE_MONOCHROME_GRAY].
     pub const MONOCHROME_GRAY: Self = Self {
         primary:                LunaColor::BLACK,
         secondary:              LunaColor::DARK_GRAY,
@@ -190,66 +207,104 @@ impl LunaPallete {
 
         text:                   LunaColor::WHITE,
         text_secondary:         LunaColor::GRAYISH_WHITE,
-        text_tertiary:          Color::from_rgb(180 as f32 / 255.0, 180 as f32 / 255.0, 180 as f32 / 255.0),
-        text_quaternary:        Color::from_rgb(160 as f32 / 255.0, 160 as f32 / 255.0, 160 as f32 / 255.0),
+        text_tertiary:          LunaColor::LIGHTER_GRAY,
+        text_quaternary:        LunaColor::LIGHT_GRAY,
 
-        background:             Color::from_rgb(30  as f32 / 255.0, 30  as f32 / 255.0, 30  as f32 / 255.0),
-        background_secondary:   Color::from_rgb(40  as f32 / 255.0, 40  as f32 / 255.0, 40  as f32 / 255.0),
-        background_tertiary:    Color::from_rgb(50  as f32 / 255.0, 50  as f32 / 255.0, 50  as f32 / 255.0),
-        background_quaternary:  Color::from_rgb(60  as f32 / 255.0, 60  as f32 / 255.0, 60  as f32 / 255.0),
+        background:             LunaColor::SPACE_BLACK,
+        background_secondary:   LunaColor::DARK_GRAY,
+        background_tertiary:    LunaColor::FADED_GRAY,
+        background_quaternary:  LunaColor::GRAY,
 
-        border:                 Color::from_rgb(70  as f32 / 255.0, 70  as f32 / 255.0, 70  as f32 / 255.0),
-        border_secondary:       Color::from_rgb(80  as f32 / 255.0, 80  as f32 / 255.0, 80  as f32 / 255.0),
-        border_tertiary:        Color::from_rgb(90  as f32 / 255.0, 90  as f32 / 255.0, 90  as f32 / 255.0),
-        border_quaternary:      Color::from_rgb(100 as f32 / 255.0, 100 as f32 / 255.0, 100 as f32 / 255.0),
+        border:                 LunaColor::LIGHT_GRAY,
+        border_secondary:       LunaColor::LIGHTER_GRAY,
+        border_tertiary:        LunaColor::GRAYISH_WHITE,
+        border_quaternary:      LunaColor::GRAY,
 
-        success:                Color::from_rgb(0   as f32 / 255.0, 128 as f32 / 255.0, 0   as f32 / 255.0),
-        warning:                Color::from_rgb(255 as f32 / 255.0, 165 as f32 / 255.0, 0   as f32 / 255.0),
+        success:                LunaColor::GRASS,
+        warning:                LunaColor::ORANGE,
         error:                  LunaColor::RED,
         info:                   LunaColor::BLUE,
-        danger:                 Color::from_rgb(255 as f32 / 255.0, 20  as f32 / 255.0, 147 as f32 / 255.0),
+        danger:                 LunaColor::BRIGHT_PINK,
 
-        inactive:               Color::from_rgb(120 as f32 / 255.0, 120 as f32 / 255.0, 120 as f32 / 255.0),
-        disabled:               Color::from_rgb(150 as f32 / 255.0, 150 as f32 / 255.0, 150 as f32 / 255.0),
+        inactive:               LunaColor::FADED_GRAY,
+        disabled:               LunaColor::DARK_GRAY,
 
         highlight:              LunaColor::YELLOW,
     };
 
-    pub fn new() -> Self {
-        return LunaPallete {
-            primary:                Color::from_rgb8(255, 255, 255),
-            secondary:              Color::from_rgb8(255, 255, 255),
-            tertiary:               Color::from_rgb8(255, 255, 255),
-            quaternary:             Color::from_rgb8(255, 255, 255),
+    /// Purely white, black and gray colors **INCLUDING** the important ones, like `success`, `warning` etc.
+    /// For the **non-pure** monochrome version, check out [MONOCHROME_GRAY].
+    pub const PURE_MONOCHROME_GRAY: Self = Self {
+        primary:                LunaColor::BLACK,
+        secondary:              LunaColor::DARK_GRAY,
+        tertiary:               LunaColor::GRAY,
+        quaternary:             LunaColor::LIGHT_GRAY,
 
-            text:                   Color::WHITE,
-            text_secondary:         Color::from_rgb8(255, 255, 255),
-            text_tertiary:          Color::from_rgb8(255, 255, 255),
-            text_quaternary:        Color::from_rgb8(255, 255, 255),
+        text:                   LunaColor::WHITE,
+        text_secondary:         LunaColor::GRAYISH_WHITE,
+        text_tertiary:          LunaColor::LIGHTER_GRAY,
+        text_quaternary:        LunaColor::LIGHT_GRAY,
 
-            background:             Color::from_rgb8(255, 255, 255),
-            background_secondary:   Color::from_rgb8(255, 255, 255),
-            background_tertiary:    Color::from_rgb8(255, 255, 255),
-            background_quaternary:  Color::from_rgb8(255, 255, 255),
+        background:             LunaColor::SPACE_BLACK,
+        background_secondary:   LunaColor::DARK_GRAY,
+        background_tertiary:    LunaColor::FADED_GRAY,
+        background_quaternary:  LunaColor::GRAY,
 
-            border:                 Color::from_rgb8(255, 255, 255),
-            border_secondary:       Color::from_rgb8(255, 255, 255),
-            border_tertiary:        Color::from_rgb8(255, 255, 255),
-            border_quaternary:      Color::from_rgb8(255, 255, 255),
+        border:                 LunaColor::LIGHT_GRAY,
+        border_secondary:       LunaColor::LIGHTER_GRAY,
+        border_tertiary:        LunaColor::GRAYISH_WHITE,
+        border_quaternary:      LunaColor::GRAY,
 
-            success:                Color::from_rgb8(255, 255, 255),
-            warning:                Color::from_rgb8(255, 255, 255),
-            error:                  Color::from_rgb8(255, 255, 255),
-            info:                   Color::from_rgb8(255, 255, 255),
-            danger:                 Color::from_rgb8(255, 255, 255),
+        success:                LunaColor::WHITE,
+        warning:                LunaColor::GRAY,
+        error:                  LunaColor::DARK_GRAY,
+        info:                   LunaColor::LIGHT_GRAY,
+        danger:                 LunaColor::GRAYISH_WHITE,
 
-            inactive:               Color::from_rgb8(255, 255, 255),
-            disabled:               Color::from_rgb8(255, 255, 255),
+        inactive:               LunaColor::FADED_GRAY,
+        disabled:               LunaColor::DARK_GRAY,
 
-            highlight:              Color::from_rgb8(255, 255, 255),
+        highlight:              LunaColor::WHITE,
+    };
+
+    pub fn new() -> Self { return Self::default(); }
+}
+
+impl Default for LunaPallete{
+    fn default() -> Self {
+        return Self {
+            primary:                LunaColor::WHITE,
+            secondary:              LunaColor::WHITE,
+            tertiary:               LunaColor::WHITE,
+            quaternary:             LunaColor::WHITE,
+
+            text:                   LunaColor::WHITE,
+            text_secondary:         LunaColor::WHITE,
+            text_tertiary:          LunaColor::WHITE,
+            text_quaternary:        LunaColor::WHITE,
+
+            background:             LunaColor::WHITE,
+            background_secondary:   LunaColor::WHITE,
+            background_tertiary:    LunaColor::WHITE,
+            background_quaternary:  LunaColor::WHITE,
+
+            border:                 LunaColor::WHITE,
+            border_secondary:       LunaColor::WHITE,
+            border_tertiary:        LunaColor::WHITE,
+            border_quaternary:      LunaColor::WHITE,
+
+            success:                LunaColor::WHITE,
+            warning:                LunaColor::WHITE,
+            error:                  LunaColor::WHITE,
+            info:                   LunaColor::WHITE,
+            danger:                 LunaColor::WHITE,
+
+            inactive:               LunaColor::WHITE,
+            disabled:               LunaColor::WHITE,
+
+            highlight:              LunaColor::WHITE,
         };
     }
-
 }
 
 mod buttons {
