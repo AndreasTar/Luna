@@ -14,7 +14,7 @@ use iced::{alignment, widget::{button, container, keyed::column, scrollable, tex
 // TODO add popup for symbols like π, φ, etc
 // TODO add help menu or something that explains the logic behind number conversion
 
-const VERSION: luna::Version = luna::Version::new(1, 0, 0);
+pub const VERSION: luna::Version = luna::Version::new(1, 0, 0);
 
 #[derive(Debug, Clone)]
 pub enum BC_Message{
@@ -275,7 +275,7 @@ impl UI_BaseConverter {
                                         .rounded(5)
                                         .color(LunaColor::PURPLE_LIGHT),
                                     button::Status::Pressed => {
-                                        style.background = Some(LunaColor::PURPLE_MIDNIGHT.into());
+                                        style.background = Some(LunaColor::PURPLER_NIGHT.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
@@ -314,7 +314,7 @@ impl UI_BaseConverter {
                                         .rounded(5)
                                         .color(LunaColor::PURPLE_LIGHT),
                                     button::Status::Pressed => {
-                                        style.background = Some(LunaColor::PURPLE_MIDNIGHT.into());
+                                        style.background = Some(LunaColor::PURPLER_NIGHT.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
@@ -478,7 +478,7 @@ fn converter_style(theme: &Theme, status: text_input::Status) -> text_input::Sty
         },
 
         text_input::Status::Hovered => text_input::Style {
-            background: LunaColor::PURPLE_MIDNIGHT.into(),
+            background: LunaColor::PURPLER_NIGHT.into(),
             border: Border::default()
                 .width(1)
                 .color(LunaColor::PURPLE_LIGHT)

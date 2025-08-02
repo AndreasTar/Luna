@@ -8,7 +8,7 @@ use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-const VERSION: luna::Version = luna::Version::new(0, 2, 4);
+pub const VERSION: luna::Version = luna::Version::new(0, 2, 4);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
