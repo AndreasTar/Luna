@@ -1,6 +1,6 @@
 use luna::number_converter;
 
-use crate::tools::*;
+use crate::{helpers::styling::LunaColor, tools::*};
 
 use iced::{alignment, widget::{button, container, keyed::column, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Color, Theme};
 
@@ -162,7 +162,7 @@ impl UI_BaseConverter {
         .height(iced::Length::FillPortion(1))
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
-                .background(Color::from_rgb(0.1, 0.1, 0.1))
+                .background(LunaColor::SPACE_BLACK)
                 .border(Border::default().rounded(10));
             return style;
         })
@@ -226,7 +226,7 @@ impl UI_BaseConverter {
         .width(iced::Length::Fill)
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
-                .background(Color::from_rgb8(22,2,54))
+                .background(LunaColor::DEEPSEA_BLUE)
                 .border(Border::default().rounded(10));
             return style;
         })
@@ -262,8 +262,8 @@ impl UI_BaseConverter {
                                 let palette = theme.extended_palette();
 
                                 let mut style = button::Style { 
-                                    background: Some(Color::from_rgb8(43,10,94).into()), 
-                                    text_color: Color::from_rgb8(219, 197, 252).into(), 
+                                    background: Some(LunaColor::PURPLE_NIGHT.into()),
+                                    text_color: LunaColor::PURPLISH_WHITE.into(), 
                                     border: Border::default().rounded(5), 
                                     shadow: iced::Shadow::default()
                                 };
@@ -273,21 +273,21 @@ impl UI_BaseConverter {
                                     button::Status::Hovered => style.border = Border::default()
                                         .width(1)
                                         .rounded(5)
-                                        .color(Color::from_rgb8(123, 100, 158)),
+                                        .color(LunaColor::PURPLE_LIGHT),
                                     button::Status::Pressed => {
-                                        style.background = Some(Color::from_rgb8(51, 17, 102).into());
+                                        style.background = Some(LunaColor::PURPLE_MIDNIGHT.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(Color::from_rgb8(167, 145, 201));
+                                            .color(LunaColor::LILY);
                                     },
                                     button::Status::Disabled => {
-                                        style.background = Some(Color::from_rgb8(28, 8, 59).into());
-                                        style.text_color = Color::from_rgb8(199, 58, 161).into();
+                                        style.background = Some(LunaColor::DEEPSEA_MIDNIGHT.into());
+                                        style.text_color = LunaColor::LIGHT_MAGENTA.into();
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(Color::from_rgb8(87, 26, 70));
+                                            .color(LunaColor::LIGHT_MAGENTA);
                                     },
                                 }
 
@@ -301,8 +301,8 @@ impl UI_BaseConverter {
                                 let palette = theme.extended_palette();
 
                                 let mut style = button::Style { 
-                                    background: Some(Color::from_rgb8(43,10,94).into()), 
-                                    text_color: Color::from_rgb8(219, 197, 252).into(), 
+                                    background: Some(LunaColor::PURPLE_NIGHT.into()), 
+                                    text_color: LunaColor::PURPLISH_WHITE.into(), 
                                     border: Border::default().rounded(5), 
                                     shadow: iced::Shadow::default()
                                 };
@@ -312,13 +312,13 @@ impl UI_BaseConverter {
                                     button::Status::Hovered => style.border = Border::default()
                                         .width(1)
                                         .rounded(5)
-                                        .color(Color::from_rgb8(123, 100, 158)),
+                                        .color(LunaColor::PURPLE_LIGHT),
                                     button::Status::Pressed => {
-                                        style.background = Some(Color::from_rgb8(51, 17, 102).into());
+                                        style.background = Some(LunaColor::PURPLE_MIDNIGHT.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(Color::from_rgb8(167, 145, 201));
+                                            .color(LunaColor::LILY);
                                     },
                                     button::Status::Disabled => (),
                                 }
@@ -371,7 +371,7 @@ impl UI_BaseConverter {
         .height(iced::Length::FillPortion(3))
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
-                .background(Color::from_rgb8(22,2,54))
+                .background(LunaColor::DEEPSEA_BLUE)
                 .border(Border::default().rounded(10));
             return style;
         })
@@ -466,51 +466,51 @@ fn converter_style(theme: &Theme, status: text_input::Status) -> text_input::Sty
     // TODO also for the future, extract all style managing into its own widget
     match status {
         text_input::Status::Active => text_input::Style {
-            background: Color::from_rgb8(43,10,94).into(),
+            background: LunaColor::PURPLE_NIGHT.into(),
             border: Border::default()
                 .width(1)
-                .color(Color::from_rgb(0.1, 0.1, 0.1))
+                .color(LunaColor::SPACE_BLACK)
                 .rounded(10),
-            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
-            placeholder: Color::from_rgb8(123, 96, 166).into(),
-            value: Color::from_rgb8(219, 197, 252).into(),
-            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
+            icon: LunaColor::RED.into(),
+            placeholder: LunaColor::PURPLER_LIGHT.into(),
+            value: LunaColor::PURPLISH_WHITE.into(),
+            selection: LunaColor::PURPLE_LIGHTER.into(),
         },
 
         text_input::Status::Hovered => text_input::Style {
-            background: Color::from_rgb8(50, 11, 110).into(),
+            background: LunaColor::PURPLE_MIDNIGHT.into(),
             border: Border::default()
                 .width(1)
-                .color(Color::from_rgb8(123, 100, 158))
+                .color(LunaColor::PURPLE_LIGHT)
                 .rounded(10),
-            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
-            placeholder: Color::from_rgb8(123, 96, 166).into(),
-            value: Color::from_rgb8(219, 197, 252).into(),
-            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
+            icon: LunaColor::RED.into(),
+            placeholder: LunaColor::PURPLER_LIGHT.into(),
+            value: LunaColor::PURPLISH_WHITE.into(),
+            selection: LunaColor::PURPLE_LIGHTER.into(),
         },
 
         text_input::Status::Focused => text_input::Style {
-            background: Color::from_rgb8(62, 12, 138).into(),
+            background: LunaColor::PURPLE_AFTERNOON.into(),
             border: Border::default()
                 .width(1)
-                .color(Color::from_rgb8(167, 145, 201))
+                .color(LunaColor::LILY)
                 .rounded(10),
-            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
-            placeholder: Color::from_rgb8(123, 96, 166).into(),
-            value: Color::from_rgb8(219, 197, 252).into(),
-            selection: Color::from_rgba8(143, 111, 191, 0.5).into(),
+            icon: LunaColor::RED.into(),
+            placeholder: LunaColor::PURPLER_LIGHT.into(),
+            value: LunaColor::PURPLISH_WHITE.into(),
+            selection: LunaColor::PURPLE_LIGHTER.into(),
         },
 
         text_input::Status::Disabled => text_input::Style {
-            background: Color::from_rgb8(28, 8, 59).into(),
+            background: LunaColor::DEEPSEA_MIDNIGHT.into(),
             border: Border::default()
                 .width(1)
-                .color(Color::from_rgb8(87, 26, 70))
+                .color(LunaColor::REDISH_MAGENTA)
                 .rounded(10),
-            icon: Color::from_rgb(1.0, 0.0, 0.0).into(),
-            placeholder: Color::from_rgb8(199, 58, 161).into(),
-            value: Color::from_rgb(1.0, 0.0, 0.0).into(),
-            selection: Color::from_rgb(1.0, 1.0, 1.0).into(),
+            icon: LunaColor::RED.into(),
+            placeholder: LunaColor::LIGHT_MAGENTA.into(),
+            value: LunaColor::RED.into(),
+            selection: LunaColor::WHITE.into(),
         },
     }
 }
