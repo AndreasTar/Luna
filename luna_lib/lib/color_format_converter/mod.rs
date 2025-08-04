@@ -2,7 +2,7 @@
 /// 
 /// The conversion is done by mapping the channels of the source color model to the destination color model.
 
-pub const VERSION: crate::Version = crate::Version::new(1, 0, 0);
+pub const VERSION: crate::Version = crate::Version::new(1, 0, 1);
 
 
 // TODO maybe add lume and other formats? needs calculations etc but its fine i think
