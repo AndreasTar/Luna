@@ -1,5 +1,5 @@
 
-pub const VERSION: crate::Version = crate::Version::new(1, 0, 1);
+pub const VERSION: crate::Version = crate::Version::new(1, 1, 0);
 
 /// An error which can be returned when attempting to convert a number to a different radix (base).
 /// 
@@ -291,6 +291,48 @@ pub fn convert_from_decimal(to: usize, num: u32) -> Result<Vec<String>, Conversi
 /// // This panic will be removed in the future, and an error will be returned instead.
 /// ```
 pub fn convert_from_decimal_joined(to: usize, num: u32) -> Result<String, ConversionError> {
+    return convert_from_decimal_joined_with_seperator(to, num, "");
+}
+
+/// Converts a string from base 10 to a number in the given radix (aka base) as a string.
+/// Works the same as `convert_from_decimal` but instead of returning a vector,
+/// it returns a single string, with the digits concatenated together using a custom seperator.
+/// 
+/// `convert_from_decimal_joined` does the same thing but with the seperator being an empty string: ""
+/// Other than that, the two functions are identical. `convert_from_decimal_joined` even calls this function
+/// with the same arguments but the seperator mentioned above.
+/// 
+/// Radix **must** be an integer between 2 and 36 (inclusive). Otherwise, it panics!
+/// Number **must** be a valid integer.
+/// 
+/// ## Arguments
+/// * `to` - The integer radix of the output number (between 2 and 36 inclusive)
+/// * `num` - The input integer number
+/// 
+/// ## Returns
+/// A `Result<String, ConversionError>`, where the `Ok` variant contains the converted number as a string in the target radix,
+/// and the `Err` variant contains a `ConversionError` if the conversion failed.
+/// 
+/// ## Examples
+/// ```rust
+/// # use luna::number_converter::convert_from_decimal_joined;
+/// # use luna::number_converter::convert_from_decimal_joined_with_seperator;
+/// # use luna::number_converter::ConversionError::*;
+/// assert_eq!(convert_from_decimal_joined_with_seperator(5, 4, ""), Ok("4".to_string()));
+/// 
+/// assert_eq!(convert_from_decimal_joined_with_seperator(16, 28, "-"), Ok("1-c".to_string()));
+/// assert_eq!(convert_from_decimal_joined_with_seperator(16, 28, "- !& ."), Ok("1- !& .c".to_string()));
+/// 
+/// assert_eq!(convert_from_decimal_joined_with_seperator(16, 28, ""), convert_from_decimal_joined(16, 28));
+/// 
+/// ```
+/// ```should_panic
+/// # use luna::number_converter::convert_from_decimal_joined_with_seperator;
+/// // If radix isnt between 2 and 36 (inclusive) it panics:
+/// convert_from_decimal_joined_with_seperator(37, 5, " ");
+/// // This panic will be removed in the future, and an error will be returned instead.
+/// ```
+pub fn convert_from_decimal_joined_with_seperator(to: usize, num: u32, sep: &str) -> Result<String, ConversionError> {
     let result = convert_from_decimal(to, num)?; 
-    return Ok(result.join("")); // TODO add custom join seperator?
+    return Ok(result.join(sep));
 }

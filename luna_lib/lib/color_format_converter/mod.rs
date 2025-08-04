@@ -12,10 +12,14 @@ pub const VERSION: crate::Version = crate::Version::new(1, 0, 0);
 pub enum ColorFormat {
     RGBA = 0,
     RGB,
-    BGRA,
-    BGR,
+    RBGA,
+    RBG,
     GRBA,
     GRB,
+    BRGA,
+    BRG,
+    BGRA,
+    BGR,
     GBRA,
     GBR,
 }
@@ -31,14 +35,18 @@ enum Channel {
 }
 
 /// The per-pixel channel order.
-fn channel_order(format: ColorFormat) -> &'static [Channel] { // TODO why is this static?
+fn channel_order(format: ColorFormat) -> &'static [Channel] {
     match format {
         ColorFormat::RGBA => &[Channel::R, Channel::G, Channel::B, Channel::A],
         ColorFormat::RGB  => &[Channel::R, Channel::G, Channel::B],
-        ColorFormat::BGRA => &[Channel::B, Channel::G, Channel::R, Channel::A],
-        ColorFormat::BGR  => &[Channel::B, Channel::G, Channel::R],
+        ColorFormat::RBGA => &[Channel::R, Channel::B, Channel::G, Channel::A],
+        ColorFormat::RBG  => &[Channel::R, Channel::B, Channel::G],
         ColorFormat::GRBA => &[Channel::G, Channel::R, Channel::B, Channel::A],
         ColorFormat::GRB  => &[Channel::G, Channel::R, Channel::B],
+        ColorFormat::BRGA => &[Channel::B, Channel::R, Channel::G, Channel::A],
+        ColorFormat::BRG  => &[Channel::B, Channel::R, Channel::G],
+        ColorFormat::BGRA => &[Channel::B, Channel::G, Channel::R, Channel::A],
+        ColorFormat::BGR  => &[Channel::B, Channel::G, Channel::R],
         ColorFormat::GBRA => &[Channel::G, Channel::B, Channel::R, Channel::A],
         ColorFormat::GBR  => &[Channel::G, Channel::B, Channel::R],
     }
@@ -58,19 +66,19 @@ fn channel_order(format: ColorFormat) -> &'static [Channel] { // TODO why is thi
 /// ## Examples
 ///
 /// ```rust
-/// # use luna::img_manipulator::color_conversion::{convert_vec_color_model, ColorFormat};
+/// # use luna::color_format_converter::{convert_vec_color_model, ColorFormat};
 ///
-/// // Single pixel RGBA → BGR
+/// // Single pixel RGBA -> BGR (reorders & drops alpha)
 /// let rgba = vec![128, 55, 88, 255];
 /// let bgr = convert_vec_color_model(&rgba, ColorFormat::RGBA, ColorFormat::BGR);
 /// assert_eq!(bgr, vec![88, 55, 128]);
 ///
-/// // Single pixel RGB → BGRA (alpha default to 255)
+/// // Single pixel RGB -> BGRA (alpha default to 255)
 /// let rgb = vec![10, 20, 30];
 /// let bgra = convert_vec_color_model(&rgb, ColorFormat::RGB, ColorFormat::BGRA);
 /// assert_eq!(bgra, vec![30, 20, 10, 255]);
 ///
-/// // Two pixels RGBA → RGB (drops alpha)
+/// // Two pixels RGBA -> RGB (drops alpha)
 /// let two_rgba = vec![1, 2, 3, 255,  4, 5, 6, 128];
 /// let two_rgb = convert_vec_color_model(&two_rgba, ColorFormat::RGBA, ColorFormat::RGB);
 /// assert_eq!(two_rgb, vec![1, 2, 3,  4, 5, 6]);

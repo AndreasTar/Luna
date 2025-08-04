@@ -172,7 +172,7 @@ pub enum ScaledOn {
 //     let halfsize = Vec2::new((size[0]/2).into(),(size[1]/2).into());
 //     let fullsize = Vec2::new(size[0].into(), size[1].into());
 
-//     if debug { // TODO change this to cfg debug
+//     if debug {
 //         println!("{uiSize} {uitl} {uibr} {center} {halfsize} {fullsize}");
 //     }
 
