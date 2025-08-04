@@ -1,8 +1,12 @@
-use iced::{theme::Palette, Color, Background};
+use iced::{
+    theme::Palette,
+    Color,
+    Background
+};
 
 // TODO create widget page for managing this
 
-pub const VERSION: luna::Version = luna::Version::new(0, 1, 0);
+pub const VERSION: luna::Version = luna::Version::new(0, 1, 1);
 
 /// Custom colors for use in Luna UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

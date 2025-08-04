@@ -1,8 +1,26 @@
 use luna::number_converter;
 
-use crate::{helpers::styling::{LunaColor, LunaPallete}, tools::*};
+use crate::{
+    helpers::styling::{
+        LunaColor, LunaPallete
+    },
+    tools::*};
 
-use iced::{alignment, widget::{button, container, keyed::column, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Theme};
+use iced::{
+    alignment,
+    widget::{
+        button,
+        container,
+        keyed::column,
+        scrollable,
+        text::LineHeight,
+        text_input,
+        Text,
+        TextInput
+    },
+    Border,
+    Theme
+};
 
 
 

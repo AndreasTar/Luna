@@ -1,14 +1,36 @@
 use std::io::Read;
 
 use crate::tools::*;
-use iced::{advanced::{self, graphics::layer}, widget::{button, checkbox, image as iced_image, pick_list, scrollable, Text}};
-use iced_aw::{menu::{self, Item, Menu}, menu_bar, menu_items, MenuBar};
+use iced::{
+    advanced::{
+        self,
+        graphics::layer
+    },
+    widget::{
+        button,
+        checkbox,
+        image as iced_image,
+        pick_list,
+        scrollable,
+        Text
+    }
+};
+use iced_aw::{
+    menu::{
+        self,
+        Item,
+        Menu
+    },
+    menu_bar,
+    menu_items,
+    MenuBar
+};
 
 use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-pub const VERSION: luna::Version = luna::Version::new(0, 2, 4);
+pub const VERSION: luna::Version = luna::Version::new(0, 2, 5);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
@@ -195,7 +217,8 @@ impl UI_ImgManipulator {
                     },
                     IM_Message::Request_ClearImage => {
                         self.og_image = None;
-                        self.res_image = None; // BUG image isnt cleared, it is inactive tho
+                        self.res_image = None;
+                        self.res_image_info = None;
                         self.update_image();
                     },
                     IM_Message::Request_ClearLayers => {
@@ -266,20 +289,22 @@ impl UI_ImgManipulator {
 
         let img_info = self.res_image_info.clone().unwrap_or_default();
 
-        let img_rgba = match &self.res_image {
-            Some(img) => { 
-                luna_imgman::into_rgba8(img)
+        let img_handle = match &self.res_image {
+            Some(img) => {
+                advanced::image::Handle::from_rgba(
+                    img_info.dimensions.0, 
+                    img_info.dimensions.1, 
+                    luna_imgman::into_rgba8(img)
+                )
             },
             None => {
-                vec![0_u8; 0]
+                advanced::image::Handle::from_rgba(
+                    1, 
+                    1, 
+                    vec![0_u8; 4]
+                )
             },
         };
-
-        let img_handle = advanced::image::Handle::from_rgba(
-            img_info.dimensions.0, 
-            img_info.dimensions.1, 
-            img_rgba
-        );
 
         // show final image, even if it is the same as the original
         // holds the image and info like pixels and format
@@ -290,7 +315,7 @@ impl UI_ImgManipulator {
                     .filter_method(iced_image::FilterMethod::Nearest) // TODO add button for nearest or linear
                     .width(Length::Fill)
                     .height(Length::Fill),
-                Text::new(img_info.to_string()), // TODO add more image info
+                Text::new(img_info.to_string()),
             ])
             .width(Length::FillPortion(4))
             .height(Length::FillPortion(4));
