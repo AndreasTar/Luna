@@ -1,8 +1,8 @@
 use luna::number_converter;
 
-use crate::{helpers::styling::LunaColor, tools::*};
+use crate::{helpers::styling::{LunaColor, LunaPallete}, tools::*};
 
-use iced::{alignment, widget::{button, container, keyed::column, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Color, Theme};
+use iced::{alignment, widget::{button, container, keyed::column, scrollable, text::LineHeight, text_input, Text, TextInput}, Border, Theme};
 
 
 
@@ -14,7 +14,7 @@ use iced::{alignment, widget::{button, container, keyed::column, scrollable, tex
 // TODO add popup for symbols like π, φ, etc
 // TODO add help menu or something that explains the logic behind number conversion
 
-pub const VERSION: luna::Version = luna::Version::new(1, 0, 0);
+pub const VERSION: luna::Version = luna::Version::new(1, 0, 1);
 
 #[derive(Debug, Clone)]
 pub enum BC_Message{
@@ -150,11 +150,13 @@ impl UI_BaseConverter {
 
     fn layout(&self) -> Container<BC_Message> {
 
+        let palette = &LunaPallete::NIGHT_SKY;
+
         let title_section = Container::new(
             Text::new(&self.main_title)
                 .size(20)
                 .center()
-                .color(Color::WHITE)
+                .color(palette.text_secondary)
                 .wrapping(iced::widget::text::Wrapping::None)
         )
         .center(50)
@@ -162,7 +164,7 @@ impl UI_BaseConverter {
         .height(iced::Length::FillPortion(1))
         .style(|theme: &Theme| {
             let mut style = container::Style::default()
-                .background(LunaColor::SPACE_BLACK)
+                .background(palette.background)
                 .border(Border::default().rounded(10));
             return style;
         })
@@ -172,7 +174,7 @@ impl UI_BaseConverter {
         //     Text::new(&self.main_title)
         //         .size(30)
         //         .center()
-        //         .color(Color::WHITE)
+        //         .color(palette.error)
         //         .wrapping(iced::widget::text::Wrapping::None);
 
         let predef_converters = Container::new(
@@ -224,10 +226,10 @@ impl UI_BaseConverter {
         .center(50)
         .height(iced::Length::FillPortion(2))
         .width(iced::Length::Fill)
-        .style(|theme: &Theme| {
+        .style(|_| {
             let mut style = container::Style::default()
-                .background(LunaColor::DEEPSEA_BLUE)
-                .border(Border::default().rounded(10));
+                .background(palette.background)
+                .border(Border::default().rounded(10)); // BUG the middle between the two sections also has border rounding
             return style;
         })
         .padding(10);
@@ -259,11 +261,10 @@ impl UI_BaseConverter {
                             .width(iced::Length::Fixed(30.0))
                             .height(iced::Length::Fixed(30.0))
                             .style(|theme: &Theme, status| {
-                                let palette = theme.extended_palette();
 
                                 let mut style = button::Style { 
-                                    background: Some(LunaColor::PURPLE_NIGHT.into()),
-                                    text_color: LunaColor::PURPLISH_WHITE.into(), 
+                                    background: Some(palette.secondary.into()),
+                                    text_color: palette.text.into(), 
                                     border: Border::default().rounded(5), 
                                     shadow: iced::Shadow::default()
                                 };
@@ -273,21 +274,21 @@ impl UI_BaseConverter {
                                     button::Status::Hovered => style.border = Border::default()
                                         .width(1)
                                         .rounded(5)
-                                        .color(LunaColor::PURPLE_LIGHT),
+                                        .color(palette.border_secondary),
                                     button::Status::Pressed => {
-                                        style.background = Some(LunaColor::PURPLER_NIGHT.into());
+                                        style.background = Some(palette.primary.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(LunaColor::LILY);
+                                            .color(palette.border_tertiary);
                                     },
                                     button::Status::Disabled => {
-                                        style.background = Some(LunaColor::DEEPSEA_MIDNIGHT.into());
-                                        style.text_color = LunaColor::LIGHT_MAGENTA.into();
+                                        style.background = Some(palette.background_tertiary.into());
+                                        style.text_color = palette.text_quaternary.into();
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(LunaColor::LIGHT_MAGENTA);
+                                            .color(palette.text_quaternary);
                                     },
                                 }
 
@@ -298,11 +299,10 @@ impl UI_BaseConverter {
                             .width(iced::Length::Fixed(30.0))
                             .height(iced::Length::Fixed(30.0))
                             .style(|theme: &Theme, status| {
-                                let palette = theme.extended_palette();
 
                                 let mut style = button::Style { 
-                                    background: Some(LunaColor::PURPLE_NIGHT.into()), 
-                                    text_color: LunaColor::PURPLISH_WHITE.into(), 
+                                    background: Some(palette.secondary.into()), 
+                                    text_color: palette.text.into(), 
                                     border: Border::default().rounded(5), 
                                     shadow: iced::Shadow::default()
                                 };
@@ -312,13 +312,13 @@ impl UI_BaseConverter {
                                     button::Status::Hovered => style.border = Border::default()
                                         .width(1)
                                         .rounded(5)
-                                        .color(LunaColor::PURPLE_LIGHT),
+                                        .color(palette.border_secondary),
                                     button::Status::Pressed => {
-                                        style.background = Some(LunaColor::PURPLER_NIGHT.into());
+                                        style.background = Some(palette.primary.into());
                                         style.border = Border::default()
                                             .width(1)
                                             .rounded(5)
-                                            .color(LunaColor::LILY);
+                                            .color(palette.border_tertiary);
                                     },
                                     button::Status::Disabled => (),
                                 }
@@ -369,10 +369,10 @@ impl UI_BaseConverter {
         .center(50)
         .width(iced::Length::Fill)
         .height(iced::Length::FillPortion(3))
-        .style(|theme: &Theme| {
+        .style(move |_| {
             let mut style = container::Style::default()
-                .background(LunaColor::DEEPSEA_BLUE)
-                .border(Border::default().rounded(10));
+                .background(palette.background)
+                .border(Border::default().rounded(10)); // BUG the middle between the two sections also has border rounding
             return style;
         })
         .padding(1);
@@ -459,58 +459,56 @@ fn run_once() {
 }
 
 #[inline]
-fn converter_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
-    let palette = theme.extended_palette();
+fn converter_style(_: &Theme, status: text_input::Status) -> text_input::Style {
+    let palette = &LunaPallete::NIGHT_SKY;
 
-    // TODO extract the colors into variables, also for the code above
-    // TODO also for the future, extract all style managing into its own widget
     match status {
         text_input::Status::Active => text_input::Style {
-            background: LunaColor::PURPLE_NIGHT.into(),
+            background: palette.secondary.into(),
             border: Border::default()
                 .width(1)
-                .color(LunaColor::SPACE_BLACK)
+                .color(palette.background_secondary)
                 .rounded(10),
-            icon: LunaColor::RED.into(),
-            placeholder: LunaColor::PURPLER_LIGHT.into(),
-            value: LunaColor::PURPLISH_WHITE.into(),
-            selection: LunaColor::PURPLE_LIGHTER.into(),
+            icon: palette.error.into(),
+            placeholder: palette.text_secondary.into(),
+            value: palette.text.into(),
+            selection: palette.highlight.into(),
         },
 
         text_input::Status::Hovered => text_input::Style {
-            background: LunaColor::PURPLER_NIGHT.into(),
+            background: palette.primary.into(),
             border: Border::default()
                 .width(1)
-                .color(LunaColor::PURPLE_LIGHT)
+                .color(palette.border_secondary)
                 .rounded(10),
-            icon: LunaColor::RED.into(),
-            placeholder: LunaColor::PURPLER_LIGHT.into(),
-            value: LunaColor::PURPLISH_WHITE.into(),
-            selection: LunaColor::PURPLE_LIGHTER.into(),
+            icon: palette.error.into(),
+            placeholder: palette.text_secondary.into(),
+            value: palette.text.into(),
+            selection: palette.highlight.into(),
         },
 
         text_input::Status::Focused => text_input::Style {
-            background: LunaColor::PURPLE_AFTERNOON.into(),
+            background: palette.text_tertiary.into(),
             border: Border::default()
                 .width(1)
-                .color(LunaColor::LILY)
+                .color(palette.border_tertiary)
                 .rounded(10),
-            icon: LunaColor::RED.into(),
-            placeholder: LunaColor::PURPLER_LIGHT.into(),
-            value: LunaColor::PURPLISH_WHITE.into(),
-            selection: LunaColor::PURPLE_LIGHTER.into(),
+            icon: palette.error.into(),
+            placeholder: palette.text_secondary.into(),
+            value: palette.text.into(),
+            selection: palette.highlight.into(),
         },
 
         text_input::Status::Disabled => text_input::Style {
-            background: LunaColor::DEEPSEA_MIDNIGHT.into(),
+            background: palette.background_tertiary.into(),
             border: Border::default()
                 .width(1)
-                .color(LunaColor::REDISH_MAGENTA)
+                .color(palette.border_quaternary)
                 .rounded(10),
-            icon: LunaColor::RED.into(),
-            placeholder: LunaColor::LIGHT_MAGENTA.into(),
-            value: LunaColor::RED.into(),
-            selection: LunaColor::WHITE.into(),
+            icon: palette.error.into(),
+            placeholder: palette.text_quaternary.into(),
+            value: palette.error.into(),
+            selection: palette.error.into(),
         },
     }
 }

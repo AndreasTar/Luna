@@ -1,5 +1,6 @@
 use iced::{theme::Palette, Color, Background};
 
+// TODO create widget page for managing this
 
 pub const VERSION: luna::Version = luna::Version::new(0, 1, 0);
 
@@ -162,6 +163,7 @@ impl Into<Background> for LunaColor {
 }
 
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LunaPallete {
     pub primary: LunaColor,
     pub secondary: LunaColor,
@@ -267,10 +269,48 @@ impl LunaPallete {
         highlight:              LunaColor::WHITE,
     };
 
+    /// The main color pallete used during development. Mainly dark purple and blue, with a
+    /// slight magenta-red color for important things.
+    pub const NIGHT_SKY: Self = Self {
+        primary:                LunaColor::PURPLER_NIGHT,
+        secondary:              LunaColor::PURPLE_NIGHT,
+        tertiary:               LunaColor::WHITE,
+        quaternary:             LunaColor::WHITE,
+
+        text:                   LunaColor::PURPLISH_WHITE,
+        text_secondary:         LunaColor::PURPLER_LIGHT,
+        text_tertiary:          LunaColor::PURPLE_AFTERNOON,
+        text_quaternary:        LunaColor::LIGHT_MAGENTA,
+
+        background:             LunaColor::DEEPSEA_BLUE,
+        background_secondary:   LunaColor::SPACE_BLACK,
+        background_tertiary:    LunaColor::DEEPSEA_MIDNIGHT,
+        background_quaternary:  LunaColor::WHITE,
+
+        border:                 LunaColor::SPACE_BLACK,
+        border_secondary:       LunaColor::PURPLE_LIGHT,
+        border_tertiary:        LunaColor::LILY,
+        border_quaternary:      LunaColor::REDISH_MAGENTA,
+
+        success:                LunaColor::WHITE,
+        warning:                LunaColor::WHITE,
+        error:                  LunaColor::RED,
+        info:                   LunaColor::WHITE,
+        danger:                 LunaColor::WHITE,
+
+        inactive:               LunaColor::WHITE,
+        disabled:               LunaColor::WHITE,
+
+        highlight:              LunaColor::PURPLE_LIGHTER,
+    };
+
+    /// Returns a new instance of LunaPallete, comprised of pure white `LunaColor::WHITE` for everything.
     pub fn new() -> Self { return Self::default(); }
 }
 
 impl Default for LunaPallete{
+
+    // Returns a new instance of LunaPallete, comprised of pure white `LunaColor::WHITE` for everything.
     fn default() -> Self {
         return Self {
             primary:                LunaColor::WHITE,
