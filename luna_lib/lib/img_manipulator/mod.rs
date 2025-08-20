@@ -2,7 +2,7 @@
 use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
 use bytesize::ByteSize;
 
-pub const VERSION: crate::Version = crate::Version::new(0, 3, 0);
+pub const VERSION: crate::Version = crate::Version::new(0, 3, 1);
 
 /// An enum which can be returned when attempting to open an image from a path and decode it.
 /// It can either be a success with the decoded image, or a failure with an [ImageError].
@@ -60,7 +60,6 @@ impl ImgOpenResult {
     
 }
 
-// NOTE maybe convert to Option for all parameters instead of 0?
 /// A struct which contains information about an image, such as its format, dimensions, aspect ratio, etc.
 #[derive(Clone, Debug)]
 pub struct ImageInfo {
@@ -70,14 +69,14 @@ pub struct ImageInfo {
     pub format: Option<ImageFormat>,
     /// The dimensions of the image, represented as a tuple of (width, height), as u32 values.
     /// If the dimensions are unknown, this will be (0, 0).
-    pub dimensions: (u32, u32),
+    pub dimensions: Option<(u32, u32)>,
     /// The aspect ratio of the image, represented as a f32 value.
     /// If the aspect ratio is unknown, this will be 0.0.
-    pub aspect_ratio: f32,
+    pub aspect_ratio: Option<f32>,
     /// The size of the image in bytes, represented using the `ByteSize` struct.
     /// If the size is unknown, this will be `ByteSize(0)`.
     /// See [ByteSize](https://docs.rs/bytesize/latest/bytesize/struct.ByteSize.html) for more details.
-    pub bytesize: ByteSize,
+    pub bytesize: Option<ByteSize>,
 }
 
 impl ImageInfo {
@@ -97,10 +96,10 @@ impl ImageInfo {
     ) -> Self {
 
         return Self {
-            format,
-            dimensions,
-            aspect_ratio,
-            bytesize: ByteSize(bytesize),
+            format: format,
+            dimensions: Some(dimensions),
+            aspect_ratio: Some(aspect_ratio),
+            bytesize: Some(ByteSize(bytesize)),
         };
     }
 }
@@ -109,9 +108,9 @@ impl Default for ImageInfo {
     fn default() -> Self {
         return Self {
             format: None,
-            dimensions: (0, 0),
-            aspect_ratio: 0.0,
-            bytesize: ByteSize(0),
+            dimensions: None,
+            aspect_ratio: None,
+            bytesize: None,
         };
     }
 }
@@ -146,9 +145,9 @@ impl ToString for ImageInfo {
         return format!(
             "Format: {}, Dimensions: {}, Aspect Ratio: {:.3}, Bytesize: {}",
             form, 
-            if self.dimensions.0 > 0 && self.dimensions.1 > 0 { format!("{}x{}", self.dimensions.0, self.dimensions.1) } else { "NA".to_string() }, 
-            if self.aspect_ratio > 0.0 { self.aspect_ratio.to_string() } else { "NA".to_string() }, 
-            if self.bytesize > bytesize::ByteSize(0) { self.bytesize.display().iec().to_string() } else { "NA".to_string() }
+            if self.dimensions.is_some_and(|x| x.0 > 0 && x.1 > 0) { format!("{}x{}", self.dimensions.unwrap().0, self.dimensions.unwrap().1) } else { "NA".to_string() }, 
+            if self.aspect_ratio.is_some_and(|x| x > 0.0) { self.aspect_ratio.unwrap().to_string() } else { "NA".to_string() }, 
+            if self.bytesize.is_some_and(|x| x > bytesize::ByteSize(0)) { self.bytesize.unwrap().display().iec().to_string() } else { "NA".to_string() }
         );
     }
 }

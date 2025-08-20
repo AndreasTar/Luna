@@ -1,7 +1,7 @@
 [package]
 name = "luna"
 description = "A library housing various helpful utilities, created for the Luna project: https://github.com/AndreasTar/Luna"
-version = "0.1.6"
+version = "0.1.7"
 authors = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
@@ -26,8 +26,13 @@ doc = true             # Is documented by default.
 crate-type = ["lib"]   # The crate types to generate.
 
 [features]
+all = [
+    "number_converter",
+    "img_manipulator",
+    "color_format_converter"
+]
 default = ["number_converter", "img_manipulator"]
 number_converter = []
 img_manipulator = ["dep:image", "bytesize"]
-img_to_ascii = ["img_manipulator"]
+#img_to_ascii = ["img_manipulator"]
 color_format_converter = []

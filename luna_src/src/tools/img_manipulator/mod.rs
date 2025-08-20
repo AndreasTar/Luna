@@ -30,7 +30,7 @@ use image::DynamicImage;
 use luna::img_manipulator as luna_imgman;
 use rfd::FileDialog;
 
-pub const VERSION: luna::Version = luna::Version::new(0, 2, 5);
+pub const VERSION: luna::Version = luna::Version::new(0, 2, 6);
 
 #[derive(Debug, Clone)]
 pub enum IM_Message{
@@ -292,8 +292,8 @@ impl UI_ImgManipulator {
         let img_handle = match &self.res_image {
             Some(img) => {
                 advanced::image::Handle::from_rgba(
-                    img_info.dimensions.0, 
-                    img_info.dimensions.1, 
+                    img_info.dimensions.unwrap().0, 
+                    img_info.dimensions.unwrap().1, 
                     luna_imgman::into_rgba8(img)
                 )
             },

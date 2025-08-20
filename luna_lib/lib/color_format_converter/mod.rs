@@ -1,8 +1,8 @@
-/// This module provides a function to convert a vector of bytes representing pixel data from one color model to another.
-/// 
-/// The conversion is done by mapping the channels of the source color model to the destination color model.
+//! This module provides a function to convert a vector of bytes representing pixel data from one color model to another.
+//! 
+//! The conversion is done by mapping the channels of the source color model to the destination color model.
 
-pub const VERSION: crate::Version = crate::Version::new(1, 0, 1);
+pub const VERSION: crate::Version = crate::Version::new(1, 0, 3);
 
 
 // TODO maybe add lume and other formats? needs calculations etc but its fine i think
@@ -60,8 +60,8 @@ fn channel_order(format: ColorFormat) -> &'static [Channel] {
 /// - `to`: destination color model (e.g. `ColorFormat::BGR`)
 ///
 /// ## Returns
-/// A new `Vec<u8>` whose length is `pixel_count * to.channel_count()`, or an empty vector
-/// if the input length isn’t a multiple of the source channel count.
+/// A `Result` containing either a new `Vec<u8>` whose length is `pixel_count * to.channel_count()`, or an empty Error if the conversion failed,
+/// if the input length isn’t a multiple of the source channel count, or if the source and destination formats are the same.
 ///
 /// ## Examples
 ///
@@ -71,21 +71,26 @@ fn channel_order(format: ColorFormat) -> &'static [Channel] {
 /// // Single pixel RGBA -> BGR (reorders & drops alpha)
 /// let rgba = vec![128, 55, 88, 255];
 /// let bgr = convert_vec_color_model(&rgba, ColorFormat::RGBA, ColorFormat::BGR);
-/// assert_eq!(bgr, vec![88, 55, 128]);
+/// assert_eq!(bgr, Ok(vec![88, 55, 128]));
 ///
 /// // Single pixel RGB -> BGRA (alpha default to 255)
 /// let rgb = vec![10, 20, 30];
 /// let bgra = convert_vec_color_model(&rgb, ColorFormat::RGB, ColorFormat::BGRA);
-/// assert_eq!(bgra, vec![30, 20, 10, 255]);
+/// assert_eq!(bgra, Ok(vec![30, 20, 10, 255]));
 ///
 /// // Two pixels RGBA -> RGB (drops alpha)
 /// let two_rgba = vec![1, 2, 3, 255,  4, 5, 6, 128];
 /// let two_rgb = convert_vec_color_model(&two_rgba, ColorFormat::RGBA, ColorFormat::RGB);
-/// assert_eq!(two_rgb, vec![1, 2, 3,  4, 5, 6]);
+/// assert_eq!(two_rgb, Ok(vec![1, 2, 3,  4, 5, 6]));
+/// 
+/// // Same format RGBA -> RGBA (returns `Err(())`)
+/// let rgba = vec![128, 55, 88, 255];
+/// let rgba_err = convert_vec_color_model(&rgba, ColorFormat::RGBA, ColorFormat::RGBA);
+/// assert_eq!(rgba_err, Err(()));
 /// ```
-pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) -> Vec<u8> {
-    if from == to { return data.to_vec() }
-    if data.len() < 3 { return vec![]; } // TODO handle this better, maybe return an error or something
+pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) -> Result<Vec<u8>, ()> {
+    if from == to { return Err(()) }
+    if data.len() < 3 { return Err(()) }
 
     let from_model = channel_order(from);
     let to_model = channel_order(to);
@@ -105,7 +110,7 @@ pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) 
                     // channel not in source: if it's alpha, default to 255; else error
                     match ch {
                         Channel::A => 255,
-                        _ => return vec![], // TODO handle this better, maybe return an error or something
+                        _ => return Err(()),
                     }
                 }
             };
@@ -113,5 +118,5 @@ pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) 
         }
     }
 
-    return out;
+    return Ok(out);
 }
