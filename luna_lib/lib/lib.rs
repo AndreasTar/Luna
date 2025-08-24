@@ -14,7 +14,7 @@ pub mod color_format_converter;
 
 
 
-
+/// A simple struct representing a semantic version (major.minor.patch), used in the library by each individual tool.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Version {
     pub major: u16,
@@ -25,10 +25,6 @@ pub struct Version {
 impl Version {
     pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
         Version { major, minor, patch }
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("{}.{}.{}", self.major, self.minor, self.patch)
     }
 }
 
