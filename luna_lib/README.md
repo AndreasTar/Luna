@@ -16,7 +16,7 @@ For the purposes of clarity, each module additionally has a public `VERSION` var
 This follows the normal SemVer rules. A module can be in major version 1 or more, but the entirety of the library may still be in major version 0, and vice-versa.
 
 All modules are declared as optional features. There is, however, a default feature selection available. It can optionally be ignored
-with the known methods.
+with the known methods. There is also an all feature flag, containing all features as enabled.
 
 
 Full license can be seen here: https://github.com/AndreasTar/Luna/blob/main/LICENSE

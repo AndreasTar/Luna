@@ -1,8 +1,44 @@
 //! This module provides a function to convert a vector of bytes representing pixel data from one color model to another.
 //! 
 //! The conversion is done by mapping the channels of the source color model to the destination color model.
+//! Currently, only models with Red, Green, Blue, and Alpha channels are supported, with all their permutations.
 
-pub const VERSION: crate::Version = crate::Version::new(1, 0, 3);
+pub const VERSION: crate::Version = crate::Version::new(1, 1, 0);
+
+/// Possible errors that can occur during color format conversion.
+/// - `InvalidInputLength`: The input data length is not a multiple of the source format's channel count.
+/// - `SameFormat`: The source and destination formats are the same.
+/// 
+/// # Examples
+/// ```rust
+/// # use luna::color_format_converter::{convert_vec_color_model, ColorFormat, ColorFormatConverterError};
+/// 
+/// // Invalid input length: eg. RG -> RGBA (returns `Err(ColorFormatConverterError::InvalidInputLength)`)
+/// let rg = vec![128, 55];
+/// let length_err = convert_vec_color_model(&rg, ColorFormat::RGB, ColorFormat::RGBA);
+/// assert_eq!(length_err, Err(ColorFormatConverterError::InvalidInputLength)); 
+/// 
+/// // Same format: eg. RGBA -> RGBA (returns `Err(ColorFormatConverterError::SameFormat)`)
+/// let rgba = vec![128, 55, 88, 255];
+/// let format_err = convert_vec_color_model(&rgba, ColorFormat::RGBA, ColorFormat::RGBA);
+/// assert_eq!(format_err, Err(ColorFormatConverterError::SameFormat));
+/// ```
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum ColorFormatConverterError {
+    /// Error signifying that the input data length is not a multiple of the source format's channel count.
+    InvalidInputLength,
+    /// Error signifying that the source and destination formats are the same.
+    SameFormat
+}
+
+impl std::fmt::Display for ColorFormatConverterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorFormatConverterError::InvalidInputLength => write!(f, "Input data length is not a multiple of the source format's channel count."),
+            ColorFormatConverterError::SameFormat => write!(f, "Source and destination formats are the same."),
+        }
+    }
+}
 
 
 // TODO maybe add lume and other formats? needs calculations etc but its fine i think
@@ -14,14 +50,16 @@ pub enum ColorFormat {
     RGB,
     RBGA,
     RBG,
+
     GRBA,
     GRB,
+    GBRA,
+    GBR,
+
     BRGA,
     BRG,
     BGRA,
     BGR,
-    GBRA,
-    GBR,
 }
 
 /// A color channel identifier.
@@ -41,32 +79,35 @@ fn channel_order(format: ColorFormat) -> &'static [Channel] {
         ColorFormat::RGB  => &[Channel::R, Channel::G, Channel::B],
         ColorFormat::RBGA => &[Channel::R, Channel::B, Channel::G, Channel::A],
         ColorFormat::RBG  => &[Channel::R, Channel::B, Channel::G],
-        ColorFormat::GRBA => &[Channel::G, Channel::R, Channel::B, Channel::A],
-        ColorFormat::GRB  => &[Channel::G, Channel::R, Channel::B],
+
         ColorFormat::BRGA => &[Channel::B, Channel::R, Channel::G, Channel::A],
         ColorFormat::BRG  => &[Channel::B, Channel::R, Channel::G],
         ColorFormat::BGRA => &[Channel::B, Channel::G, Channel::R, Channel::A],
         ColorFormat::BGR  => &[Channel::B, Channel::G, Channel::R],
+
         ColorFormat::GBRA => &[Channel::G, Channel::B, Channel::R, Channel::A],
         ColorFormat::GBR  => &[Channel::G, Channel::B, Channel::R],
+        ColorFormat::GRBA => &[Channel::G, Channel::R, Channel::B, Channel::A],
+        ColorFormat::GRB  => &[Channel::G, Channel::R, Channel::B],
     }
 }
 
 /// Convert raw pixel bytes from one color model to another.
 ///
 /// ## Parameters
-/// - `data`: input byte-slice, length must be a multiple of `src.channel_count()`
+/// - `data`: input byte-slice, length must be a multiple of `from.channel_count()`
 /// - `from`: source color model (e.g. `ColorFormat::RGBA`)
 /// - `to`: destination color model (e.g. `ColorFormat::BGR`)
 ///
 /// ## Returns
-/// A `Result` containing either a new `Vec<u8>` whose length is `pixel_count * to.channel_count()`, or an empty Error if the conversion failed,
-/// if the input length isn’t a multiple of the source channel count, or if the source and destination formats are the same.
+/// A `Result` containing either a new `Vec<u8>` whose length is `pixel_count * to.channel_count()`, or an `ColorFormatConverterError` 
+/// if the conversion failed, if the input length isn’t a multiple of the source channel count, or if the source and destination 
+/// formats are the same.
 ///
 /// ## Examples
 ///
 /// ```rust
-/// # use luna::color_format_converter::{convert_vec_color_model, ColorFormat};
+/// # use luna::color_format_converter::{convert_vec_color_model, ColorFormat, ColorFormatConverterError};
 ///
 /// // Single pixel RGBA -> BGR (reorders & drops alpha)
 /// let rgba = vec![128, 55, 88, 255];
@@ -83,14 +124,14 @@ fn channel_order(format: ColorFormat) -> &'static [Channel] {
 /// let two_rgb = convert_vec_color_model(&two_rgba, ColorFormat::RGBA, ColorFormat::RGB);
 /// assert_eq!(two_rgb, Ok(vec![1, 2, 3,  4, 5, 6]));
 /// 
-/// // Same format RGBA -> RGBA (returns `Err(())`)
+/// // Same format RGBA -> RGBA (returns `Err(ColorFormatConverterError::SameFormat)`)
 /// let rgba = vec![128, 55, 88, 255];
 /// let rgba_err = convert_vec_color_model(&rgba, ColorFormat::RGBA, ColorFormat::RGBA);
-/// assert_eq!(rgba_err, Err(()));
+/// assert_eq!(rgba_err, Err(ColorFormatConverterError::SameFormat));
 /// ```
-pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) -> Result<Vec<u8>, ()> {
-    if from == to { return Err(()) }
-    if data.len() < 3 { return Err(()) }
+pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) -> Result<Vec<u8>, ColorFormatConverterError> {
+    if from == to { return Err(ColorFormatConverterError::SameFormat) }
+    if data.len() < 3 { return Err(ColorFormatConverterError::InvalidInputLength) }
 
     let from_model = channel_order(from);
     let to_model = channel_order(to);
@@ -110,7 +151,7 @@ pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) 
                     // channel not in source: if it's alpha, default to 255; else error
                     match ch {
                         Channel::A => 255,
-                        _ => return Err(()),
+                        _ => unreachable!("This should never happen due to prior checks."),
                     }
                 }
             };

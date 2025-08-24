@@ -2,16 +2,16 @@
 use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
 use bytesize::ByteSize;
 
-pub const VERSION: crate::Version = crate::Version::new(0, 3, 1);
+pub const VERSION: crate::Version = crate::Version::new(0, 4, 0);
 
 /// An enum which can be returned when attempting to open an image from a path and decode it.
-/// It can either be a success with the decoded image, or a failure with an [ImageError].
+/// It can either be a success with the decoded image and its format, or a failure with an [ImageError].
 /// 
 /// ## Potential causes of failure
 /// `Failure(...)` can be thrown because of an invalid path given to the function, or because
-/// the image selected is not supported or is invalid. Check out [image::ImageError] for more details on the possible errors.
+/// the image selected is not supported or is invalid. Check out [`image::error::ImageError`] for more details on the possible errors.
 pub enum ImgOpenResult {
-    Success(DynamicImage),
+    Success(DynamicImage, Option<ImageFormat>),
     Failure(ImageError),
 }
 
@@ -20,7 +20,7 @@ impl ImgOpenResult {
     /// Returns `true` if the result is a success type, `false` if it is a failure type.
     /// ## Examples
     /// ```ignore
-    /// # use luna_lib::img_manipulator::{open_image_from_path, ImgOpenResult};
+    /// # use luna::img_manipulator::{open_image_from_path, ImgOpenResult};
     /// 
     /// let image = open_image_from_path("path/to/image.png".to_string());
     /// assert!(image.is_success());
@@ -31,7 +31,7 @@ impl ImgOpenResult {
     #[inline]
     pub fn is_success(&self) -> bool {
         match self {
-            ImgOpenResult::Success(_) => true,
+            ImgOpenResult::Success(_, _) => true,
             ImgOpenResult::Failure(_) => false,
         }
     }
@@ -50,10 +50,17 @@ impl ImgOpenResult {
     /// ## Panics
     ///
     /// Panics if the self value equals [`Failure`].
+    /// 
+    /// ```should_panic
+    /// # use crate::luna::img_manipulator::{open_image_from_path, ImgOpenResult};
+    /// 
+    /// let image = open_image_from_path("path/to/invalid_image.png".to_string());
+    /// let img = image.unwrap(); // Panics here because the image could not be opened
+    /// ```
     #[inline]
-    pub fn unwrap(self) -> DynamicImage {
+    pub fn unwrap(self) -> (DynamicImage, Option<ImageFormat>) {
         match self {
-            ImgOpenResult::Success(img) => img,
+            ImgOpenResult::Success(img, format) => (img, format),
             ImgOpenResult::Failure(e) => panic!("Tried to unwrap a failed image open result: {}", e),
         }
     }
@@ -68,13 +75,13 @@ pub struct ImageInfo {
     /// See [ImageFormat](https://docs.rs/image/latest/image/enum.ImageFormat.html) for more details.
     pub format: Option<ImageFormat>,
     /// The dimensions of the image, represented as a tuple of (width, height), as u32 values.
-    /// If the dimensions are unknown, this will be (0, 0).
+    /// If the dimensions are unknown, this will be `None`.
     pub dimensions: Option<(u32, u32)>,
     /// The aspect ratio of the image, represented as a f32 value.
-    /// If the aspect ratio is unknown, this will be 0.0.
+    /// If the aspect ratio is unknown, this will be `None`.
     pub aspect_ratio: Option<f32>,
     /// The size of the image in bytes, represented using the `ByteSize` struct.
-    /// If the size is unknown, this will be `ByteSize(0)`.
+    /// If the size is unknown, this will be `None`.
     /// See [ByteSize](https://docs.rs/bytesize/latest/bytesize/struct.ByteSize.html) for more details.
     pub bytesize: Option<ByteSize>,
 }
@@ -157,17 +164,17 @@ impl ToString for ImageInfo {
 // TODO some of these dont have range, just on off, like invert and grayscale. change them to ranged or implement them as such
 
 
-pub fn open_image_from_path(path: String) -> (ImgOpenResult, Option<ImageFormat>) {
+pub fn open_image_from_path(path: String) -> ImgOpenResult {
     let reader = match image::ImageReader::open(path) {
         Ok(reader) => reader,
-        Err(e) => return (ImgOpenResult::Failure(ImageError::IoError(e)), None),
+        Err(e) => return ImgOpenResult::Failure(ImageError::IoError(e)),
     };
     
     let form = reader.format();
 
     return match reader.decode() { // Return format too?
-        Ok(img_buff) => (ImgOpenResult::Success(img_buff), form),
-        Err(e) => (ImgOpenResult::Failure(e), None),
+        Ok(img_buff) => ImgOpenResult::Success(img_buff, form),
+        Err(e) => ImgOpenResult::Failure(e),
     };
 }
 

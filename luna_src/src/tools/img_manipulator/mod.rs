@@ -165,13 +165,13 @@ impl UI_ImgManipulator {
                     IM_Message::Request_LoadImage => {
                         load_image_rfd().map(|path| {
                             match luna_imgman::open_image_from_path(path) {
-                                (luna_imgman::ImgOpenResult::Success(img), form) => {
+                                luna_imgman::ImgOpenResult::Success(img, form) => {
                                     self.og_image = Some(img);
                                     self.res_image = self.og_image.clone(); // TODO do we need this?
                                     self.res_image_info = Some(luna_imgman::get_image_info(&self.og_image, form));
                                     self.update_image();
                                 },
-                                (luna_imgman::ImgOpenResult::Failure(e), _ )=> {
+                                luna_imgman::ImgOpenResult::Failure(e)=> {
                                     eprintln!("Failed to load image: {}", e); // HACK change eprintln to show error on screen inside image preview or something
                                 }
                             }
