@@ -1,11 +1,11 @@
 //! Module for converting numbers between different bases (radices).
 //! Implemented bases are between 2 and 36 (inclusive).
 //! 
-//! It will eventually be able to convert from any arbitrary base to any other arbitrary base,
+//! It will eventually be able to convert from any arbitrary base to any other arbitrary base, even fractional and negative bases,
 //! if it makes sense mathematically and is also able to be handled by a computer.
 
 
-pub const VERSION: crate::Version = crate::Version::new(1, 1, 1);
+pub const VERSION: crate::Version = crate::Version::new(1, 1, 2);
 
 /// An error which can be returned when attempting to convert a number to a different radix (base).
 /// 

@@ -1,7 +1,7 @@
 [package]
 name = "luna"
 description = "A library housing various helpful utilities, created for the Luna project: https://github.com/AndreasTar/Luna"
-version = "0.2.1"
+version = "0.2.2"
 authors = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
@@ -33,6 +33,6 @@ all = [
 ]
 default = ["number_converter", "img_manipulator"]
 number_converter = []
-img_manipulator = ["dep:image", "bytesize"]
+img_manipulator = ["dep:image", "dep:bytesize"]
 #img_to_ascii = ["img_manipulator"]
 color_format_converter = []

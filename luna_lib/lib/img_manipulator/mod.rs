@@ -1,8 +1,11 @@
+//! Module for manipulating images, using the `image` crate as a backend.
+//! It provides functions for applying various image processing operations, such as resizing, cropping, rotating, and filtering.
+
 
 use image::{self, DynamicImage, ImageError, imageops, ImageFormat};
 use bytesize::ByteSize;
 
-pub const VERSION: crate::Version = crate::Version::new(0, 4, 0);
+pub const VERSION: crate::Version = crate::Version::new(0, 4, 1);
 
 /// An enum which can be returned when attempting to open an image from a path and decode it.
 /// It can either be a success with the decoded image and its format, or a failure with an [ImageError].
@@ -17,7 +20,7 @@ pub enum ImgOpenResult {
 
 impl ImgOpenResult {
 
-    /// Returns `true` if the result is a success type, `false` if it is a failure type.
+    /// Returns `true` if the result is a `Success` type, `false` if it is a `Failure` type.
     /// ## Examples
     /// ```ignore
     /// # use luna::img_manipulator::{open_image_from_path, ImgOpenResult};
@@ -49,7 +52,7 @@ impl ImgOpenResult {
     /// 
     /// ## Panics
     ///
-    /// Panics if the self value equals [`Failure`].
+    /// Panics if the self value equals `Failure`.
     /// 
     /// ```should_panic
     /// # use crate::luna::img_manipulator::{open_image_from_path, ImgOpenResult};

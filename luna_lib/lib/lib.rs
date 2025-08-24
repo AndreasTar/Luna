@@ -1,6 +1,6 @@
 
 
-// TODO add //! type doc to this and every tool
+// TODO add //! type doc to this
 // TODO fix readme
 // TODO fix license on cargo.io
 #[cfg(feature = "number_converter")]
