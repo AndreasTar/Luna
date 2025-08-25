@@ -1,7 +1,7 @@
 //! This module provides a function to convert a vector of bytes representing pixel data from one color model to another.
 //! 
 //! The conversion is done by mapping the channels of the source color model to the destination color model.
-//! Currently, only models with RGB, CMYK, HSL and Grayscale  are supported, with and without an Alpha channel,
+//! Currently, only models with RGB, CMYK, HSL and Grayscale are supported, with and without an Alpha channel,
 //! with all their respective permutations.
 
 pub const VERSION: crate::Version = crate::Version::new(1, 1, 0);
