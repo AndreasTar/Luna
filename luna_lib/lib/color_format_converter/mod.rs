@@ -4,7 +4,7 @@
 //! Currently, only models with RGB, CMYK, HSL and Grayscale are supported, with and without an Alpha channel,
 //! with all their respective permutations.
 
-pub const VERSION: crate::Version = crate::Version::new(1, 1, 0);
+pub const VERSION: crate::Version = crate::Version::new(1, 2, 0);
 
 /// Possible errors that can occur during color format conversion.
 /// - `InvalidInputLength`: The input data length is not a multiple of the source format's channel count.
@@ -259,16 +259,146 @@ pub fn convert_vec_color_model(data: &[u8], from: ColorFormat, to: ColorFormat) 
     return Ok(out);
 }
 
-// test these
-fn from_rgb_to_cmyk(r: u8, g: u8, b: u8) -> (u8, u8, u8, u8) {
+// TODO also make versions for 0-100 cmyk instead of 0-255
 
-    let k = 255 - r.max(g).max(b);
-    let c = (255 - r - k) / (255 - k);
-    let m = (255 - g - k) / (255 - k);
-    let y = (255 - b - k) / (255 - k);
+/// Convert raw pixel bytes from RGB color model to CMYK.
+/// 
+/// This function is implemented using integer arithmetic to avoid floating-point math.
+/// I *assume* it is faster, although it hasn't really been benchmarked.
+/// However, it is a bit inaccurate due to rounding errors. This means that some resulting values
+/// may be off by + or - 1 compared to a floating-point implementation. If you don't mind that,
+/// this function should be fine for most use cases.
+/// For an accurate conversion, use `from_rgb_to_cmyk()`.
+///
+/// ## Parameters
+/// - `r`: Red channel value (0-255)
+/// - `g`: Green channel value (0-255)
+/// - `b`: Blue channel value (0-255)
+///
+/// ## Returns
+/// A tuple of `u8`'s containing the CMYK channel values as integers in the range 0-255.
+/// CMYK is often represented as percentages (0-100), but here we map the result to 0-255 for consistency with RGB.
+/// For example, if we have C=100%, M=10%, Y=50%, K=0%, the returned values will be (255, 25, 127, 0), or close
+/// to that, due to rounding errors.
+///
+/// ## Examples
+///
+/// ```rust
+/// # use luna::color_format_converter::from_rgb_to_cmyk_integer;
+/// // Rudimentary helper function for approximate equality check
+/// fn approx_eq(left: (u8,u8,u8,u8), right: (u8,u8,u8,u8), eps: f32) -> bool {
+///     let (lc, lm, ly, lk) = left;
+///     let (rc, rm, ry, rk) = right;
+/// 
+///     if (lc as f32 - rc as f32).abs() > eps { return false; }
+///     if (lm as f32 - rm as f32).abs() > eps { return false; }
+///     if (ly as f32 - ry as f32).abs() > eps { return false; }
+///     if (lk as f32 - rk as f32).abs() > eps { return false; }
+///     return true;
+/// }
+/// 
+/// let (c, m, y, k) = from_rgb_to_cmyk_integer(255, 0, 0); // Pure red
+/// assert!(approx_eq((c, m, y, k), (0, 255, 255, 0), 1_f32)); 
+/// 
+/// let (c, m, y, k) = from_rgb_to_cmyk_integer(58, 31, 156); // Purplish blue
+/// assert!(approx_eq((c, m, y, k), (160, 204, 0, 99), 1_f32)); 
+/// 
+/// let (c, m, y, k) = from_rgb_to_cmyk_integer(127, 127, 127); // Mid gray
+/// assert!(approx_eq((c, m, y, k), (0, 0, 0, 127), 1_f32)); // This may be off by + or - 1 due to rounding errors
+/// ```
+pub fn from_rgb_to_cmyk_integer(r: u8, g: u8, b: u8) -> (u8, u8, u8, u8) {
 
-    return (c,m,y,k);
+    let r = r as u32;
+    let g = g as u32;
+    let b = b as u32;
+
+    let max = r.max(g).max(b);
+    if max == 0 { return (0, 0, 0, 255); } // Pure black
+
+    let k = 255 - max;    
+
+    let c = (((max - r) * 255 + max/2 ) / max) as u8;
+    let m = (((max - g) * 255 + max/2 ) / max) as u8;
+    let y = (((max - b) * 255 + max/2 ) / max) as u8;
+
+    return (c, m, y, k as u8);
 }
+
+/// Convert raw pixel bytes from RGB color model to CMYK.
+/// 
+/// This function is implemented using floating-point arithmetic, which makes it *probably*, slower than
+/// an integer-math implementation. I haven't really benchmarked it though.
+/// However, it is more accurate than an integer-math implementation.
+/// For an integer-math, slightly inaccurate conversion, use `from_rgb_to_cmyk_integer()`.
+///
+/// ## Parameters
+/// - `r`: Red channel value (0-255)
+/// - `g`: Green channel value (0-255)
+/// - `b`: Blue channel value (0-255)
+///
+/// ## Returns
+/// A tuple of `f32`'scontaining the CMYK channel values in the range 0-255.
+/// CMYK is often represented as percentages (0-100), but here we map the result to 0-255 as integers for consistency with RGB.
+/// For example, if we have C=100%, M=10%, Y=50%, K=0%, the returned values will be (255, 25.5, 127.5, 0).
+///
+/// ## Examples
+///
+/// ```rust
+/// # use luna::color_format_converter::from_rgb_to_cmyk;
+/// let (c, m, y, k) = from_rgb_to_cmyk(255, 0, 0); // Pure red
+/// assert_eq!((c, m, y, k), (0.0, 255.0, 255.0, 0.0)); 
+/// 
+/// let (c, m, y, k) = from_rgb_to_cmyk(127, 127, 127); // Mid gray
+/// assert_eq!((c, m, y, k), (0.0, 0.0, 0.0, 128.0));
+/// 
+/// let (c, m, y, k) = from_rgb_to_cmyk(58, 31, 156); // Purplish blue
+/// assert_eq!((c, m, y, k), (160.0, 204.0, 0.0, 99.0)); 
+/// ```
+pub fn from_rgb_to_cmyk(r: u8, g: u8, b: u8) -> (f32, f32, f32, f32) {
+
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+
+    let k = 1.0 - r.max(g).max(b);
+    if k == 1.0 { return (0.0, 0.0, 0.0, 255.0); } // Pure black
+
+    let c = (1.0 - r - k) / (1.0 - k);
+    let m = (1.0 - g - k) / (1.0 - k);
+    let y = (1.0 - b - k) / (1.0 - k);
+
+    return ((c * 255.0).round(), (m * 255.0).round(), (y * 255.0).round(), (k * 255.0).round());
+}
+
+pub fn from_rgb_to_cmyk_integer_percentile() {}
+pub fn from_rgb_to_cmyk_percentile() {}
+
+pub fn from_cmyk_to_rgb_integer(c: u8, m: u8, y: u8, k: u8) -> (u8, u8, u8) {
+    let c = c as u32;
+    let m = m as u32;
+    let y = y as u32;
+    let k = k as u32;
+
+    let r = 255 - ((c * (255 - k) + k * 255 + 127) / 255);
+    let g = 255 - ((m * (255 - k) + k * 255 + 127) / 255);
+    let b = 255 - ((y * (255 - k) + k * 255 + 127) / 255);
+
+    return (r as u8, g as u8, b as u8);
+}
+
+pub fn from_cmyk_to_rgb(c: f32, m: f32, y: f32, k: f32) -> (f32, f32, f32) {
+    let c = c / 255.0;
+    let m = m / 255.0;
+    let y = y / 255.0;
+    let k = k / 255.0;
+
+    let r = 1.0 - (c * (1.0 - k) + k);
+    let g = 1.0 - (m * (1.0 - k) + k);
+    let b = 1.0 - (y * (1.0 - k) + k);
+
+    return ((r * 255.0).round(), (g * 255.0).round(), (b * 255.0).round());
+}
+
 // test these
 fn from_rgb_to_hsl(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
 
@@ -287,4 +417,51 @@ fn from_rgb_to_hsl(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
     else { 60 * (((r - g) / delta) + 4) };
 
     return (h, s, l);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rgb_to_cmyk_integer() {
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(255, 0, 0); // Pure red
+        assert_eq!((c, m, y, k), (0, 255, 255, 0), "red (255,0,0) should map to CMYK (0,255,255,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(0, 255, 0); // Pure green
+        assert_eq!((c, m, y, k), (255, 0, 255, 0), "green (0,255,0) should map to CMYK (255,0,255,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(0, 0, 255); // Pure blue
+        assert_eq!((c, m, y, k), (255, 255, 0, 0), "blue (0,0,255) should map to CMYK (255,255,0,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(255, 255, 255); // Pure white
+        assert_eq!((c, m, y, k), (0, 0, 0, 0), "white (255,255,255) should map to CMYK (0,0,0,0)");
+
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(0, 0, 0); // Pure black
+        assert_eq!((c, m, y, k), (0, 0, 0, 255), "black (0,0,0) should map to CMYK (0,0,0,255)");
+
+        let (c, m, y, k) = from_rgb_to_cmyk_integer(127, 127, 127); // Mid gray
+        assert_eq!((c, m, y, k), (0, 0, 0, 127), "mid gray (127,127,127) should map to CMYK (0,0,0,127)");
+    }
+
+    #[test]
+    fn test_rgb_to_cmyk() {
+        let (c, m, y, k) = from_rgb_to_cmyk(255, 0, 0); // Pure red
+        assert_eq!((c, m, y, k), (0_f32, 255_f32, 255_f32, 0_f32), "red (255,0,0) should map to CMYK (0,255,255,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk(0, 255, 0); // Pure green
+        assert_eq!((c, m, y, k), (255_f32, 0_f32, 255_f32, 0_f32), "green (0,255,0) should map to CMYK (255,0,255,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk(0, 0, 255); // Pure blue
+        assert_eq!((c, m, y, k), (255_f32, 255_f32, 0_f32, 0_f32), "blue (0,0,255) should map to CMYK (255,255,0,0)"); 
+
+        let (c, m, y, k) = from_rgb_to_cmyk(255, 255, 255); // Pure white
+        assert_eq!((c, m, y, k), (0_f32, 0_f32, 0_f32, 0_f32), "white (255,255,255) should map to CMYK (0,0,0,0)");
+
+        let (c, m, y, k) = from_rgb_to_cmyk(0, 0, 0); // Pure black
+        assert_eq!((c, m, y, k), (0_f32, 0_f32, 0_f32, 255_f32), "black (0,0,0) should map to CMYK (0,0,0,255)");
+
+        let (c, m, y, k) = from_rgb_to_cmyk(127, 127, 127); // Mid gray
+        assert_eq!((c, m, y, k), (0_f32, 0_f32, 0_f32, 127_f32), "mid gray (127,127,127) should map to CMYK (0,0,0,127)");
+    }
 }
