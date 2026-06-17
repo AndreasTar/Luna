@@ -1,0 +1,41 @@
+name: Tracking Issue
+description: Track large pull requests
+assignees: 
+- AndreasTar
+- EvilGiraffes
+title: "[TRACKING] <title>"
+labels: tracking
+projects: AndreasTar/1
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Target Version
+      description: The app version which this pull request will become when merged.
+      placeholder: "Example: 4.2.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Decription
+      placeholder: "Example: Changing the rabbits."
+      description: A clear and full description of what the pull request want to achieve.
+    validations:
+      required: true
+  - type: textarea
+    id: roadmap
+    attributes:
+      label: Roadmap
+      placeholder: "Example: - [ ] Eat carrots"
+      description: A todo list of items to complete before merging the pull request.
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      placeholder: "Creating winter."
+      description: Any other context not fitting into the other sections.
+    validations:
+      required: false
