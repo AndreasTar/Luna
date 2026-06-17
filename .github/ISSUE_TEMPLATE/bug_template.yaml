@@ -4,6 +4,7 @@ assignees:
   - AndreasTar
 title: "[BUG] <title>"
 labels: bug
+projects: AndreasTar/1
 body:
 - type: textarea
   id: description
