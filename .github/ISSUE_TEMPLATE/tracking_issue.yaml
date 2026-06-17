@@ -4,6 +4,7 @@ assignees:
 - AndreasTar
 title: "[TRACKING] <title>"
 labels: tracking
+projects: AndreasTar/1
 body:
   - type: input
     id: widget
