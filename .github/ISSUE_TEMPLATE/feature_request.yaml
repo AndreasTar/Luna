@@ -1,17 +1,15 @@
 name: Feature request
-description: Suggest an idea for this game
+description: Suggest an idea for this app
 assignees: 
 - AndreasTar
-- EvilGiraffes
 title: "[FEATURE] <title>"
 labels: feature
-projects: AndreasTar/1
 body:
   - type: textarea
     id: description
     attributes:
       label: Feature description
-      placeholder: "Example: Add rabbits."
+      placeholder: "Example: Add widget that shows rabbits."
       description: A clear and concise description of what you want added.
     validations:
       required: true
@@ -27,7 +25,7 @@ body:
     id: alternatives
     attributes:
       label: Alternative solutions / Relevant existing functionality
-      placeholder: "Example: Carrots already exist in the game, and squirrels are planned to be added to the game."
+      placeholder: "Example: There is a widget that shows squirrels, and I want rabbits too."
       description: A clear and concise description of alternative features that could be added alongside, or any relevant existing functionality that already exists in-game.
     validations:
       required: true
@@ -42,7 +40,7 @@ body:
     id: additional
     attributes:
       label: Additional Context
-      placeholder: "Only happens if its Tuesday."
+      placeholder: "I want this to only show when its Tuesday."
       description: Any other context about the problem that we should know about.
     validations:
       required: false
