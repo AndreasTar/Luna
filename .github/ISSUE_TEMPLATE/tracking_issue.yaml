@@ -2,10 +2,8 @@ name: Tracking Issue
 description: Track large pull requests
 assignees: 
 - AndreasTar
-- EvilGiraffes
 title: "[TRACKING] <title>"
 labels: tracking
-projects: AndreasTar/1
 body:
   - type: input
     id: version
@@ -19,7 +17,7 @@ body:
     id: description
     attributes:
       label: Decription
-      placeholder: "Example: Changing the rabbits."
+      placeholder: "Example: Changing the rabbits widget."
       description: A clear and full description of what the pull request want to achieve.
     validations:
       required: true
@@ -35,7 +33,7 @@ body:
     id: additional
     attributes:
       label: Additional Context
-      placeholder: "Creating winter."
+      placeholder: "Planting carrots for the rabbits."
       description: Any other context not fitting into the other sections.
     validations:
       required: false
