@@ -4,7 +4,7 @@ assignees:
 - AndreasTar
 title: "[FEATURE] <title>"
 labels: feature
-projects: AndreasTar/1
+projects: AndreasTar/2
 body:
   - type: textarea
     id: description
