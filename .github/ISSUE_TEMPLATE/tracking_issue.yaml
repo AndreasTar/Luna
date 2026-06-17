@@ -6,11 +6,11 @@ title: "[TRACKING] <title>"
 labels: tracking
 body:
   - type: input
-    id: version
+    id: widget
     attributes:
-      label: Target Version
-      description: The app version which this pull request will become when merged.
-      placeholder: "Example: 4.2.0"
+      label: Target Widget
+      description: The app widget which this pull request will affect when merged. If multiple, seperate with comma.
+      placeholder: "Example: Number Converter"
     validations:
       required: true
   - type: textarea
