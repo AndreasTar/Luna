@@ -1,0 +1,63 @@
+name: "Bug Report"
+description: "File a bug report."
+assignees: 
+  - AndreasTar
+title: "[BUG] <title>"
+labels: bug
+body:
+- type: textarea
+  id: description
+  attributes:
+    label: Describe the bug!
+    placeholder: "Example: Right-clicking crashes the app."
+    description: A clear and concise description of what the bug is.
+  validations:
+    required: true
+- type: textarea
+  id: steps
+  attributes:
+    label: Steps to reproduce
+    description: A clear and concise description of what steps to take to reproduce the bug.
+    placeholder: "Example: \n1. Open the app. \n2. Right click on the screen. \n3. App crashes."
+    render: bash
+  validations:
+    required: true
+- type: textarea
+  id: expected_behavior
+  attributes:
+    label: Expected behavior
+    placeholder: "App doesn't crash when right-clicking"
+    description: A clear and concise description of what you expected to happen.
+  validations:
+    required: true
+- type: textarea
+  id: OS
+  attributes:
+    label: Operating System
+    placeholder: "Windows 10 Pro"
+    description: A description of your computers OS.
+  validations:
+    required: true
+- type: textarea
+  id: hardware
+  attributes:
+    label: System Hardware
+    placeholder: "CPU: Intel i9 11700, GPU: Asus RTX 4070Ti 8GB, RAM: 64GB DDR5"
+    description: A clear and concise description of your computers hardware.
+  validations:
+    required: true
+- type: upload
+  id: screenshots
+  attributes:
+    label: Upload relevant screenshots
+    description: Drag and drop any relevant screenshots or files.
+  validations:
+    required: false
+- type: textarea
+  id: additional
+  attributes:
+    label: Additional Context
+    placeholder: "Only happens if its Tuesday."
+    description: Any other context about the problem that we should know about.
+  validations:
+    required: false
