@@ -1,5 +1,6 @@
 [workspace]
-#name = "luna_app" # This is the name of the workspace. It is used to identify the workspace in Cargo commands and in the Cargo.lock file.
+# This is the name of the workspace. It is used to identify the workspace in Cargo commands and in the Cargo.lock file.
+#name = "luna_app" 
 resolver = "2"
 members = [
     "luna_lib",
@@ -8,7 +9,7 @@ members = [
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.85.0"
+rust-version = "1.88"
 repository = "https://github.com/AndreasTar/Luna"
 authors = ["Andy Pandy <andytgamedev@gmail.com>"]
 license-file = "LICENSE"

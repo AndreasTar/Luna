@@ -1,0 +1,150 @@
+
+import { PageComponent } from "..\..\helpers\page_component.slint";
+import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
+import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
+
+
+component InputField inherits LineEdit {
+    min_width: 200px;
+    min_height: 24px;
+    preferred_width: 240px;
+    preferred_height: 40px;
+    max_width: 400px;
+    max_height: 66px;
+
+    input_type: decimal;
+}
+
+component ConversionField {
+    in property <string> convBase : "Default";
+    in property <string> convPlaceholder : "Default";
+    in-out property <string> convValue : "";
+
+    in property <InputType> input_type;
+    callback user_edited <=> field.edited;
+
+    min-width: 300px;
+    min-height: 50px;
+    preferred-width: 350px;
+    preferred-height: 60px;
+
+    public pure function setText(t: string) -> string{
+        return t;
+    }
+
+
+    field := InputField {
+        
+        input-type: input_type;
+        placeholder_text: convPlaceholder;
+        text <=> convValue;
+
+    }
+}
+
+export component BaseConverterUI inherits PageComponent {
+
+    title: @tr("Base Converter Widget");
+    description: @tr("A widget that converts numbers between the different usual bases (binary, octal, decimal, hexadecimal), and also supports custom bases.");
+    show-enable-read-only: true;
+    show-enable-page-widgets-switch: true;
+    
+    preferred_height: 500px;
+    preferred_width: 1000px;
+
+    in-out property <[int]> allBases: [
+        10, 2, 16, 8, 0
+    ];
+
+    in-out property <[string]> allNums: [
+        "", "", "", "", ""
+    ];
+
+    in property <int> cusBasesCount : 1;
+    in property <[string]> cusNums;
+    in property <[string]> cusBases;
+
+    function convert_and_set_numbers_vec(index: int, number: string) {
+        allNums = GlobalConversionCallback.request_convert_number(allNums, allBases, index, number);
+        dec.convValue = allNums[0];
+        bin.convValue = allNums[1];
+        hex.convValue = allNums[2];
+        oct.convValue = allNums[3];
+    }
+
+    layout := HorizontalLayout {
+
+        min-height: 400px;
+        min-width: 600px;
+
+        preferred-height: 600px;
+        preferred-width: 1000px;
+
+        grid := GridBox {
+
+            dec := ConversionField {
+
+                row: 1;
+                col: 1;
+
+                convBase: "Dec";
+                convPlaceholder: "Input a decimal number:";
+                convValue: allNums[0];
+
+                user_edited(str) => { 
+                    convert_and_set_numbers_vec(0, str);
+                }
+            }
+
+            bin := ConversionField {
+
+                row: 1;
+                col: 2;
+
+                convBase: "Bin";
+                convPlaceholder: "Input a binary number:";
+                convValue: allNums[1];
+
+                user_edited(str) => { 
+                    convert_and_set_numbers_vec(1, str);
+                }
+            }
+
+            hex := ConversionField {
+
+                row: 2;
+                col: 1;
+
+                convBase: "Hex";
+                convPlaceholder: "Input a hexadecimal number:";
+                convValue: allNums[2];
+                input-type: text;
+
+                user_edited(str) => { 
+                    convert_and_set_numbers_vec(2, str);
+                }
+            }
+
+            oct := ConversionField {
+
+                row: 2;
+                col: 2;
+
+                convBase: "Oct";
+                convPlaceholder: "Input a octal number:";
+                convValue: allNums[3];
+
+                user_edited(str) => { 
+                    convert_and_set_numbers_vec(3, str);
+                }
+            }
+        }
+
+        customAreaArea := GridBox {} // TODO this type is for testing
+    }
+    
+}
+
+
+
+

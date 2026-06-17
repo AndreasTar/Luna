@@ -1,0 +1,54 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import { SideBar } from "../helpers/sidebar_component.slint";
+import { CheckBox, StandardListView } from "std-widgets.slint";
+import { 
+    BaseConverterUI, 
+} from "all_pages.slint";
+import { LunaLibraryGlobalSettings } from "..\helpers\gallery_settings.slint";
+
+export { GlobalConversionCallback } from "..\helpers\global_callbacks.slint";
+
+export component LunaAppUi inherits Window {
+    preferred-width: 700px;
+    preferred-height: 500px;
+    title: @tr("Luna Widgets Library");
+    // icon: @image-url("../../logo/slint-logo-small-light.png");
+
+    MenuBar {
+        Menu {
+            title: @tr("MenuBar" => "File");
+            MenuItem {
+                title: @tr("MenuBar" => "Open");
+                shortcut: @keys(Control + O);
+            }
+            Menu {
+                title: @tr("MenuBar" => "Open Recent");
+                for x in 10: MenuItem { title: @tr("MenuBar" => "Recent {}", x+1);  }
+            }
+            MenuSeparator {}
+            MenuItem { title: @tr("MenuBar" => "Save"); }
+            Menu {
+                title: @tr("MenuBar" => "Save As");
+                for x in 10: MenuItem { title: @tr("MenuBar" => "Name {}", x+1);  }
+            }
+            MenuSeparator {}
+            MenuItem { title: @tr("MenuBar" => "MenuItem with Checkmark"); checkable: true; checked: true; }
+        }
+        Menu {
+            title: @tr("MenuBar" => "Edit");
+            MenuItem { title: @tr("MenuBar" => "Copy"); }
+            MenuItem { title: @tr("MenuBar" => "Paste"); }
+        }
+    }
+
+    HorizontalLayout {
+        side-bar := SideBar {
+            title: @tr("Luna Widgets Library");
+            model: [@tr("Menu" => "Base Converter"),];
+        }
+
+        if(side-bar.current-item == 0) : BaseConverterUI {}
+    }
+}
