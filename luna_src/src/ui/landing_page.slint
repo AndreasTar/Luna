@@ -13,34 +13,34 @@ export { GlobalConversionCallback } from "..\helpers\global_callbacks.slint";
 export component LunaAppUi inherits Window {
     preferred-width: 700px;
     preferred-height: 500px;
-    title: @tr("Luna Widgets Library");
+    title: @tr("Luna Widget Library");
     // icon: @image-url("../../logo/slint-logo-small-light.png");
 
     MenuBar {
-        Menu {
-            title: @tr("MenuBar" => "File");
-            MenuItem {
-                title: @tr("MenuBar" => "Open");
-                shortcut: @keys(Control + O);
-            }
-            Menu {
-                title: @tr("MenuBar" => "Open Recent");
-                for x in 10: MenuItem { title: @tr("MenuBar" => "Recent {}", x+1);  }
-            }
-            MenuSeparator {}
-            MenuItem { title: @tr("MenuBar" => "Save"); }
-            Menu {
-                title: @tr("MenuBar" => "Save As");
-                for x in 10: MenuItem { title: @tr("MenuBar" => "Name {}", x+1);  }
-            }
-            MenuSeparator {}
-            MenuItem { title: @tr("MenuBar" => "MenuItem with Checkmark"); checkable: true; checked: true; }
-        }
-        Menu {
-            title: @tr("MenuBar" => "Edit");
-            MenuItem { title: @tr("MenuBar" => "Copy"); }
-            MenuItem { title: @tr("MenuBar" => "Paste"); }
-        }
+        // Menu {
+        //     title: @tr("MenuBar" => "File");
+        //     MenuItem {
+        //         title: @tr("MenuBar" => "Open");
+        //         shortcut: @keys(Control + O);
+        //     }
+        //     Menu {
+        //         title: @tr("MenuBar" => "Open Recent");
+        //         for x in 10: MenuItem { title: @tr("MenuBar" => "Recent {}", x+1);  }
+        //     }
+        //     MenuSeparator {}
+        //     MenuItem { title: @tr("MenuBar" => "Save"); }
+        //     Menu {
+        //         title: @tr("MenuBar" => "Save As");
+        //         for x in 10: MenuItem { title: @tr("MenuBar" => "Name {}", x+1);  }
+        //     }
+        //     MenuSeparator {}
+        //     MenuItem { title: @tr("MenuBar" => "MenuItem with Checkmark"); checkable: true; checked: true; }
+        // }
+        // Menu {
+        //     title: @tr("MenuBar" => "Edit");
+        //     MenuItem { title: @tr("MenuBar" => "Copy"); }
+        //     MenuItem { title: @tr("MenuBar" => "Paste"); }
+        // }
     }
 
     HorizontalLayout {

@@ -1,5 +1,5 @@
-use std::cell::RefCell;
 
+use std::cell::RefCell;
 use luna::number_converter;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
 use crate::{LunaAppUi, GlobalConversionCallback };
@@ -15,29 +15,25 @@ use crate::{LunaAppUi, GlobalConversionCallback };
 
 pub const VERSION: luna::Version = luna::Version::new(1, 0, 1);
 
-#[derive(Debug, Clone)]
-pub enum BC_Message{
-    Nothing,
-    TLChanged(String),
-    TRChanged(String),
-    BLChanged(String),
-    BRChanged(String),
-    CustomNumChanged(String, usize, u8), // num base index
-    CustomBaseChanged(String, u8),       // base index
-    CustomBaseAdded,
-    CustomBaseRemoved(u8),               // index
-}
+
+// Remnants from egui, to be deleted / adapted
+// #[derive(Debug, Clone)]
+// pub enum BC_Message{
+//     Nothing,
+//     TLChanged(String),
+//     TRChanged(String),
+//     BLChanged(String),
+//     BRChanged(String),
+//     CustomNumChanged(String, usize, u8), // num base index
+//     CustomBaseChanged(String, u8),       // base index
+//     CustomBaseAdded,
+//     CustomBaseRemoved(u8),               // index
+// }
 
 pub struct UI_BaseConverter{
 
     ui_handle: Weak<LunaAppUi>,
 
-    last_msg: RefCell<Option<BC_Message>>,
-
-    tl: String,
-    tr: String,
-    bl: String,
-    br: String,
     cbCount: u8,
     cbNums: Vec<String>,
     cbBases: Vec<String>,
@@ -49,11 +45,6 @@ impl UI_BaseConverter {
 
         let mut base_converter = UI_BaseConverter{
             ui_handle,
-            last_msg: RefCell::new(None),
-            tl: String::new(),
-            tr: String::new(),
-            bl: String::new(),
-            br: String::new(),
             cbCount: 0,
             cbNums: vec![],
             cbBases: vec![],
@@ -68,19 +59,15 @@ impl UI_BaseConverter {
                 let edited_number = edited_num.to_string();
 
 
-                let new_numbers: Vec<String> = in_nums_vec.iter().zip(in_bases_vec.iter())
+                let new_numbers: Vec<SharedString> = in_nums_vec.iter().zip(in_bases_vec.iter())
                     .enumerate().map(|(idx, (num, base))| 
                         if idx != edited_index as usize {
-                            convert_number(in_bases_vec[edited_index as usize], *base, &edited_number)
+                            SharedString::from(convert_number(in_bases_vec[edited_index as usize], *base, &edited_number))
                         } else { 
-                            edited_number.to_string()
+                            SharedString::from(edited_number.to_string())
                         }
                     ).collect()
                 ;
-                
-                let new_numbers: Vec<SharedString> = new_numbers.iter().map(
-                    |s| SharedString::from(s)
-                ).collect();
 
                 return ModelRc::from(new_numbers.as_slice());
             }

@@ -17,10 +17,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let luna_app_ui = LunaAppUi::new()?;
 
-    let widgets_vec = vec![
-        tools::base_converter::UI_BaseConverter::register_widget(luna_app_ui.as_weak()),
-        // tools::img_manipulator::ImgManipulator::new(test.clone()),
-    ];
+    let base_converter_obj = tools::base_converter::UI_BaseConverter::register_widget(luna_app_ui.as_weak());
 
     return luna_app_ui.run();
 }
