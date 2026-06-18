@@ -6,7 +6,7 @@ use iced::{
 
 // TODO create widget page for managing this
 
-pub const VERSION: luna::Version = luna::Version::new(0, 1, 1);
+pub const VERSION: luna::Version = luna::Version::new(0, 1, 2);
 
 /// Custom colors for use in Luna UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +132,7 @@ impl LunaColor {
     pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         return Self { r, g, b, a };
     }
+
     #[inline]
     pub const fn to_iced_color(&self) -> Color {
         return Color::from_rgba(
