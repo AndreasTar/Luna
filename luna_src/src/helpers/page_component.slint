@@ -9,7 +9,7 @@ export component PageComponent inherits VerticalBox {
     in property <string> title: @tr("default title");
     in property <string> description: @tr("default description");
     in property <bool> is-page-enabled: true;
-    in property <bool> show-enable-page-widgets-switch: false; // TODO adapt theese switches
+    in property <bool> show-enable-page-widgets-switch: false; // TODO adapt these switches
     in property <bool> show-enable-read-only: false;
 
     accessible-role: tab-panel;
@@ -17,7 +17,7 @@ export component PageComponent inherits VerticalBox {
 
     HorizontalBox { 
 
-        max-height: 50px;
+        preferred-height: 50px;
         alignment: center;
 
         Text {

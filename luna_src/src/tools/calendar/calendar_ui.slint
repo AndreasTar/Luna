@@ -1,0 +1,310 @@
+
+import { PageComponent } from "..\..\helpers\page_component.slint";
+//import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
+
+//    Simple_AMPM, //  8:00 pm |  8:00 am
+//    Full_AMPM,   // 08:00 pm | 08:00 am
+//    Army_AMPM,   // 20:00 pm | 08:00 am
+//    Simple,     // 20:00     |  8:00
+//    Army,       // 20:00     | 08:00
+enum HourStampType {
+    Simple_AMPM,
+    Full_AMPM,
+    Army_AMPM,
+    Simple,
+    Army,
+}
+
+struct HourCell {
+    hour_num: int, // 0 - 24
+    hour_type: HourStampType,
+    time_signature: string, // 8:00am / 20:00 / etc
+    is_selected: bool,
+    is_current: bool,
+}
+
+struct DayCell {
+    day_num: int, // 1-31 unless its 30 day or february etc
+    in_month: bool,
+    is_today: bool,
+    is_selected: bool,
+}
+
+struct MonthCell {
+    month_num: int, // 1-12
+    in_year: bool,
+    is_current: bool,
+    is_selected: bool,
+}
+
+struct EventCell {
+    // idk what it should store yet, and if it needs to be on the slint side at all
+}
+
+// Cells that will be present in the Monthly and Yearly view
+component DayCellButton inherits Rectangle {
+    in property <DayCell> day_data;
+
+    callback day_clicked(int);
+
+    border-radius: 12px;
+    border-color: ghostwhite;
+
+    // TODO add more cases for is_today & has_hover etc
+    background: root.day_data.is_selected ? #4A90E2
+              : root.day_data.is_today    ? #ddeeff
+              : ta.has_hover              ? #1258a2
+              : transparent;
+
+    ta := TouchArea { clicked => { root.day_clicked(root.day_data.day_num); } }
+
+    // TODO add more cases for is_today & has_hover etc
+    Text {
+        text: root.day_data.day_num;
+        font-size: 14px;
+        font-weight: FontWeight.semi-bold;
+        color: root.day_data.is_selected ? white
+             : root.day_data.is_today    ? #2266cc
+             : root.day_data.in_month    ? #d6d6d6
+             : #bbbbbb;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// Cells that will be present in the Yearly view
+component MonthCellButton inherits Rectangle {
+
+    in property <MonthCell> month_data;
+    callback month_clicked(int);
+
+    border-radius: 2px;
+    border-color: ghostwhite;
+
+    // TODO add more cases for is_today & has_hover etc
+    background: root.month_data.is_selected ? #4A90E2
+              : root.month_data.is_current  ? #ddeeff
+              : ta.has_hover                ? #f2f2f2
+              : transparent;
+    
+    ta := TouchArea { clicked => { root.month_clicked(root.month_data.month-num); } }
+
+    // TODO add more cases for is_today & has_hover etc
+    if root.month_data.month_num > 0: Text {
+        text: root.month_data.month_num;
+        font-size: 13px;
+        color: root.month_data.is_selected ? white
+             : root.month_data.is_current  ? #2266cc
+             : root.month_data.in_year     ? #222222
+             : #bbbbbb;
+        horizontal-alignment: center;
+        vertical-alignment: top;
+    }
+}
+
+// Cells that will be present in the daily view
+component HourCellButton inherits Rectangle {
+    in property <HourCell> hour_data;
+
+    callback hour_clicked(int);
+
+    pure function convert_time_to_signature(hour: int) -> string {
+        return    root.hour_data.hour_type == HourStampType.Simple_AMPM ? "1" 
+                : root.hour_data.hour_type == HourStampType.Full_AMPM   ? "2" 
+                : root.hour_data.hour_type == HourStampType.Army_AMPM   ? "3" 
+                : root.hour_data.hour_type == HourStampType.Simple      ? "4" 
+                : root.hour_data.hour_type == HourStampType.Army        ? "5" 
+                : "6";
+    }
+
+    // TODO add more cases for is_today & has_hover etc
+    // colors are for testing
+    background: root.hour_data.is_selected                ? white
+              : ta.has-hover                              ? blue
+              : Math.mod(root.hour_data.hour_num, 2) == 0 ? red 
+              : green; 
+
+    ta := TouchArea { clicked => { root.hour_clicked(root.hour_data.hour_num); } }
+
+    // TODO add more cases for is_today & has_hover etc
+    Text {
+        width: 100%;
+        height: 100%;
+        text: convert_time_to_signature(root.hour_data.hour-num);
+        font-size: 13px;
+        color: root.hour_data.is_selected ? white
+             : root.hour_data.is_current  ? #2266cc
+             : #bbbbbb;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+}
+
+// Cells that will be present in the daily view, if an event is present
+// Can span multiple hours
+component EventCellButton inherits Rectangle {
+    
+}
+
+// TODO change to ScrollView? prolly want custom scroll graphic
+component DailyView inherits Flickable {
+
+    in property <length> hour_cell_width;
+    in property <string> current_date;
+
+
+    outer_hour := VerticalLayout {
+        width: 100%;
+
+        date := Text {
+            text: current_date;
+            horizontal-alignment: left;
+        }
+
+        for h in 24 : VerticalLayout {
+            HourCellButton {
+                hour_data: {
+                    hour_num: h+1, 
+                    hour_type: HourStampType.Army,
+                    time_signature: "test",
+                    is_selected: false,
+                    is_current: false,
+                };
+                x: 5px;
+                width: hour_cell_width;
+                height: 20px;
+            }
+
+            if h != 23 : Rectangle {
+                x: 5px;
+                width: hour_cell_width;
+                height: 1px;
+                background: white;
+            }
+        }
+    }
+}
+
+component MonthlyView inherits Rectangle {
+
+    in property <length> day_cell_dims: 50px;
+    in property <int> current_month: 1;
+    in property <string> current_date_string;
+
+    pure function get_monthly_day_count(month: int, leap_year: bool) -> int {
+        return  month == 1  ? 31 
+              : month == 3  ? 31
+              : month == 4  ? 30
+              : month == 5  ? 31
+              : month == 6  ? 30
+              : month == 7  ? 31
+              : month == 8  ? 31
+              : month == 9  ? 30
+              : month == 10 ? 31
+              : month == 11 ? 30
+              : month == 12 ? 31
+              : leap-year   ? 29 : 28;
+    }
+
+    outer_month := VerticalLayout {
+        width: 100%;
+
+        date := Text {
+            font-weight: FontWeight.semi-bold;
+            text: current_date_string;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            color: #a4a4a4;
+        }
+
+        days_legend := HorizontalLayout {
+            width: 100%;
+
+            for days_list[d] in ["M", "T", "W", "T", "F", "S", "S"] : Text {
+
+                font-weight: FontWeight.semi-bold;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+                text: days_list;
+                color: #a4a4a4;
+            }
+        }
+
+        days_grid := GridLayout {
+
+            // TODO faulty, error prone, change it to per month day count
+            for days[d] in get_monthly_day_count(current_month, false) : DayCellButton {
+                col: Math.mod((d+1), 7);
+                row: (d+1) / 7 ;
+
+                width: day_cell_dims;
+                height: day_cell_dims;
+
+                day_data: {
+                    day_num: (d+1),
+                    in_month: true,
+                    is_today: false,
+                };
+            }
+        }
+
+        
+    }
+}
+
+export component CalendarUI inherits PageComponent {
+    title: @tr("Calendar Widget");
+    description: @tr("A calendar widget with monthly, daily and yearly views.");
+    show-enable-read-only: false;
+    show-enable-page-widgets-switch: false;
+
+    min-width: 700px;
+    min-height: 1000px;
+    preferred-width: 1000px;
+    preferred-height: 1200px;
+
+
+    outer_layout := HorizontalLayout {
+
+        preferred-height: 700px;
+        preferred-width: 500px;
+        height: 100%;
+        width: 100%;
+
+        month_year_layout := VerticalLayout {
+
+            month_view := MonthlyView {
+                preferred-height: 700px;
+                preferred-width: 500px;
+                width: 100%;
+                height: 100%;
+                current_date_string: "Test Date";
+                day_cell_dims: 40px;
+            }
+
+            year_view := GridLayout {}
+        }
+        
+        day_view := DailyView {
+            current_date: "Test date";
+            preferred-height: 700px;
+            preferred-width: 500px;
+            width: 100%;
+            height: 100%;
+            hour_cell_width: parent.width - 10px;
+        }
+
+        upcoming_notes_layout := VerticalLayout {
+
+            // upcoming view {}
+            // day_num notes view {}
+
+        }
+
+
+
+
+
+    }
+
+}

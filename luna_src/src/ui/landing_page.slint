@@ -4,7 +4,7 @@
 import { SideBar } from "../helpers/sidebar_component.slint";
 import { CheckBox, StandardListView } from "std-widgets.slint";
 import { 
-    BaseConverterUI, 
+    BaseConverterUI, CalendarUI
 } from "all_pages.slint";
 import { LunaLibraryGlobalSettings } from "..\helpers\gallery_settings.slint";
 
@@ -46,9 +46,10 @@ export component LunaAppUi inherits Window {
     HorizontalLayout {
         side-bar := SideBar {
             title: @tr("Luna Widgets Library");
-            model: [@tr("Menu" => "Base Converter"),];
+            model: [@tr("Menu" => "Base Converter"), @tr("Menu" => "Calendar")];
         }
 
         if(side-bar.current-item == 0) : BaseConverterUI {}
+        if(side-bar.current-item == 1) : CalendarUI {}
     }
 }

@@ -2,7 +2,7 @@
 use std::cell::RefCell;
 use luna::number_converter;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
-use crate::{LunaAppUi, GlobalConversionCallback };
+use crate::{ GlobalConversionCallback, LunaAppUi, WidgetTrait };
 
 
 // TODO instead of invalid input on invalid input lmao, make the box red with the text somewhere above or below
@@ -39,9 +39,9 @@ pub struct UI_BaseConverter{
     cbBases: Vec<String>,
 }
 
-impl UI_BaseConverter {
+impl WidgetTrait for UI_BaseConverter {
 
-    pub fn register_widget(ui_handle: Weak<LunaAppUi>) -> Self{
+    fn register_widget(ui_handle: Weak<LunaAppUi>) -> Self{
 
         let mut base_converter = UI_BaseConverter{
             ui_handle,
