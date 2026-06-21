@@ -132,18 +132,25 @@ component MonthCellButton inherits Rectangle {
     ta := TouchArea { clicked => { root.month_clicked(root.month_data.month-num); } }
 
     // TODO add more cases for is_today & has_hover etc
-    Text {
-        text: root.month_data.month_num;
-        font-size: 13px;
-        width: 100%;
-        height: 100%;
-        color: root.month_data.is_selected ? white
-             : root.month_data.is_current  ? #2266cc
-             : root.month_data.in_year     ? #a0a0a0
-             : #bbbbbb;
-        horizontal-alignment: center;
-        vertical-alignment: top;
+    VerticalLayout {
+        alignment: space-evenly;
+
+        Text {
+            text: root.month_data.month_num;
+            font-size: 13px;
+            width: 100%;
+            height: 15%;
+            color: root.month_data.is_selected ? white
+                : root.month_data.is_current  ? #2266cc
+                : root.month_data.in_year     ? #a0a0a0
+                : #bbbbbb;
+            horizontal-alignment: center;
+            vertical-alignment: top;
+        }
+
+        @children
     }
+    
 }
 
 
@@ -154,14 +161,16 @@ component EventCellButton inherits Rectangle {
 }
 
 // TODO change to ScrollView? prolly want custom scroll graphic
-component DailyView inherits Flickable {
+component DailyView inherits Rectangle {
 
-    in property <length> hour_cell_width: 50px;
-    in property <string> current_date;
+    in property <length> hour_cell_width: 300px;
+    in property <string> current_date: "Test Date";
 
     outer_hour := VerticalLayout {
-        width: 100%;
-        height: 95%;
+        width: parent.width  - 20px;
+        height: parent.height - 20px;
+        min-width: date.min-width + hours_layout.min-width + 5px;
+        min-height: date.min-height + hours_layout.min-height + 50px;
 
         date := Text {
             color: white;
@@ -169,11 +178,20 @@ component DailyView inherits Flickable {
             vertical-alignment: center;
             horizontal-alignment: left;
             height: 5%;
-            width: 90%;
+            width: 100%;
+            min-width: hour_cell_width;
+            min-height: parent.min-height * 5%;
         }
 
         hours_layout := VerticalLayout {
-            spacing: 2px; 
+            height: 95%;
+            width: 100%;
+
+            min-width: hour_cell_width + 10px;
+            min-height: parent.min-height * 78% + date.min-height + 10px;
+
+            spacing: 2px;
+
             for h in 24 : HourCellButton {
                 hour_data: {
                     hour_num: h+1, 
@@ -182,9 +200,10 @@ component DailyView inherits Flickable {
                     is_selected: false,
                     is_current: false,
                 };
-                x: (root.width - hour_cell_width) / 2;
-                width: hour_cell_width;
-                height: 3.2%;
+                //x: (root.width - self.width) / 2;
+                min-width: hour_cell_width;
+                min-height: 35px;
+                height: 3%;
                 drop-shadow-offset-y: 2px;
                 drop-shadow-color: white;
             }
@@ -217,6 +236,10 @@ component MonthlyView inherits Rectangle {
     outer_month := VerticalLayout {
         width: 100%;
         height: 95%;
+        alignment: space-evenly;
+
+        min-width: date.min-width + days_legend.min-width + days_grid.min-width + 5px;
+        min-height: date.min-height + days_legend.min-height + days_grid.min-height + 5px;
 
         date := Text {
             font-weight: FontWeight.semi-bold;
@@ -228,28 +251,35 @@ component MonthlyView inherits Rectangle {
 
         days_legend := HorizontalLayout {
             width: 100%;
+            min-width: day_cell_dims * 7 + 5px;
+            min-height: day_cell_dims + 5px;
+            alignment: space-evenly;
 
             for days_list[d] in ["M", "T", "W", "T", "F", "S", "S"] : Text {
 
                 font-weight: FontWeight.semi-bold;
                 vertical-alignment: center;
                 horizontal-alignment: center;
-                preferred-width: day_cell_dims;
-                preferred-height: day_cell_dims;
+                min-width: day_cell_dims;
+                min-height: day_cell_dims;
                 text: days_list;
                 color: #a4a4a4;
             }
         }
 
         days_grid := GridLayout {
+            
+
+            min-width: day_cell_dims * 7 + 5px;
+            min-height: day_cell_dims * 6 + 5px;
 
             // TODO faulty, error prone, change it to per month day count
             for days[d] in get_monthly_day_count(current_month, false) : DayCellButton {
-                col: Math.mod((d+1), 7);
-                row: (d+1) / 7 ;
+                col: Math.mod((d), 7);
+                row: (d) / 7 ;
 
-                preferred-width: day_cell_dims;
-                preferred-height: day_cell_dims;
+                min-width: day_cell_dims;
+                min-height: day_cell_dims;
 
                 day_data: {
                     day_num: (d+1),
@@ -266,7 +296,7 @@ component MonthlyView inherits Rectangle {
 component YearlyView inherits Rectangle {
     
     in property <int> current_year;
-    in property <length> day_cell_dims;
+    in property <length> day_cell_dims: 25px;
 
     pure function get_monthly_day_count(month: int, leap_year: bool) -> int {
         return  month == 1  ? 31 
@@ -284,6 +314,12 @@ component YearlyView inherits Rectangle {
     }
 
     outer_layout := VerticalLayout {
+
+        min-width: year_text.min-width + months_grid.min-width;
+        min-height: year_text.min-height + months_grid.min-height;
+
+        alignment: space-evenly;
+
         year_text := Text {
             text: current_year;
             vertical-alignment: top;
@@ -291,15 +327,25 @@ component YearlyView inherits Rectangle {
         }
 
         months_grid := GridLayout {
-            width: 95%;
-            height: 95%;
+            
             spacing: 5px;
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-bottom: 10px;
+            padding-top: 5px;
+            
 
             for months[m] in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : MonthCellButton {
                 
                 col: Math.mod(m, 3);
                 row: m / 3 ;
 
+                width: 30%;
+                
+                
+                //min-width: days_grid.min-width + 5px;
+                //min-height: days_grid.min-height + day_cell_dims * 2;
+                
                 month_data: {
                     month_num: m,
                     in_year: true,
@@ -307,14 +353,16 @@ component YearlyView inherits Rectangle {
                 };
 
                 days_grid := GridLayout {
-                    width: 90%;
-                    height: 90%; 
+                    //width: 90%;
+                    //height: 85%;
+                    //min-width: day_cell_dims * 7 + 5px;
+                    //min-height: day_cell_dims * 6 + 5px;
                     for days[d] in get_monthly_day_count(m, false) : DayCellButton {
-                        col: Math.mod((d+1), 7);
-                        row: (d+1) / 7 ;
+                        col: Math.mod((d), 7);
+                        row: (d) / 7 ;
 
-                        preferred-width: day_cell_dims;
-                        preferred-height: day_cell_dims;
+                        //min-width: day_cell_dims;
+                        //min-height: day_cell_dims;
 
                         visible_days_num: true;
 
@@ -328,7 +376,6 @@ component YearlyView inherits Rectangle {
             }
         }
     }
-    
 }
 
 export component CalendarUI inherits PageComponent {
@@ -337,10 +384,10 @@ export component CalendarUI inherits PageComponent {
     show-enable-read-only: false;
     show-enable-page-widgets-switch: false;
 
-    min-width: 700px;
-    min-height: 1000px;
-    preferred-width: 1000px;
-    preferred-height: 1200px;
+    min-width: outer_layout.min-width;
+    min-height: outer_layout.min-height;
+    // preferred-width: 1000px;
+    // preferred-height: 1200px;
 
     padding-left: 10px;
     padding-right: 10px;
@@ -350,42 +397,41 @@ export component CalendarUI inherits PageComponent {
 
     outer_layout := HorizontalLayout {
 
-        preferred-height: 700px;
-        preferred-width: 500px;
+        min-width: month_year_layout.min-width + day_view.min-width + upcoming_notes_layout.min-width;
+        min-height: month_year_layout.min-height + day_view.min-height + upcoming_notes_layout.min-height;
         height: 100%;
         width: 100%;
         spacing: 5px;
 
         month_year_layout := VerticalLayout {
+
+            min-width: month_view.min-width + year_view.min-width;
+            min-height: month_view.min-height + year_view.min-height;
+
             width: 30%;
             height: 90%;
 
             month_view := MonthlyView {
-                preferred-height: 700px;
-                preferred-width: 500px;
                 width: 90%;
-                height: 45%;
+                height: 4%;
                 current_date_string: "Test Date";
-                day_cell_dims: 40px;
+                day_cell_dims: 20px;
             }
 
             year_view := YearlyView {
-                preferred-height: 800px;
-                preferred-width: 500px;
                 width: 90%;
-                height: 55%;
+                height: 60%;
                 current_year: 2026;
-                day_cell_dims: 5px;
+                day_cell_dims: 23px;
             }
         }
         
         day_view := DailyView {
+
             current_date: "Test date";
-            preferred-height: 700px;
-            preferred-width: 500px;
             width: 40%;
             height: 90%;
-            hour_cell_width: self.width - 16px;
+            hour_cell_width: 50px;
         }
 
         upcoming_notes_layout := VerticalLayout {
