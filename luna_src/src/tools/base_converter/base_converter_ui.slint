@@ -1,7 +1,7 @@
 
 import { PageComponent } from "..\..\helpers\page_component.slint";
 import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
-import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
+import { Global_NumberConversion_Callback } from "..\..\helpers\global_callbacks.slint";
 
 
 component InputField inherits LineEdit {
@@ -65,7 +65,7 @@ export component BaseConverterUI inherits PageComponent {
     in property <[string]> cusBases;
 
     function convert_and_set_numbers_vec(index: int, number: string) {
-        allNums = GlobalConversionCallback.request_convert_number(allNums, allBases, index, number);
+        allNums = Global_NumberConversion_Callback.request_convert_number(allNums, allBases, index, number);
         dec.convValue = allNums[0];
         bin.convValue = allNums[1];
         hex.convValue = allNums[2];

@@ -11,6 +11,11 @@ pub struct UI_Calendar {
 impl WidgetTrait for UI_Calendar {
     
     fn register_widget(ui_handle: Weak<LunaAppUi>) -> Self {
-        todo!();
+
+        let mut calendar = UI_Calendar {
+            ui_handle
+        };
+
+        return calendar;
     }
 }

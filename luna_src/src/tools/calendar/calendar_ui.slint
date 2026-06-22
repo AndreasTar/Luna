@@ -383,7 +383,7 @@ component UpcomingEventButton inherits Rectangle {
 
     in property <UpcomingEventsCell> event_data;
 
-    callback day_clicked(int);
+    callback upcoming_event_clicked(int);
 
     border-radius: 12px;
     border-color: ghostwhite;
@@ -395,7 +395,7 @@ component UpcomingEventButton inherits Rectangle {
               : ta.has_hover              ? #1258a2
               : transparent;
 
-    ta := TouchArea { clicked => { root.day_clicked(root.event_data.event_index); } }
+    ta := TouchArea { clicked => { root.upcoming_event_clicked(root.event_data.event_index); } }
 
     // TODO add more cases for is_today & has_hover etc
     Text {
@@ -434,6 +434,8 @@ component UpcomingView inherits Rectangle {
 
 component NotesView inherits Rectangle {
     
+    // TODO add 'save' button
+
     in property <string> current_date: "Test Date";
 
 

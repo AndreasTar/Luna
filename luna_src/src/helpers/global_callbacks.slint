@@ -1,3 +1,16 @@
-export global GlobalConversionCallback {
+export global Global_NumberConversion_Callback {
     callback request_convert_number(allNums: [string], allBases: [int], editedIndex: int, editedNumber: string) -> [string];
+}
+
+export global Global_Calendar_Callback {
+    callback month_date_clicked();
+    callback month_next_button_clicked();
+    callback month_prev_button_clicked();
+    callback year_month_clicked();
+    callback year_date_clicked();
+    callback year_next_button_clicked();
+    callback year_prev_button_clicked();
+    callback daily_hour_clicked();
+    callback notes_save_button_clicked();
+    callback upcoming_event_clicked();
 }
