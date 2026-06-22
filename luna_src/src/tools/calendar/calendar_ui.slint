@@ -1,5 +1,6 @@
 
 import { PageComponent } from "..\..\helpers\page_component.slint";
+import { TextEdit, ScrollView } from "std-widgets.slint";
 //import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
 
 //    Simple_AMPM, //  8:00 pm |  8:00 am
@@ -329,8 +330,6 @@ component YearlyView inherits Rectangle {
             padding-bottom: 20px;
             height: 100%;
 
-            
-
             for months[m] in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : MonthCellButton {
                 
                 col: Math.mod(m, 3);
@@ -367,6 +366,89 @@ component YearlyView inherits Rectangle {
                     }
                 }
             }
+        }
+    }
+}
+
+struct UpcomingEventsCell {
+
+    event_date: string,
+    event_title: string,
+    event_type: string, // TODO this will be changed to a user defined enum
+    event_index: int,
+    is_today: bool,
+}
+
+component UpcomingEventButton inherits Rectangle {
+
+    in property <UpcomingEventsCell> event_data;
+
+    callback day_clicked(int);
+
+    border-radius: 12px;
+    border-color: ghostwhite;
+    border-width: 0px;
+
+    // TODO add more cases for is_today & has_hover etc
+    background//: root.event_data.is_selected ? #4A90E2
+              : root.event_data.is_today    ? #ddeeff
+              : ta.has_hover              ? #1258a2
+              : transparent;
+
+    ta := TouchArea { clicked => { root.day_clicked(root.event_data.event_index); } }
+
+    // TODO add more cases for is_today & has_hover etc
+    Text {
+        text: root.event_data.event_title;
+        font-size: 14px;
+        font-weight: FontWeight.semi-bold;
+        color//: root.event_data.is_selected ? white
+             : root.event_data.is_today    ? #2266cc
+             //: root.event_data.in_month    ? #d6d6d6
+             : #bbbbbb;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    
+}
+
+component UpcomingView inherits Rectangle {
+
+    in property <[UpcomingEventsCell]> upcoming_events;
+    
+    outer_layout := VerticalLayout {
+        padding: 5px;
+
+        title_text := Text {
+            text: "UPCOMING";
+        }
+
+        events_scroll_area := ScrollView {
+            for event[e] in upcoming_events: UpcomingEventButton {
+                
+            }
+        }
+    }
+}
+
+component NotesView inherits Rectangle {
+    
+    in property <string> current_date: "Test Date";
+
+
+    outer_layout := VerticalLayout {
+
+        padding: 5px;
+        spacing: 15px;
+
+
+        date_text := Text {
+            text: "Notes " + current_date;
+        }
+
+        notes_field := TextEdit {
+            font-size: 12px;
         }
     }
 }
@@ -428,10 +510,11 @@ export component CalendarUI inherits PageComponent {
         }
 
         upcoming_notes_layout := VerticalLayout {
+            padding-bottom: 14px;
             width: 25%;
 
-            // upcoming view {}
-            // day_num notes view {}
+            upcoming_view := UpcomingView {}
+            notes_view := NotesView {}
 
         }
 
