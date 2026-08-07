@@ -8,12 +8,14 @@ import {
 } from "all_pages.slint";
 import { LunaLibraryGlobalSettings } from "..\helpers\gallery_settings.slint";
 
-export { GlobalConversionCallback } from "..\helpers\global_callbacks.slint";
+export { Global_NumberConversion_Callback } from "..\helpers\global_callbacks.slint";
 
 export component LunaAppUi inherits Window {
     preferred-width: 700px;
     preferred-height: 500px;
     title: @tr("Luna Widget Library");
+    
+    in property <bool> test2;
     // icon: @image-url("../../logo/slint-logo-small-light.png");
 
     MenuBar {

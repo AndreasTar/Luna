@@ -1,6 +1,7 @@
 
 import { PageComponent } from "..\..\helpers\page_component.slint";
 import { TextEdit, ScrollView } from "std-widgets.slint";
+import { Global-Calendar-Callback, Global-Calendar-Callback, Global-Calendar-Callback } from "../../helpers/global_callbacks.slint";
 //import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
 
 //    Simple_AMPM, //  8:00 pm |  8:00 am
@@ -40,6 +41,10 @@ struct MonthCell {
 
 struct EventCell {
     // idk what it should store yet, and if it needs to be on the slint side at all
+    start_hour: int, // 0000 - 2459, integer
+    end_hour: int,   // 0000 - 2459, integer
+    next_day: bool, // for between-days events, true if end_hour is in the next day
+    title: string,
 }
 
 // Cells that will be present in the daily view
@@ -170,10 +175,17 @@ component EventCellButton inherits Rectangle {
 }
 
 // TODO change to ScrollView? prolly want custom scroll graphic
+// TODO add the events logic
 component DailyView inherits Rectangle {
 
     in property <length> hour_cell_width: 300px;
     in property <string> current_date: "Test Date";
+
+    in property <[EventCell]> events_list;
+
+    function hour_clicked(hour: int, day: int, month: int, year: int) {
+        Global-Calendar-Callback.daily_hour_clicked();
+    }
 
     outer_hour := VerticalLayout {
         padding: 10px;
@@ -204,8 +216,9 @@ component DailyView inherits Rectangle {
 
                 drop-shadow-offset-y: 2px;
                 drop-shadow-color: #5e5e5f;
-            }
 
+                hour_clicked => { hour_clicked(h, 1, 1, 2026) } // HACK hardcoded everything lmao
+            }
         }
     }
 }
@@ -229,6 +242,10 @@ component MonthlyView inherits Rectangle {
               : month == 11 ? 30
               : month == 12 ? 31
               : leap-year   ? 29 : 28;
+    }
+
+    function day_clicked(day: int, month: int, year: int) {
+        Global-Calendar-Callback.month_date_clicked();
     }
 
     outer_month := VerticalLayout {
@@ -278,6 +295,8 @@ component MonthlyView inherits Rectangle {
                 preferred-width: day_cell_dims;
                 preferred-height: day_cell_dims;
 
+                day_clicked => { day_clicked(d, current_month, 2026) } // HACK hardcoded year
+
                 day_data: {
                     day_num: (d+1),
                     in_month: true,
@@ -309,6 +328,15 @@ component YearlyView inherits Rectangle {
               : month == 12 ? 31
               : leap-year   ? 29 : 28;
     }
+
+    function month_clicked(month_index: int, year: int) {
+        Global-Calendar-Callback.year_month_clicked();
+    }
+
+    function day_clicked(day_index: int, month: int, year: int) {
+        Global-Calendar-Callback.year_date_clicked();
+    }
+
 
     outer_layout := VerticalLayout {
 
@@ -344,6 +372,8 @@ component YearlyView inherits Rectangle {
                     is_current: false,
                 };
 
+                month_clicked => { month_clicked(m, 2026) } // HACK hardcoded year
+
                 days_grid := GridLayout {
 
                     min-height: day_cell_dims * 4;
@@ -357,6 +387,8 @@ component YearlyView inherits Rectangle {
 
                         // preferred-height: day_cell_dims;
                         // preferred-width: day_cell_dims;
+
+                        day_clicked => { day_clicked(d, m, 2026) } // HACK hardcoded year
 
                         day_data: {
                             day_num: (d+1),
@@ -460,11 +492,6 @@ export component CalendarUI inherits PageComponent {
     description: @tr("A calendar widget with monthly, daily and yearly views.");
     show-enable-read-only: false;
     show-enable-page-widgets-switch: false;
-
-    // min-width: outer_layout.min-width;
-    // min-height: outer_layout.min-height;
-    // preferred-width: 1000px;
-    // preferred-height: 1200px;
 
     padding-left: 10px;
     padding-right: 10px;

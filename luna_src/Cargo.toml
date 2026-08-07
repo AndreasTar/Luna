@@ -21,6 +21,8 @@ luna = { path = "../luna_lib" } # local dependency
 #luna = "*" # published dependency
 image = { version = "0.25.6" }
 
+chrono = { version = "*" }
+
 rfd = "0.15.3" # file dialogs, open/save files, etc.
 profiling = "1.0.16" # i dont really use that for now, will later on
 
