@@ -1,0 +1,44 @@
+# Luna palette.
+#
+# Added so the picker ships with a light option. Light and dark are separate
+# palettes in Luna, not two variants of one, so this is a palette in its own right
+# rather than the light half of Night Sky.
+luna_palette_version = 1
+
+id = "daylight"
+name = "Daylight"
+description = "A clean light palette, built around the same blue the calendar already uses."
+appearance = "light"
+author = "Andreas Tarasidis"
+
+[colors]
+primary                = "#2266cc"
+secondary              = "#4a90e2"
+tertiary               = "#1258a2"
+quaternary             = "#ddeeff"
+
+text                   = "#1f1f1f"
+text_secondary         = "#3d3d3d"
+text_tertiary          = "#5e5e5f"
+text_quaternary        = "#7a7a7a"
+
+background             = "#ffffff"
+background_secondary   = "#f4f4f6"
+background_tertiary    = "#e8e8ec"
+background_quaternary  = "#d6d6d6"
+
+border                 = "#c8c8c8"
+border_secondary       = "#b4b4b4"
+border_tertiary        = "#969696"
+border_quaternary      = "#2266cc"
+
+success                = "#1f7a33"
+warning                = "#b46b00"
+error                  = "#c62828"
+info                   = "#2266cc"
+danger                 = "#b3005c"
+
+inactive               = "#a0a0a0"
+disabled               = "#d6d6d6"
+
+highlight              = "#ffd54a"

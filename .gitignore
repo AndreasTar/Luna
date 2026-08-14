@@ -20,3 +20,6 @@
 /logs/
 luna_app.prev.exe
 /.claude
+
+# Drafted GitHub issues, staged locally before being filed by hand.
+/issues/

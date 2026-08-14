@@ -1,0 +1,42 @@
+# Luna palette.
+# Drop a copy of this file in this folder, change the id and the colours, and Luna
+# will offer it in the palette picker the next time you open it.
+luna_palette_version = 1
+
+id = "night_sky"
+name = "Night Sky"
+description = "Deep purple and blue, with a magenta-red accent. The palette Luna was developed against."
+appearance = "dark"
+author = "Andreas Tarasidis"
+
+[colors]
+primary                = "#331166"
+secondary              = "#2b0a5e"
+tertiary               = "#ffffff"
+quaternary             = "#ffffff"
+
+text                   = "#dbc5fc"
+text_secondary         = "#7b60a6"
+text_tertiary          = "#3e0c8a"
+text_quaternary        = "#c73aa1"
+
+background             = "#160236"
+background_secondary   = "#191919"
+background_tertiary    = "#1c083b"
+background_quaternary  = "#ffffff"
+
+border                 = "#191919"
+border_secondary       = "#7b649e"
+border_tertiary        = "#a791c9"
+border_quaternary      = "#571a46"
+
+success                = "#ffffff"
+warning                = "#ffffff"
+error                  = "#ff0000"
+info                   = "#ffffff"
+danger                 = "#ffffff"
+
+inactive               = "#ffffff"
+disabled               = "#ffffff"
+
+highlight              = "#8f6fbf"

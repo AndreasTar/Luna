@@ -47,18 +47,13 @@ body:
     description: A clear and concise description of your computers hardware.
   validations:
     required: true
-- type: upload
-  id: screenshots
-  attributes:
-    label: Upload relevant screenshots
-    description: Drag and drop any relevant screenshots or files.
-  validations:
-    required: false
 - type: textarea
   id: additional
   attributes:
     label: Additional Context
     placeholder: "Only happens if its Tuesday."
-    description: Any other context about the problem that we should know about.
+    description: >
+      Any other context about the problem that we should know about. You can drag
+      screenshots and files into this box.
   validations:
     required: false

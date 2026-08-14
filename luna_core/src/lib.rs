@@ -236,7 +236,7 @@ mod tests {
             .collect();
         top_level.sort();
 
-        assert_eq!(top_level, vec!["config", "data", "logs"]);
+        assert_eq!(top_level, vec!["config", "data", "logs", "palettes"]);
     }
 
     #[test]
@@ -246,14 +246,14 @@ mod tests {
         {
             let mut host = host_in(dir.path());
             host.config.last_active_tool = Some("luna.calendar".to_string());
-            host.config.dark_mode = false;
+            host.config.palette = "daylight".to_string();
             host.save_config().unwrap();
         }
 
         let host = host_in(dir.path());
 
         assert_eq!(host.config.last_active_tool, Some("luna.calendar".to_string()));
-        assert_eq!(host.config.dark_mode, false);
+        assert_eq!(host.config.palette, "daylight");
     }
 
     #[test]

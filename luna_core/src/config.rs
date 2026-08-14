@@ -50,10 +50,14 @@ pub struct AppConfig {
     pub data_root: Option<PathBuf>,
 
     /// Id of the palette applied to the whole app. Tools may override it.
+    ///
+    /// Matches the `id` of a file in `<install>/palettes`. Light and dark are separate
+    /// palettes rather than variants of one, so there is no companion mode flag: a
+    /// user wanting light picks a light palette.
+    ///
+    /// If the id names a palette that is missing or unreadable, the picker reports it
+    /// and the built-in default is used, rather than starting up unstyled.
     pub palette: String,
-
-    /// Whether the dark variant of the palette is in use.
-    pub dark_mode: bool,
 
     /// Tool whose page was open when Luna last exited, restored on startup.
     pub last_active_tool: Option<String>,
@@ -67,7 +71,6 @@ impl Default for AppConfig {
         return Self {
             data_root: None,
             palette: "night_sky".to_string(),
-            dark_mode: true,
             last_active_tool: None,
             window: WindowConfig::default(),
         };
@@ -327,8 +330,7 @@ mod tests {
         let path = dir.path().join("app.toml");
 
         let mut config = AppConfig::default();
-        config.palette = "monochrome".to_string();
-        config.dark_mode = false;
+        config.palette = "monochrome_gray".to_string();
         config.last_active_tool = Some("luna.calendar".to_string());
         config.window.width = 1440;
 
@@ -398,7 +400,7 @@ mod tests {
 
         assert_eq!(loaded.quarantined, None, "forward compat must not quarantine");
         assert_eq!(loaded.value.palette, "custom");
-        assert_eq!(loaded.value.dark_mode, AppConfig::default().dark_mode);
+        assert_eq!(loaded.value.window, AppConfig::default().window);
     }
 
     #[test]

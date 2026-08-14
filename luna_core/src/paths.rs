@@ -14,6 +14,7 @@
 //!     luna.db
 //!     tools/<tool-id>/
 //!   logs/
+//!   palettes/                palette files, loaded at runtime
 //!   tools/<name>/            tool sources, developer mode only
 //! ```
 //!
@@ -43,6 +44,7 @@ pub struct AppPaths {
     config_dir: PathBuf,
     data_root: PathBuf,
     logs_dir: PathBuf,
+    palettes_dir: PathBuf,
     tools_dir: PathBuf,
 }
 
@@ -75,6 +77,7 @@ impl AppPaths {
             config_dir: install_dir.join("config"),
             data_root: install_dir.join("data"),
             logs_dir: install_dir.join("logs"),
+            palettes_dir: install_dir.join("palettes"),
             tools_dir: install_dir.join("tools"),
             install_dir,
         };
@@ -96,6 +99,10 @@ impl AppPaths {
         })?;
 
         fs::create_dir_all(&paths.logs_dir).at_path(&paths.logs_dir)?;
+
+        // Created even when empty, so there is somewhere obvious to drop a palette
+        // file without having to guess the folder name.
+        fs::create_dir_all(&paths.palettes_dir).at_path(&paths.palettes_dir)?;
 
         return Ok(paths);
     }
@@ -139,6 +146,18 @@ impl AppPaths {
     /// `<install>/logs`.
     pub fn logs_dir(&self) -> &Path {
         return &self.logs_dir;
+    }
+
+    /// `<install>/palettes`, holding the palette files offered in the picker.
+    ///
+    /// Palettes are data rather than code, so unlike tools they are read at runtime
+    /// and a new one needs no rebuild.
+    ///
+    /// Read by the picker and written by the palette editor tool, which saves its
+    /// output here. Writes must go through [`crate::atomic`] like every other file
+    /// Luna produces.
+    pub fn palettes_dir(&self) -> &Path {
+        return &self.palettes_dir;
     }
 
     /// `<install>/tools`, where tool sources live in developer mode.
@@ -272,6 +291,7 @@ mod tests {
         assert_eq!(paths.config_dir(), dir.path().join("config"));
         assert_eq!(paths.data_root(), dir.path().join("data"));
         assert_eq!(paths.logs_dir(), dir.path().join("logs"));
+        assert_eq!(paths.palettes_dir(), dir.path().join("palettes"));
         assert_eq!(paths.tools_dir(), dir.path().join("tools"));
         assert_eq!(paths.database_file(), dir.path().join("data").join("luna.db"));
     }
@@ -284,6 +304,7 @@ mod tests {
         assert!(paths.config_dir().is_dir());
         assert!(paths.data_root().is_dir());
         assert!(paths.logs_dir().is_dir());
+        assert!(paths.palettes_dir().is_dir());
     }
 
     #[test]

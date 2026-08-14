@@ -1,0 +1,40 @@
+# Luna palette.
+luna_palette_version = 1
+
+id = "monochrome_gray"
+name = "Monochrome Gray"
+description = "White, black and gray throughout, except for the meaningful roles such as success and warning, which keep their colour."
+appearance = "dark"
+author = "Andreas Tarasidis"
+
+[colors]
+primary                = "#000000"
+secondary              = "#323232"
+tertiary               = "#646464"
+quaternary             = "#969696"
+
+text                   = "#ffffff"
+text_secondary         = "#c8c8c8"
+text_tertiary          = "#b4b4b4"
+text_quaternary        = "#969696"
+
+background             = "#191919"
+background_secondary   = "#323232"
+background_tertiary    = "#505050"
+background_quaternary  = "#646464"
+
+border                 = "#969696"
+border_secondary       = "#b4b4b4"
+border_tertiary        = "#c8c8c8"
+border_quaternary      = "#646464"
+
+success                = "#008000"
+warning                = "#ff8000"
+error                  = "#ff0000"
+info                   = "#0000ff"
+danger                 = "#ff1493"
+
+inactive               = "#505050"
+disabled               = "#323232"
+
+highlight              = "#ffff00"

@@ -18,7 +18,7 @@ body:
     id: motivation
     attributes:
       label: Reason for adding this feature
-      description: Why do you want this feature added to the game
+      description: Why do you want this feature added to Luna
       placeholder: "Example: Rabbits are my favourite animal."
     validations:
       required: true
@@ -27,21 +27,16 @@ body:
     attributes:
       label: Alternative solutions / Relevant existing functionality
       placeholder: "Example: There is a widget that shows squirrels, and I want rabbits too."
-      description: A clear and concise description of alternative features that could be added alongside, or any relevant existing functionality that already exists in-game.
+      description: A clear and concise description of alternative features that could be added alongside, or any relevant existing functionality that already exists in Luna.
     validations:
       required: true
-  - type: upload
-    id: screenshots
-    attributes:
-      label: Upload relevant screenshots
-      description: Drag and drop any relevant screenshots or files.
-    validations:
-      required: false
   - type: textarea
     id: additional
     attributes:
       label: Additional Context
       placeholder: "I want this to only show when its Tuesday."
-      description: Any other context about the problem that we should know about.
+      description: >
+        Any other context about the problem that we should know about. You can drag
+        screenshots and files into this box.
     validations:
       required: false

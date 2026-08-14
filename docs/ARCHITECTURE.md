@@ -250,6 +250,7 @@ registry, or any system location.
     luna.db                  SQLite
     tools/<tool-id>/         per-tool blobs (images, exports)
   logs/
+  palettes/                  palette files, read at runtime
   tools/<name>/              tool sources (developer mode)
 ```
 
@@ -426,19 +427,54 @@ redesign.
 
 ## 9. Theming
 
+### 9.1 Palettes are droppable files
+
+A palette is a TOML file in `<install>/palettes`, not compiled-in data. Because a
+palette is **data rather than code**, it does not need the rebuild flow that tools
+need (section 3): drop the file in, reopen the picker, and it is there with a preview.
+
+This is the one place where "drop a file in and it just works" applies literally, and
+it is worth being explicit about why. Tools contribute behaviour and UI, which on this
+architecture means Rust and Slint, which means compilation. Palettes contribute only
+values, which can be parsed at runtime with no such cost.
+
+The picker lists every palette it finds, renders a swatch preview from the file, and
+applies it on click.
+
+The folder is read by the picker and **written by the palette editor tool**, which
+saves what the user builds straight into it, so a palette created in Luna is
+indistinguishable from one dropped in by hand. Those writes go through the atomic path
+like everything else. Per-tool overrides are still recorded in `config/`, never by
+editing a palette file, so the editor is the only thing that ever writes here.
+
+A palette missing a role is listed but not applicable, and says which role is missing.
+Silently defaulting would turn a typo in a role name into a colour that is subtly wrong
+somewhere far from the mistake.
+
+### 9.2 Light and dark are separate palettes
+
+Not two variants of one. A palette declares `appearance = "light" | "dark"` purely so
+the picker can group them; there is no companion mode toggle, and `AppConfig` carries
+no `dark_mode` flag. A user who wants light picks a light palette.
+
+This keeps the model flat: one active palette id, one set of roles, no variant axis
+multiplying every override.
+
+### 9.3 Roles and resolution
+
+Roles come from the existing `LunaPallete`, which already had the right abstraction:
+primary, text, background and border families, plus `success` `warning` `error` `info`
+`danger`, `inactive` `disabled` `highlight`. Its four palettes were salvaged into
+`palettes/` when the iced code was removed.
+
 Three levels of override, resolved per `(tool, role)`:
 
 ```
 effective(tool, role) =
       tool_color_override(tool, role)   // warning -> yellow, in tool A only
    ?? tool_palette(tool)[role]          // tool A uses palette Y
-   ?? global_palette[role]              // app uses palette X
+   ?? app_palette[role]                 // app uses palette X
 ```
-
-The existing `LunaPallete` already defines the right **semantic roles**: primary,
-text, background and border families, plus `success` `warning` `error` `info` `danger`,
-`inactive` `disabled` `highlight`. That work survives the iced removal intact; only
-the `Into<iced::Color>` impls are replaced with Slint conversions.
 
 Resolution happens in Rust and produces a **flat resolved palette**, pushed into a
 single Slint global `Theme` when the active tool changes. Tool components just read
@@ -446,9 +482,8 @@ single Slint global `Theme` when the active tool changes. Tool components just r
 one tool page is visible at a time; this would become a per-component property only if
 two tools were ever shown side by side.
 
-Persisted form is small: a global palette id, `Option<palette_id>` per tool, and a
-sparse `Map<Role, Color>` of overrides per tool. Each palette carries light and dark
-variants, since `PageComponent` already exposes that switch.
+Persisted form stays small: an app palette id in `config/app.toml`, and per tool an
+optional palette id plus a sparse `role -> colour` map in `config/tools/<id>.toml`.
 
 **Contrast validation** lives in `luna_lib`: when a user overrides a role, check it
 against the resolved background and warn if it falls below a readable ratio. Pure
@@ -536,8 +571,8 @@ steps depend on.
 3. **`luna_launcher` + rebuild-on-detect + resume.** The add-a-tool model becomes real.
 4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
    catch-up. Reminders survive restarts.
-5. **Palette resolution + `Theme` global.** Low risk, immediately visible; can slot in
-   anywhere after step 2.
+5. **Palette loading, picker and resolution + `Theme` global.** Low risk, immediately
+   visible; can slot in anywhere after step 2.
 6. **Ports.** Cheap once the registry exists.
 7. **UI state TTL, memory tuning, image editor re-apply-on-return.**
 
@@ -550,19 +585,20 @@ nothing meaningful to resume.
 
 What exists today, for orientation.
 
-**Working:** the workspace split (`luna_lib` and `luna_src`), the base converter
-end-to-end, `number_converter` and `color_format_converter` as solid documented
-library modules, and the calendar's UI layout.
+**Working:** the workspace split (`luna_lib`, `luna_core` and `luna_src`), storage and
+config through `luna_core`, the base converter end-to-end, `number_converter` and
+`color_format_converter` as solid documented library modules, and the calendar's UI
+layout. The stale iced and egui files have been removed, with the `LunaPallete` work
+salvaged into `palettes/`.
 
 **Known gaps and defects**, all superseded or fixed by the work above:
 
 - `Global_Calendar_Callback` is not re-exported from `landing_page.slint`, so every
   calendar click handler is unreachable from Rust. Fixed by section 6.
 - `calendar_ui.slint:4` imports the same global three times.
-- Stale iced/egui code, not compiled and not compilable:
-  `luna_src/src/tools/img_manipulator/mod.rs`, `luna_src/src/helpers/styling.rs`,
-  `luna_src/src/ui/all_pages.rs`. The palette work in `styling.rs` must be **salvaged**
-  into section 9 before deletion.
+- `luna_src/src/helpers/positioner.rs` is the last egui-era file. It compiles and is
+  declared in `helpers/mod.rs`, but nothing uses it and the only function that consumed
+  its types is commented out. Keep with an explanatory comment, or delete.
 - `color_format_converter::convert_vec_color_model` derives channel count from
   `format as usize % 2`, which is only correct for the first 12 RGB permutations and
   wrong for `Gray`, `GrayA`, and the CMYKA/HSLA variants. `channel_count()` already
