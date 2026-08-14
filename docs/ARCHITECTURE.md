@@ -340,6 +340,12 @@ remember_ui_state = true
 ui_state_ttl      = "7d"     # "session" | duration | "forever" | "never"
 ```
 
+Snapshots live one file per tool under `<data_root>/ui-state`, not in the database:
+the two have opposite requirements, and a corrupt snapshot must never be able to take a
+note or a reminder with it. The time to live is read from the tool's settings when
+loading rather than stored in the file, so shortening it applies to what is already
+saved.
+
 **Image editor specifically**: persist the *source image path and the filter stack
 only*, never the rendered result. On return, re-decode and re-apply. Decoded images
 are dropped entirely when the view is destroyed. This is the single largest memory
@@ -651,7 +657,11 @@ steps depend on.
 6. **Ports.** *Done, `luna_core::ports`.* Typed payloads, per-tool inboxes with an
    overflow bound, and `Host::send_targets` / `Host::send_to`. The "Send to" UI is
    drawn by whichever tool sends, so it lands with the first tool that does.
-7. **UI state TTL, memory tuning, image editor re-apply-on-return.**
+7. **UI state TTL, memory tuning, image editor re-apply-on-return.** *Store done,
+   `luna_core::ui_state`.* One file per tool under `<data_root>/ui-state`, opaque
+   payloads, TTL read from settings at load time, session state cleared on clean exit.
+   Outstanding: the per-tool settings surface (top right of each tool page), and the
+   image editor's own snapshot, both of which are tool-side work.
 
 Steps 1 and 2 are what make step 3 safe. Building the launcher first would mean having
 nothing meaningful to resume.

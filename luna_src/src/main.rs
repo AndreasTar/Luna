@@ -354,6 +354,15 @@ fn shut_down(ui: &LunaAppUi, host: &mut Host) {
         host.config.last_active_tool = Some(active.to_string());
     }
 
+    // Only on a clean exit. A tool set to keep state for the session keeps it through
+    // a crash, which is the right way round: the alternative loses work every time the
+    // app is killed.
+    match host.discard_session_ui_state() {
+        Ok(0) => {}
+        Ok(n) => eprintln!("shutdown: cleared session interface state for {n} tool(s)"),
+        Err(e) => eprintln!("shutdown: could not clear session interface state: {e}"),
+    }
+
     for (id, error) in host.stop_tools() {
         eprintln!("shutdown: tool {id} failed to stop cleanly: {error}");
     }

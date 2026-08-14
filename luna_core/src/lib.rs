@@ -47,6 +47,7 @@ pub mod paths;
 pub mod ports;
 pub mod registry;
 pub mod scheduler;
+pub mod ui_state;
 
 pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
 pub use db::Database;
@@ -58,6 +59,7 @@ pub use paths::AppPaths;
 pub use ports::{Delivery, Payload, PayloadData, PortBus, PortTarget};
 pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
 pub use scheduler::{Fire, ScheduledJob, Scheduler, Upcoming};
+pub use ui_state::UiStateStore;
 
 use std::path::PathBuf;
 
@@ -161,6 +163,8 @@ pub struct Host {
     pub palettes: PaletteSet,
     /// Handoffs waiting to be collected by their target tools.
     pub ports: PortBus,
+    /// Transient per-tool interface state.
+    pub ui_state: UiStateStore,
     /// Recoverable problems found during startup, for the UI to surface.
     pub notices: Vec<Notice>,
 }
@@ -215,6 +219,7 @@ impl Host {
 
         let db = Database::open(&paths.database_file())?;
 
+        let paths_for_ui_state = paths.clone();
         let palettes = PaletteSet::load_dir(paths.palettes_dir());
 
         for problem in &palettes.problems {
@@ -231,6 +236,7 @@ impl Host {
             registry: Registry::new(),
             palettes,
             ports: PortBus::new(),
+            ui_state: UiStateStore::new(paths_for_ui_state.data_root()),
             notices,
         };
 
@@ -367,6 +373,51 @@ impl Host {
     /// Collects whatever is waiting for a tool, emptying its inbox.
     pub fn collect_deliveries(&mut self, tool_id: &str) -> Vec<Delivery> {
         return self.ports.take(tool_id);
+    }
+
+    /// Saves a tool's transient interface state, if its settings allow it.
+    ///
+    /// The payload is opaque: tools serialise whatever they like. Silently does
+    /// nothing when the tool has the feature off, so callers need not check.
+    pub fn save_ui_state(&self, tool_id: &str, state: &str) -> Result<bool> {
+        let config = self.registry.config(tool_id).cloned().unwrap_or_default();
+        return self
+            .ui_state
+            .save(tool_id, &config, state, chrono::Utc::now());
+    }
+
+    /// Restores a tool's interface state, or `None` if there is nothing usable.
+    ///
+    /// Missing, expired, disabled and corrupt all look the same to the caller, because
+    /// the response to each is identical: open the page fresh.
+    pub fn load_ui_state(&self, tool_id: &str) -> Option<String> {
+        let config = self.registry.config(tool_id).cloned().unwrap_or_default();
+        return self
+            .ui_state
+            .load(tool_id, &config, chrono::Utc::now())
+            .ok();
+    }
+
+    /// Drops interface state for every tool set to keep it only for a session.
+    ///
+    /// Called on a clean exit. A tool that is killed rather than closed keeps its
+    /// state until the next clean exit, which is the right way round: the alternative
+    /// loses state every time the app crashes.
+    pub fn discard_session_ui_state(&self) -> Result<usize> {
+        let configs: Vec<(String, ToolConfig)> = self
+            .registry
+            .all()
+            .filter_map(|m| {
+                self.registry
+                    .config(&m.id)
+                    .ok()
+                    .map(|c| (m.id.clone(), c.clone()))
+            })
+            .collect();
+
+        return self
+            .ui_state
+            .discard_session_state(configs.iter().map(|(id, c)| (id.as_str(), c)));
     }
 
     /// The application palette named by the settings.
