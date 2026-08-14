@@ -1,0 +1,26 @@
+[package]
+name = "luna_core"
+description = "Host services for the Luna desktop app: paths, storage, config and database."
+version = "0.1.0"
+authors = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+repository = { workspace = true }
+license-file = { workspace = true }
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "luna_core"
+path = "src/lib.rs"
+
+[dependencies]
+luna = { path = "../luna_lib" }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.20"
+toml = "1.1.4"
+
+[dev-dependencies]
+tempfile = "3.27.0"

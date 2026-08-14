@@ -4,6 +4,7 @@
 resolver = "2"
 members = [
     "luna_lib",
+    "luna_core",
     "luna_src",
 ]
 

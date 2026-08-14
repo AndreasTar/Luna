@@ -2,7 +2,7 @@ Readme is under development, check again later.
 
 ## What Luna is
 
-A lightweight desktop helper that hosts many small tools — a number base converter, a
+A lightweight desktop helper that hosts many small tools: a number base converter, a
 calendar, an image manipulator, with reminders, a PC health log, weather, file
 converters and a password manager planned.
 
@@ -15,13 +15,14 @@ Everything Luna writes stays in its own install folder, unless you explicitly po
 somewhere else.
 
 The architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). It
-describes the target design — most of it is not implemented yet.
+describes the target design, most of which is not implemented yet.
 
 ## Repository layout
 
 | Path | What it is |
 | --- | --- |
-| `luna_lib/` | Published crate `luna` — pure logic, no UI. Usable on its own. |
+| `luna_lib/` | Published crate `luna`. Pure logic, no UI. Usable on its own. |
+| `luna_core/` | Host services: paths, storage, config, database. |
 | `luna_src/` | The application: Slint UI shell and tool wiring. |
 | `docs/` | Design documentation. |
 
