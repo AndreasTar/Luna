@@ -29,16 +29,47 @@ struct Migration {
 }
 
 /// Every schema change, in order. Append only; never edit a shipped entry.
-const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "initial",
-    sql: "
-        CREATE TABLE _luna_meta (
-            key   TEXT NOT NULL PRIMARY KEY,
-            value TEXT NOT NULL
-        ) STRICT;
-    ",
-}];
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "initial",
+        sql: "
+            CREATE TABLE _luna_meta (
+                key   TEXT NOT NULL PRIMARY KEY,
+                value TEXT NOT NULL
+            ) STRICT;
+        ",
+    },
+    Migration {
+        version: 2,
+        name: "rule_events",
+        sql: "
+            -- What has happened to scheduled rules. Guards are predicates over this
+            -- table, and window tasks anchor on the latest completion in it, so it is
+            -- read far more often than it is written.
+            CREATE TABLE rule_events (
+                id      INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                rule_id TEXT    NOT NULL,
+                kind    TEXT    NOT NULL,
+                -- Unix seconds UTC. Absolute, never a duration: a deadline stored as
+                -- 'in N seconds' does not survive the app being closed.
+                at      INTEGER NOT NULL,
+                -- Which tool owns the rule, so removing a tool can take its history
+                -- with it. Null for rules the host itself owns.
+                tool_id TEXT,
+                note    TEXT
+            ) STRICT;
+
+            -- Guards ask 'how many of this kind, for this rule, in this span' on every
+            -- candidate instant, so that exact shape is indexed.
+            CREATE INDEX idx_rule_events_lookup ON rule_events (rule_id, kind, at);
+
+            -- Pruning and per-tool cleanup scan by time and by owner.
+            CREATE INDEX idx_rule_events_at ON rule_events (at);
+            CREATE INDEX idx_rule_events_tool ON rule_events (tool_id);
+        ",
+    },
+];
 
 /// An open connection to Luna's database, migrated to the current schema.
 pub struct Database {
@@ -165,6 +196,14 @@ impl Database {
     /// Borrows the connection mutably, for transactions.
     pub fn conn_mut(&mut self) -> &mut Connection {
         return &mut self.conn;
+    }
+
+    /// Unwraps to the underlying connection.
+    ///
+    /// For components that want to own a connection outright rather than borrow one,
+    /// such as [`crate::events::EventLog`].
+    pub fn into_connection(self) -> Connection {
+        return self.conn;
     }
 
     /// Reads a value from the key/value metadata table.

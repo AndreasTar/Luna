@@ -614,11 +614,12 @@ steps depend on.
    Supervisor with the exit-code protocol, cargo rebuild, binary swap with `.prev`
    rollback, startup scan for tool changes, and an in-app prompt gated on whether a
    rebuild is possible at all.
-4. **Scheduler + rule engine + event log.** *In progress.* The pure engine is in
-   `luna::rules`: the guard AST with calendar-aware lookbacks, the `EventHistory`
-   query interface, and window tasks with `RollingFromCompletion` anchors and
-   escalating urgency. Outstanding: RRULE recurrence for `Anchor::FixedSchedule`, the
-   event log tables, and the scheduler runtime with catch-up policy.
+4. **Scheduler + rule engine + event log.** *In progress.* Done: the pure engine in
+   `luna::rules` (guard AST with calendar-aware lookbacks, window tasks with
+   `RollingFromCompletion` anchors and escalating urgency, catch-up policy), and the
+   event log in `luna_core::events` backed by SQLite, implementing `EventHistory`.
+   Outstanding: RRULE recurrence for `Anchor::FixedSchedule`, and the scheduler
+   runtime that materialises occurrences and wakes on them.
 5. **Palette loading, picker and resolution + `Theme` global.** *Mostly done.*
    `luna::palette` holds the role set, colour type, resolution chain and WCAG contrast
    checking; `luna_core::palettes` loads and validates files; the `Theme` global is

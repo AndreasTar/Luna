@@ -16,6 +16,7 @@ name = "luna_core"
 path = "src/lib.rs"
 
 [dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock"] }
 luna = { path = "../luna_lib" }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 serde = { version = "1.0.229", features = ["derive"] }

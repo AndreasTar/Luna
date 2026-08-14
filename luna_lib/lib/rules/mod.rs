@@ -331,6 +331,124 @@ impl Guard {
     }
 }
 
+/// What to do about occurrences that came due while Luna was not running.
+///
+/// Without a policy, opening Luna after a week away produces a stack of identical
+/// notifications, which is worse than useless: the user dismisses all of them and
+/// stops reading the ones that matter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CatchUp {
+    /// Fire every missed occurrence, oldest first.
+    ///
+    /// For rules where each occurrence is a distinct piece of work, such as a daily
+    /// backup that genuinely needs running once per missed day.
+    FireLate,
+
+    /// Fire once, at the most recent missed occurrence.
+    ///
+    /// The sensible default for reminders: being told once that a recurring thing is
+    /// overdue conveys everything the stack of duplicates would.
+    #[default]
+    CollapseToOne,
+
+    /// Fire none of them and carry on from the next future occurrence.
+    ///
+    /// For rules that only make sense in the moment, such as an hourly sample of
+    /// something Luna could not have measured while closed.
+    Skip,
+}
+
+impl CatchUp {
+    pub fn as_str(self) -> &'static str {
+        return match self {
+            CatchUp::FireLate => "fire_late",
+            CatchUp::CollapseToOne => "collapse_to_one",
+            CatchUp::Skip => "skip",
+        };
+    }
+}
+
+impl std::str::FromStr for CatchUp {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        return match s {
+            "fire_late" => Ok(CatchUp::FireLate),
+            "collapse_to_one" => Ok(CatchUp::CollapseToOne),
+            "skip" => Ok(CatchUp::Skip),
+            other => Err(format!(
+                "{other:?} is not a catch-up policy. Expected fire_late, \
+                 collapse_to_one or skip."
+            )),
+        };
+    }
+}
+
+impl std::fmt::Display for CatchUp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(f, "{}", self.as_str());
+    }
+}
+
+/// A missed occurrence, and whether it is being fired late.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Occurrence {
+    /// When it was originally due.
+    pub due_at: DateTime<Utc>,
+    /// Whether this is being delivered after the fact.
+    ///
+    /// Worth passing to the user: "this was due at 09:00" reads very differently from
+    /// a notification that appears to be about right now.
+    pub late: bool,
+}
+
+/// Decides which of a rule's missed occurrences actually fire.
+///
+/// `missed` are the candidate instants that came due while Luna was not running, in
+/// any order; the result is ordered oldest first.
+///
+/// ## Examples
+/// ```
+/// # use luna::rules::{CatchUp, missed_to_fire};
+/// # use chrono::{TimeZone, Utc};
+/// let missed = vec![
+///     Utc.with_ymd_and_hms(2026, 8, 12, 9, 0, 0).unwrap(),
+///     Utc.with_ymd_and_hms(2026, 8, 13, 9, 0, 0).unwrap(),
+///     Utc.with_ymd_and_hms(2026, 8, 14, 9, 0, 0).unwrap(),
+/// ];
+///
+/// assert_eq!(missed_to_fire(&missed, CatchUp::FireLate).len(), 3);
+/// assert_eq!(missed_to_fire(&missed, CatchUp::CollapseToOne).len(), 1);
+/// assert_eq!(missed_to_fire(&missed, CatchUp::Skip).len(), 0);
+///
+/// // Collapsing keeps the most recent, which is the one that reflects reality.
+/// assert_eq!(missed_to_fire(&missed, CatchUp::CollapseToOne)[0].due_at, missed[2]);
+/// ```
+pub fn missed_to_fire(missed: &[DateTime<Utc>], policy: CatchUp) -> Vec<Occurrence> {
+    if missed.is_empty() {
+        return Vec::new();
+    }
+
+    let mut sorted: Vec<DateTime<Utc>> = missed.to_vec();
+    sorted.sort_unstable();
+
+    return match policy {
+        CatchUp::Skip => Vec::new(),
+
+        CatchUp::FireLate => sorted
+            .into_iter()
+            .map(|due_at| Occurrence { due_at, late: true })
+            .collect(),
+
+        // The latest, not the earliest: the user cares that the thing is overdue now,
+        // not that it first became overdue days ago.
+        CatchUp::CollapseToOne => sorted
+            .last()
+            .map(|&due_at| vec![Occurrence { due_at, late: true }])
+            .unwrap_or_default(),
+    };
+}
+
 /// How urgent a window task currently is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Urgency {
@@ -784,6 +902,83 @@ mod tests {
         }
 
         assert!("nonsense".parse::<EventKind>().is_err());
+    }
+
+    #[test]
+    fn catch_up_policies_choose_what_fires() {
+        let missed = vec![
+            utc(2026, 8, 12, 9),
+            utc(2026, 8, 13, 9),
+            utc(2026, 8, 14, 9),
+        ];
+
+        assert_eq!(missed_to_fire(&missed, CatchUp::FireLate).len(), 3);
+        assert_eq!(missed_to_fire(&missed, CatchUp::CollapseToOne).len(), 1);
+        assert_eq!(missed_to_fire(&missed, CatchUp::Skip).len(), 0);
+    }
+
+    #[test]
+    fn collapsing_keeps_the_most_recent_not_the_oldest() {
+        let missed = vec![
+            utc(2026, 8, 14, 9),
+            utc(2026, 8, 12, 9),
+            utc(2026, 8, 13, 9),
+        ];
+
+        let fired = missed_to_fire(&missed, CatchUp::CollapseToOne);
+
+        assert_eq!(fired.len(), 1);
+        assert_eq!(
+            fired[0].due_at,
+            utc(2026, 8, 14, 9),
+            "the user cares that it is overdue now, not when it first became overdue"
+        );
+    }
+
+    #[test]
+    fn firing_late_delivers_oldest_first_regardless_of_input_order() {
+        let missed = vec![
+            utc(2026, 8, 14, 9),
+            utc(2026, 8, 12, 9),
+            utc(2026, 8, 13, 9),
+        ];
+
+        let fired = missed_to_fire(&missed, CatchUp::FireLate);
+
+        assert_eq!(fired[0].due_at, utc(2026, 8, 12, 9));
+        assert_eq!(fired[1].due_at, utc(2026, 8, 13, 9));
+        assert_eq!(fired[2].due_at, utc(2026, 8, 14, 9));
+    }
+
+    #[test]
+    fn every_caught_up_occurrence_is_marked_late() {
+        let missed = vec![utc(2026, 8, 12, 9), utc(2026, 8, 13, 9)];
+
+        for policy in [CatchUp::FireLate, CatchUp::CollapseToOne] {
+            for occurrence in missed_to_fire(&missed, policy) {
+                assert!(occurrence.late, "{policy} should mark occurrences late");
+            }
+        }
+    }
+
+    #[test]
+    fn nothing_missed_fires_nothing_under_any_policy() {
+        for policy in [CatchUp::FireLate, CatchUp::CollapseToOne, CatchUp::Skip] {
+            assert!(missed_to_fire(&[], policy).is_empty(), "{policy}");
+        }
+    }
+
+    #[test]
+    fn catch_up_policies_round_trip_and_default_sensibly() {
+        for policy in [CatchUp::FireLate, CatchUp::CollapseToOne, CatchUp::Skip] {
+            assert_eq!(policy.as_str().parse(), Ok(policy));
+        }
+
+        assert!("hourly".parse::<CatchUp>().is_err());
+
+        // A stack of duplicates on startup is the worst of the three, so it is not the
+        // one you get by not choosing.
+        assert_eq!(CatchUp::default(), CatchUp::CollapseToOne);
     }
 
     #[test]
