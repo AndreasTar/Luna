@@ -2681,6 +2681,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "luna_launcher"
+version = "0.1.0"
+dependencies = [
+ "luna_core",
+ "tempfile",
+]
+
+[[package]]
 name = "luna_ui"
 version = "0.2.1"
 dependencies = [

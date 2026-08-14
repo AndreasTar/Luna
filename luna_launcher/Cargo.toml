@@ -1,0 +1,20 @@
+[package]
+name = "luna_launcher"
+description = "Supervisor for the Luna desktop app: spawns it, and rebuilds and replaces it when a tool is added."
+version = "0.1.0"
+authors = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+repository = { workspace = true }
+license-file = { workspace = true }
+publish = false
+
+[[bin]]
+name = "luna_launcher"
+path = "src/main.rs"
+
+[dependencies]
+luna_core = { path = "../luna_core" }
+
+[dev-dependencies]
+tempfile = "3.27.0"

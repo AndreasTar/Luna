@@ -40,6 +40,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod manifest;
+pub mod lifecycle;
 pub mod paths;
 pub mod registry;
 

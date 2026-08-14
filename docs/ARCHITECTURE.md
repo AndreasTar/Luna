@@ -2,9 +2,14 @@
 
 Status: **design agreed, being built.** Last updated 2026-08-14.
 
-Storage and the tool host are in. The launcher, scheduler, theming and ports are not.
-See [Implementation roadmap](#13-implementation-roadmap) for what is done and what is
-next, and [Current state](#14-current-state-vs-target) for the gap.
+Storage, the tool host and the launcher are in. The scheduler, theming, ports and tray
+are not. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
+what is next, and [Current state](#14-current-state-vs-target) for the gap.
+
+**One thing worth knowing if you are writing a tool:** the rebuild flow means the
+install directory *is* the source tree. A copy of Luna without sources cannot add
+tools locally; it gets them through a new release. Both cases are detected at startup
+and the UI says which one applies.
 
 ---
 
@@ -605,7 +610,10 @@ steps depend on.
    generated. Dropping a folder in is all that is needed. Still outstanding from the
    service/view split: moving callbacks off Slint globals onto per-page instances.
 
-3. **`luna_launcher` + rebuild-on-detect + resume.** The add-a-tool model becomes real.
+3. **`luna_launcher` + rebuild-on-detect + resume.** *Done, `luna_launcher` v0.1.0.*
+   Supervisor with the exit-code protocol, cargo rebuild, binary swap with `.prev`
+   rollback, startup scan for tool changes, and an in-app prompt gated on whether a
+   rebuild is possible at all.
 4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
    catch-up. Reminders survive restarts.
 5. **Palette loading, picker and resolution + `Theme` global.** Low risk, immediately

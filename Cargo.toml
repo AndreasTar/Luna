@@ -6,6 +6,7 @@ members = [
     "luna_lib",
     "luna_core",
     "luna_src",
+    "luna_launcher",
 ]
 
 [workspace.package]
