@@ -1,7 +1,8 @@
 
 import { PageComponent } from "../../luna_src/src/helpers/page_component.slint";
-import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView, Switch, CheckBox } from "std-widgets.slint";
+import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView, Switch, CheckBox, Palette } from "std-widgets.slint";
 import { Global_NumberConversion_Callback } from "../../luna_src/src/helpers/global_callbacks.slint";
+import { Theme } from "../../luna_src/src/helpers/theme.slint";
 
 // Sizing, in one place so it can be tuned without hunting through the layout.
 //
@@ -42,6 +43,73 @@ global FieldMetrics {
     // beside it takes the width.
     out property <length> base_min_width: 12 * char_width;
     out property <length> base_max_width: 19 * char_width;
+
+    // How faint the custom rows' placeholders are. The style already draws a placeholder
+    // dimmer than ordinary text (fluent uses text-secondary, around 60 percent), so this
+    // is measured against full-strength text and wants to sit well below that.
+    out property <float> placeholder_opacity: 0.35;
+    // A multiple of the root font size rather than a length, because rem cannot be
+    // resolved in a global: nothing here has a font to be relative to. It is applied
+    // where the label is drawn. The figure is the one fluent uses for body text, so the
+    // stand-in placeholder matches the field's own text instead of drifting from it.
+    out property <float> placeholder_font_scale: 14 * 0.0769;
+    // The inset fluent leaves either side of the text a LineEdit holds. A different
+    // style would want a different number here.
+    out property <length> placeholder_inset: 12px;
+
+    // The corner radius fluent gives a LineEdit, and how heavy the error outline drawn
+    // over it should be. Style-specific in the same way the inset above is.
+    out property <length> field_radius: 4px;
+    out property <length> error_ring_width: 2px;
+}
+
+// A stand-in placeholder, fainter than the widget's own.
+//
+// LineEdit paints its placeholder in a colour the style fixes and does not expose as a
+// property, so the field's `placeholder-text` is left empty and this is drawn over the
+// top of it. Put it in the same grid cell as the field: a layout hands both children of
+// one cell identical geometry, so the two stay aligned however the row is resized, and
+// a Text takes no input, so clicks fall through to the field underneath.
+component PlaceholderLabel inherits HorizontalLayout {
+    in property <string> label_text;
+    in property <bool> label_shown;
+
+    padding-left: FieldMetrics.placeholder_inset;
+    padding-right: FieldMetrics.placeholder_inset;
+
+    Text {
+        // Zero, so a long placeholder cannot widen the cell it is standing in.
+        min-width: 0px;
+
+        visible: root.label_shown;
+        text: root.label_text;
+        font-size: FieldMetrics.placeholder_font_scale * 1rem;
+        color: Palette.foreground;
+        opacity: FieldMetrics.placeholder_opacity;
+        vertical-alignment: center;
+        horizontal-alignment: left;
+        overflow: elide;
+    }
+}
+
+// An outline in the palette's error colour, for a field holding something the converter
+// cannot read.
+//
+// Stacked over the field in the same way the placeholder is, and for the same reason: a
+// LineEdit's border belongs to the style and is not exposed as a property. Drawn last so
+// it lands on top of the border it is replacing, with no background of its own so only
+// the outline shows, and no input handling so the field underneath still takes clicks.
+//
+// The colour comes from `Theme`, which Rust repopulates whenever the palette or the
+// active tool changes, so this follows a per-tool override of the error role too.
+component ErrorRing inherits Rectangle {
+    in property <bool> ring_shown;
+
+    visible: root.ring_shown;
+    background: transparent;
+    border-radius: FieldMetrics.field_radius;
+    border-width: FieldMetrics.error_ring_width;
+    border-color: Theme.error;
 }
 
 // Carries the floor only. Maxima are stated where the field is used, because the same
@@ -61,6 +129,9 @@ component ConversionField {
     in-out property <string> convValue : "";
 
     in property <InputType> input_type;
+    // Set by the page when this box is the one the converter could not read.
+    in property <bool> invalid: false;
+
     callback user_edited <=> field.edited;
 
     VerticalLayout {
@@ -93,12 +164,33 @@ component ConversionField {
                     horizontal-alignment: left;
                 }
 
-                field := InputField {
-                    max-height: FieldMetrics.max_height;
+                field_stack := GridLayout {
 
-                    input-type: input_type;
-                    placeholder_text: convPlaceholder;
-                    text <=> convValue;
+                    field := InputField {
+                        row: 0;
+                        col: 0;
+
+                        max-height: FieldMetrics.max_height;
+
+                        input-type: input_type;
+                        placeholder_text: "";
+                        text <=> convValue;
+                    }
+
+                    PlaceholderLabel {
+                        row: 0;
+                        col: 0;
+
+                        label_text: root.convPlaceholder;
+                        label_shown: root.convValue == "";
+                    }
+
+                    ErrorRing {
+                        row: 0;
+                        col: 0;
+
+                        ring_shown: root.invalid;
+                    }
                 }
             }
 
@@ -127,11 +219,21 @@ component CustomBaseField {
     // 2 to 36 is the range the converter accepts. Above 36 there are no digits left to
     // write with, which is the wider notation problem tracked in the number_converter
     // issue rather than something this row can decide. WILL BE FIXED to accept any.
+    //
+    // Readable from outside, because the page has to know not to write a conversion into
+    // a row that has no base to convert into.
     property <float> base_number: baseValue.to-float();
-    property <bool> base_valid: baseValue != ""
+    out property <bool> base_valid: baseValue != ""
                              && base_number >= 2
                              && base_number <= 36
                              && Math.floor(base_number) == base_number;
+
+    // The value box takes input only when there is a base to read it in and the row is
+    // unlocked. Insensitive rather than read-only, so the text cannot be selected either.
+    out property <bool> value_editable: row_enabled && base_valid;
+
+    // Set by the page when this box is the one the converter could not read.
+    in property <bool> value_invalid: false;
 
     callback user_edited(string);
     callback base_edited(string);
@@ -146,22 +248,45 @@ component CustomBaseField {
 
         HorizontalLayout {
             
-            value_field := InputField {
+            value_stack := GridLayout {
                 horizontal-stretch: 50;
                 vertical-stretch: 90;
-                min-width: FieldMetrics.custom_min_width;
-                max-width: FieldMetrics.custom_max_width;
-                min-height: FieldMetrics.custom_min_height;
-                max-height: FieldMetrics.custom_max_height;
 
-                // Letters are digits once the base passes 10, so this one cannot be
-                // restricted to the numeric keypad the way the base beside it is.
-                input-type: text;
-                enabled: root.row_enabled;
-                placeholder_text: convPlaceholder;
-                text <=> convValue;
+                value_field := InputField {
+                    row: 0;
+                    col: 0;
 
-                edited(str) => { root.user_edited(str); }
+                    min-width: FieldMetrics.custom_min_width;
+                    max-width: FieldMetrics.custom_max_width;
+                    min-height: FieldMetrics.custom_min_height;
+                    max-height: FieldMetrics.custom_max_height;
+
+                    // Letters are digits once the base passes 10, so this one cannot be
+                    // restricted to the numeric keypad the way the base beside it is.
+                    input-type: text;
+                    enabled: root.value_editable;
+                    placeholder_text: "";
+                    text <=> convValue;
+
+                    edited(str) => { root.user_edited(str); }
+                }
+
+                PlaceholderLabel {
+                    row: 0;
+                    col: 0;
+
+                    label_text: root.convPlaceholder;
+                    label_shown: root.convValue == "";
+                }
+
+                ErrorRing {
+                    row: 0;
+                    col: 0;
+
+                    // Only while the box is live. A locked row, or one with no base yet,
+                    // is not holding a mistake, it is holding nothing in particular.
+                    ring_shown: root.value_editable && root.value_invalid;
+                }
             }
 
             Rectangle {
@@ -192,19 +317,44 @@ component CustomBaseField {
                     Rectangle {width: 27px;}
                 
 
-                    base_field := LineEdit {
+                    base_stack := GridLayout {
                         horizontal-stretch: 0;
-                        min-width: FieldMetrics.base_min_width;
-                        max-width: FieldMetrics.base_max_width;
-                        min-height: FieldMetrics.custom_min_height;
-                        max-height: FieldMetrics.custom_max_height;
 
-                        input-type: decimal;
-                        enabled: root.row_enabled;
-                        placeholder-text: @tr("Base");
-                        text <=> baseValue;
+                        base_field := LineEdit {
+                            row: 0;
+                            col: 0;
 
-                        edited(str) => { root.base_edited(str); }
+                            min-width: FieldMetrics.base_min_width;
+                            max-width: FieldMetrics.base_max_width;
+                            min-height: FieldMetrics.custom_min_height;
+                            max-height: FieldMetrics.custom_max_height;
+
+                            input-type: decimal;
+                            // Gated on the lock alone. Gating it on the base being valid
+                            // as well would leave an invalid base with no way back.
+                            enabled: root.row_enabled;
+                            placeholder-text: "";
+                            text <=> baseValue;
+
+                            edited(str) => { root.base_edited(str); }
+                        }
+
+                        PlaceholderLabel {
+                            row: 0;
+                            col: 0;
+
+                            label_text: @tr("Base");
+                            label_shown: root.baseValue == "";
+                        }
+
+                        ErrorRing {
+                            row: 0;
+                            col: 0;
+
+                            // The same condition the warning text beside it uses, so the
+                            // two always agree about what is wrong.
+                            ring_shown: root.row_enabled && !root.base_valid;
+                        }
                     }
 
                     Rectangle {width: 20px;}
@@ -253,6 +403,16 @@ export component ToolPage inherits PageComponent {
     // How many custom rows the bottom half shows.
     in property <int> customCount: 3;
 
+    // Which box the last conversion was read from, and whether it could be read at all.
+    //
+    // The converter does not report failure directly: it answers "Invalid Input" in every
+    // box it could not fill. Since the four fixed bases are always valid bases, an
+    // invalid answer in one of them can only mean the input was at fault, so checking
+    // those four is enough to tell, whichever box the input came from. Only the box the
+    // input came from is marked, because it is the only one the user can fix.
+    property <int> last_edited: -1;
+    property <bool> last_input_invalid: false;
+
     function convert_and_set_numbers_vec(index: int, number: string) {
         allNums = Global_NumberConversion_Callback.request_convert_number(allNums, allBases, index, number);
 
@@ -264,12 +424,21 @@ export component ToolPage inherits PageComponent {
         hex.convValue = allNums[2];
         oct.convValue = allNums[3];
 
-        // A switched-off row keeps what it is holding. The conversion above rewrote its
-        // slot along with all the others, so the held value goes back into the array
-        // rather than the new one coming out of it.
-        if (cus0.row_enabled) { cus0.convValue = allNums[4]; } else { allNums[4] = cus0.convValue; }
-        if (cus1.row_enabled) { cus1.convValue = allNums[5]; } else { allNums[5] = cus1.convValue; }
-        if (cus2.row_enabled) { cus2.convValue = allNums[6]; } else { allNums[6] = cus2.convValue; }
+        // A custom row takes the result only if it can use it. That means two cases are
+        // left alone rather than written to: a row that is locked, and a row with no
+        // usable base, which the converter answers with "Invalid Input" because there is
+        // no base to convert into. Neither is the row's fault and neither is worth
+        // reporting in the box the user would type a number into, so the value it was
+        // holding goes back into the array instead of the reply coming out of it.
+        if (cus0.value_editable) { cus0.convValue = allNums[4]; } else { allNums[4] = cus0.convValue; }
+        if (cus1.value_editable) { cus1.convValue = allNums[5]; } else { allNums[5] = cus1.convValue; }
+        if (cus2.value_editable) { cus2.convValue = allNums[6]; } else { allNums[6] = cus2.convValue; }
+
+        last_edited = index;
+        last_input_invalid = (index != 0 && allNums[0] == "Invalid Input")
+                          || (index != 1 && allNums[1] == "Invalid Input")
+                          || (index != 2 && allNums[2] == "Invalid Input")
+                          || (index != 3 && allNums[3] == "Invalid Input");
     }
 
     // Sets the base of a custom row, then reconverts from whichever box last had a
@@ -307,22 +476,27 @@ export component ToolPage inherits PageComponent {
 
                     Row {
                         dec := ConversionField {
+                            invalid: root.last_input_invalid && root.last_edited == 0;
                             convBase: "Dec";
                             convPlaceholder: "Input a Decimal number";
                             convValue: allNums[0];
+                            input_type: decimal;
                             user_edited(str) => { convert_and_set_numbers_vec(0, str); }
                         }
 
                         bin := ConversionField {
+                            invalid: root.last_input_invalid && root.last_edited == 1;
                             convBase: "Bin";
                             convPlaceholder: "Input a Binary number";
                             convValue: allNums[1];
+                            input_type: decimal;
                             user_edited(str) => { convert_and_set_numbers_vec(1, str); }
                         }
                     }
 
                     Row {
                         hex := ConversionField {
+                            invalid: root.last_input_invalid && root.last_edited == 2;
                             convBase: "Hex";
                             convPlaceholder: "Input a Hexadecimal number";
                             convValue: allNums[2];
@@ -331,9 +505,11 @@ export component ToolPage inherits PageComponent {
                         }
 
                         oct := ConversionField {
+                            invalid: root.last_input_invalid && root.last_edited == 3;
                             convBase: "Oct";
                             convPlaceholder: "Input an Octal number";
                             convValue: allNums[3];
+                            input_type: decimal;
                             user_edited(str) => { convert_and_set_numbers_vec(3, str); }
                         }
                     }
@@ -364,18 +540,21 @@ export component ToolPage inherits PageComponent {
                     }
 
                     cus0 := CustomBaseField {
+                        value_invalid: root.last_input_invalid && root.last_edited == 4;
                         user_edited(str) => { convert_and_set_numbers_vec(4, str); }
                         base_edited(str) => { set_custom_base(4, str); }
                         row_toggled(on) => { custom_row_toggled(on); }
                     }
 
                     cus1 := CustomBaseField {
+                        value_invalid: root.last_input_invalid && root.last_edited == 5;
                         user_edited(str) => { convert_and_set_numbers_vec(5, str); }
                         base_edited(str) => { set_custom_base(5, str); }
                         row_toggled(on) => { custom_row_toggled(on); }
                     }
 
                     cus2 := CustomBaseField {
+                        value_invalid: root.last_input_invalid && root.last_edited == 6;
                         user_edited(str) => { convert_and_set_numbers_vec(6, str); }
                         base_edited(str) => { set_custom_base(6, str); }
                         row_toggled(on) => { custom_row_toggled(on); }
