@@ -2665,6 +2665,7 @@ name = "luna"
 version = "0.2.3"
 dependencies = [
  "bytesize",
+ "chrono",
  "image",
 ]
 

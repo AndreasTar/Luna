@@ -115,7 +115,9 @@ export component LunaAppUi inherits Window {
                 }
 
                 Text {
-                    text: @tr("Palette");
+                    // Global settings. Palette is the first section in it; tool
+                    // settings live in the top right of each tool's own page.
+                    text: @tr("Settings");
                     font-size: 13px;
                     color: Theme.text-secondary;
                     horizontal-alignment: center;

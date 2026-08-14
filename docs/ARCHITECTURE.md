@@ -2,8 +2,8 @@
 
 Status: **design agreed, being built.** Last updated 2026-08-14.
 
-Storage, the tool host, the launcher and theming are in. The scheduler, ports and tray
-are not. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
+Storage, the tool host, the launcher and theming are in. The scheduler is part built,
+and ports and tray are not started. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
 what is next, and [Current state](#14-current-state-vs-target) for the gap.
 
 **One thing worth knowing if you are writing a tool:** the rebuild flow means the
@@ -614,15 +614,18 @@ steps depend on.
    Supervisor with the exit-code protocol, cargo rebuild, binary swap with `.prev`
    rollback, startup scan for tool changes, and an in-app prompt gated on whether a
    rebuild is possible at all.
-4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
-   catch-up. Reminders survive restarts.
+4. **Scheduler + rule engine + event log.** *In progress.* The pure engine is in
+   `luna::rules`: the guard AST with calendar-aware lookbacks, the `EventHistory`
+   query interface, and window tasks with `RollingFromCompletion` anchors and
+   escalating urgency. Outstanding: RRULE recurrence for `Anchor::FixedSchedule`, the
+   event log tables, and the scheduler runtime with catch-up policy.
 5. **Palette loading, picker and resolution + `Theme` global.** *Mostly done.*
    `luna::palette` holds the role set, colour type, resolution chain and WCAG contrast
    checking; `luna_core::palettes` loads and validates files; the `Theme` global is
    repopulated per tool; the picker lists palettes with swatches and applies on click.
-   Outstanding: UI for per-tool palettes and per-role overrides (the settings and the
-   resolution behind them already work), and recolouring the calendar off its
-   hardcoded values, which is tool work.
+   Per-role override editing is deferred until there is a proper colour picker
+   widget; the settings and the resolution behind them already work and are tested.
+   Recolouring the calendar off its hardcoded values is tool work.
 6. **Ports.** Cheap once the registry exists.
 7. **UI state TTL, memory tuning, image editor re-apply-on-return.**
 

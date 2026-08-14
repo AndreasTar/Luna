@@ -44,6 +44,9 @@ pub mod color_format_converter;
 #[cfg(feature = "palette")]
 pub mod palette;
 
+#[cfg(feature = "rules")]
+pub mod rules;
+
 
 
 /// A simple struct representing a semantic version (major.minor.patch), used in the library by each individual tool.
