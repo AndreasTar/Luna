@@ -10,7 +10,9 @@ body:
     id: widget
     attributes:
       label: Target Widget
-      description: The app widget which this pull request will affect when merged. If multiple, seperate with comma.
+      description: >
+        The app widget which this pull request will affect when merged. If multiple,
+        seperate with comma. Use "Core" for host work that is not tied to a widget.
       placeholder: "Example: Number Converter"
     validations:
       required: true

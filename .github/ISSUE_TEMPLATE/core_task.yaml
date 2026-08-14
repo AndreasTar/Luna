@@ -1,0 +1,75 @@
+name: Core Task
+description: Host or architecture work that is not tied to a single tool
+assignees:
+- AndreasTar
+title: "[CORE] <title>"
+labels: core
+projects: AndreasTar/2
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For work on the application host rather than on a tool: storage, the tool
+        registry, the launcher, the scheduler, theming, ports or the UI shell.
+
+        If the work is for one specific tool, use the Feature request or Tracking
+        Issue template instead.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the host this touches.
+      options:
+        - Storage
+        - Registry
+        - Build
+        - Launcher
+        - Scheduler
+        - Theming
+        - Ports
+        - UI shell
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: design
+    attributes:
+      label: Design reference
+      description: The section of docs/ARCHITECTURE.md this implements, if there is one.
+      placeholder: "Example: section 8, Scheduling"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs building, and what problem it solves.
+      placeholder: "Example: Replace WidgetTrait with a registry holding boxed tool services."
+    validations:
+      required: true
+  - type: textarea
+    id: roadmap
+    attributes:
+      label: Roadmap
+      description: A todo list of items to complete before this can close.
+      placeholder: "Example: - [ ] Manifest type and TOML parsing"
+    validations:
+      required: true
+  - type: textarea
+    id: blocked_by
+    attributes:
+      label: Blocked by
+      description: Issues that must land first. Leave empty if it can start now.
+      placeholder: "Example: #12"
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: >
+        Anything else worth recording: decisions already made, alternatives rejected,
+        or constraints that are easy to forget. You can drag screenshots and files
+        into this box.
+    validations:
+      required: false

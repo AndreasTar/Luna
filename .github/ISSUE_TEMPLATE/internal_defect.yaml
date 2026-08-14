@@ -1,0 +1,58 @@
+name: Internal Defect
+description: A defect found by reading or testing the code, not by using the app
+assignees:
+- AndreasTar
+title: "[DEFECT] <title>"
+labels: bug
+projects: AndreasTar/2
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For defects found during development: a wrong branch, a panic that has not
+        been hit yet, a broken doctest, dead wiring.
+
+        If you hit a problem while actually using Luna, use the Bug Report template
+        instead. It asks for the environment details that matter for reproducing it.
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: The crate, module or widget the defect is in.
+      placeholder: "Example: LunaLib, color_format_converter"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What is wrong
+      description: The defect itself. Include the file and line where it lives.
+      placeholder: "Example: convert_vec_color_model derives the channel count from the enum discriminant, which only holds for the RGB permutations."
+    validations:
+      required: true
+  - type: textarea
+    id: manifests
+    attributes:
+      label: How it manifests
+      description: >
+        What actually goes wrong, and under what inputs or conditions. If it has not
+        been hit yet, say so and describe what would trigger it.
+      placeholder: "Example: Gray and GrayA silently produce garbage output rather than erroring."
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+      description: How it should behave instead, if that is already clear.
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: >
+        Related issues, why it was not caught, or anything else worth recording. You
+        can drag screenshots and files into this box.
+    validations:
+      required: false
