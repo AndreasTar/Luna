@@ -1,0 +1,13 @@
+id          = "luna.base_converter"
+name        = "Base Converter"
+version     = "1.0.1"
+description = "Converts numbers between the usual and arbitrary bases."
+category    = "utilities"
+
+# Pure computation driven by the UI. Nothing to run when the page is closed.
+background = false
+
+offers  = ["luna/number", "luna/text"]
+accepts = ["luna/number", "luna/text"]
+
+state_schema = 1

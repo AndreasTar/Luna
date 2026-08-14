@@ -2662,7 +2662,7 @@ dependencies = [
 
 [[package]]
 name = "luna"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "bytesize",
  "image",
@@ -2670,7 +2670,7 @@ dependencies = [
 
 [[package]]
 name = "luna_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "luna",
  "rusqlite",
@@ -2688,6 +2688,7 @@ dependencies = [
  "env_logger",
  "image",
  "luna",
+ "luna_core",
  "profiling",
  "rfd",
  "slint",

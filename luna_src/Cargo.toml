@@ -19,6 +19,7 @@ slint = { version = "1.16" }
 
 luna = { path = "../luna_lib" } # local dependency
 #luna = "*" # published dependency
+luna_core = { path = "../luna_core" } # local dependency, never published
 image = { version = "0.25.6" }
 
 chrono = { version = "*" }

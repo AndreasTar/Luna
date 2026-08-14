@@ -565,9 +565,14 @@ steps depend on.
 1. **Paths + storage + atomic saves.** *Done, `luna_core` v0.1.0.* Portable layout,
    data-root resolution, atomic writes, config load/save with quarantine-on-corrupt,
    SQLite bootstrap with a migration runner.
-2. **Registry + manifest + service/view split + codegen `build.rs`.** Built-ins move
-   behind the tool interface; sidebar driven by the registry. *Runtime enable/disable
-   works.* Also removes the `Global_Calendar_Callback` bug by construction.
+2. **Registry + manifest + service/view split.** *Done, `luna_core` v0.2.0.* Manifests
+   parsed from per-tool `manifest.toml`, registry with runtime enable/disable and
+   service lifecycle, sidebar driven by the registry and keyed by tool id, both
+   built-ins ported. The codegen half moved to step 2b.
+2b. **Build-script tool discovery and codegen.** Generates the registration list and
+   the Slint page chain from `tools/`, replacing the hand-written versions in
+   `tools/mod.rs` and `landing_page.slint`. Moves tools into their own crates.
+
 3. **`luna_launcher` + rebuild-on-detect + resume.** The add-a-tool model becomes real.
 4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
    catch-up. Reminders survive restarts.
@@ -593,8 +598,6 @@ salvaged into `palettes/`.
 
 **Known gaps and defects**, all superseded or fixed by the work above:
 
-- `Global_Calendar_Callback` is not re-exported from `landing_page.slint`, so every
-  calendar click handler is unreachable from Rust. Fixed by section 6.
 - `calendar_ui.slint:4` imports the same global three times.
 - `luna_src/src/helpers/positioner.rs` is the last egui-era file. It compiles and is
   declared in `helpers/mod.rs`, but nothing uses it and the only function that consumed

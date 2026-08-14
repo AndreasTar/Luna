@@ -39,17 +39,21 @@ pub mod atomic;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod manifest;
 pub mod paths;
+pub mod registry;
 
 pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
 pub use db::Database;
 pub use error::{CoreError, Result};
+pub use manifest::{PortType, ToolManifest};
 pub use paths::AppPaths;
+pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
 
 use std::path::PathBuf;
 
 /// Version of the host service layer as a whole.
-pub const VERSION: luna::Version = luna::Version::new(0, 1, 0);
+pub const VERSION: luna::Version = luna::Version::new(0, 2, 0);
 
 /// Something that happened during startup which the user should be told about.
 ///
@@ -79,6 +83,17 @@ pub enum Notice {
         /// Why the configured directory was rejected.
         reason: String,
     },
+
+    /// A tool was enabled in its settings but its service refused to start.
+    ///
+    /// The tool is left disabled and the rest of the app comes up normally, because
+    /// one broken tool should not stop Luna from starting.
+    ToolFailedToStart {
+        /// The tool that could not start.
+        id: String,
+        /// Why it could not start.
+        reason: String,
+    },
 }
 
 impl std::fmt::Display for Notice {
@@ -96,6 +111,10 @@ impl std::fmt::Display for Notice {
                 configured.display(),
                 using.display()
             ),
+            Notice::ToolFailedToStart { id, reason } => write!(
+                f,
+                "The tool {id} could not start ({reason}) and has been disabled."
+            ),
         };
     }
 }
@@ -111,6 +130,8 @@ pub struct Host {
     pub config: AppConfig,
     /// The open, migrated database.
     pub db: Database,
+    /// Every compiled-in tool, and which of them are running.
+    pub registry: Registry,
     /// Recoverable problems found during startup, for the UI to surface.
     pub notices: Vec<Notice>,
 }
@@ -165,7 +186,109 @@ impl Host {
 
         let db = Database::open(&paths.database_file())?;
 
-        return Ok(Self { paths, config, db, notices });
+        let host = Self {
+            paths,
+            config,
+            db,
+            registry: Registry::new(),
+            notices,
+        };
+
+        // Write the defaults out on first run rather than waiting for a clean exit.
+        // Luna is meant to be killed rather than closed, and its config is meant to be
+        // hand-editable, so an install with no app.toml to look at is a poor start.
+        if !host.paths.app_config_file().exists() {
+            host.save_config()?;
+        }
+
+        return Ok(host);
+    }
+
+    /// Adds a tool and loads its saved settings.
+    ///
+    /// Nothing starts yet. Register every tool first, then call [`Host::start_tools`]
+    /// once, so a failure in one tool cannot leave the registry half-built.
+    ///
+    /// `factory` builds the tool's background service, and is required if the manifest
+    /// declares `background = true`.
+    pub fn register_tool(
+        &mut self,
+        manifest: ToolManifest,
+        factory: Option<ServiceFactory>,
+    ) -> Result<()> {
+        let id = manifest.id.clone();
+
+        self.registry.register(manifest, factory)?;
+
+        let loaded = self.tool_config(&id)?;
+
+        if let Some(moved_to) = loaded.quarantined {
+            self.notices.push(Notice::ConfigQuarantined {
+                original: self.paths.tool_config_file(&id)?,
+                moved_to,
+            });
+        }
+
+        self.registry.apply_config(&id, loaded.value)?;
+
+        return Ok(());
+    }
+
+    /// Starts the services of every tool whose settings say it is enabled.
+    ///
+    /// Tools that fail to start are disabled and reported through [`Host::notices`]
+    /// rather than aborting startup.
+    pub fn start_tools(&mut self) {
+        for (id, error) in self.registry.start_enabled(&self.paths) {
+            self.notices.push(Notice::ToolFailedToStart {
+                id,
+                reason: error.to_string(),
+            });
+        }
+    }
+
+    /// Enables or disables a tool and persists the change.
+    ///
+    /// Starts or stops the tool's service as needed, so this is the whole of what
+    /// toggling a tool means.
+    pub fn set_tool_enabled(&mut self, tool_id: &str, enabled: bool) -> Result<()> {
+        if enabled {
+            self.registry.enable(tool_id, &self.paths)?;
+        } else {
+            self.registry.disable(tool_id)?;
+        }
+
+        let mut config = self.tool_config(tool_id)?.value;
+        config.enabled = enabled;
+
+        self.save_tool_config(tool_id, &config)?;
+        self.registry.apply_config(tool_id, config)?;
+
+        return Ok(());
+    }
+
+    /// Stops every running service, giving each a chance to flush.
+    ///
+    /// Called on the way out. Errors are collected rather than propagated, because one
+    /// tool failing to flush must not prevent the others from being asked.
+    pub fn stop_tools(&mut self) -> Vec<(String, CoreError)> {
+        let running: Vec<String> = self
+            .registry
+            .enabled()
+            .map(|m| m.id.clone())
+            .collect();
+
+        let mut failures = Vec::new();
+
+        for id in running {
+            // Disabling persists nothing here: this is shutdown, and the tool should
+            // still be enabled the next time Luna starts.
+            if let Err(e) = self.registry.disable(&id) {
+                failures.push((id, e));
+            }
+        }
+
+        return failures;
     }
 
     /// Writes the current application settings to disk.
@@ -237,6 +360,34 @@ mod tests {
         top_level.sort();
 
         assert_eq!(top_level, vec!["config", "data", "logs", "palettes"]);
+    }
+
+    #[test]
+    fn first_run_leaves_an_editable_config_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = host_in(dir.path());
+
+        let path = host.paths.app_config_file();
+        assert!(path.exists(), "app.toml should exist after the first bootstrap");
+
+        // And it round-trips, so what the user opens is what Luna will read back.
+        let reloaded = AppConfig::load(&path).unwrap();
+        assert_eq!(reloaded.value, AppConfig::default());
+        assert_eq!(reloaded.quarantined, None);
+    }
+
+    #[test]
+    fn bootstrap_does_not_overwrite_an_existing_config() {
+        let dir = tempfile::tempdir().unwrap();
+
+        {
+            let mut host = host_in(dir.path());
+            host.config.palette = "daylight".to_string();
+            host.save_config().unwrap();
+        }
+
+        let host = host_in(dir.path());
+        assert_eq!(host.config.palette, "daylight");
     }
 
     #[test]
@@ -353,6 +504,86 @@ mod tests {
         assert!(matches!(
             host.tool_config("../escape"),
             Err(CoreError::InvalidToolId { .. })
+        ));
+    }
+
+    fn test_manifest(id: &str) -> ToolManifest {
+        return ToolManifest::from_toml(&format!(
+            "id = \"{id}\"\nname = \"Test\"\nversion = \"1.0.0\"\n"
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn newly_registered_tools_default_to_enabled() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(test_manifest("luna.fresh"), None).unwrap();
+        host.start_tools();
+
+        assert!(host.registry.is_enabled("luna.fresh").unwrap());
+        assert!(host.notices.is_empty(), "{:?}", host.notices);
+    }
+
+    #[test]
+    fn toggling_a_tool_persists_across_a_restart() {
+        let dir = tempfile::tempdir().unwrap();
+
+        {
+            let mut host = host_in(dir.path());
+            host.register_tool(test_manifest("luna.toggle"), None).unwrap();
+            host.start_tools();
+
+            host.set_tool_enabled("luna.toggle", false).unwrap();
+            assert!(!host.registry.is_enabled("luna.toggle").unwrap());
+        }
+
+        let mut host = host_in(dir.path());
+        host.register_tool(test_manifest("luna.toggle"), None).unwrap();
+        host.start_tools();
+
+        assert!(
+            !host.registry.is_enabled("luna.toggle").unwrap(),
+            "a disabled tool must stay disabled after a restart"
+        );
+
+        // And back on again.
+        host.set_tool_enabled("luna.toggle", true).unwrap();
+        assert!(host.registry.is_enabled("luna.toggle").unwrap());
+    }
+
+    #[test]
+    fn a_disabled_tool_is_absent_from_the_sidebar() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(test_manifest("luna.shown"), None).unwrap();
+        host.register_tool(test_manifest("luna.hidden"), None).unwrap();
+        host.start_tools();
+
+        host.set_tool_enabled("luna.hidden", false).unwrap();
+
+        let ids: Vec<String> = host
+            .registry
+            .sidebar_entries()
+            .into_iter()
+            .map(|e| e.id)
+            .collect();
+
+        assert_eq!(ids, vec!["luna.shown".to_string()]);
+    }
+
+    #[test]
+    fn registering_the_same_id_twice_is_an_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(test_manifest("luna.dup"), None).unwrap();
+
+        assert!(matches!(
+            host.register_tool(test_manifest("luna.dup"), None),
+            Err(CoreError::DuplicateTool { .. })
         ));
     }
 }

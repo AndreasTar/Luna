@@ -1,8 +1,10 @@
 
 use std::cell::RefCell;
 use luna::number_converter;
+use luna_core::ToolManifest;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
-use crate::{ Global_NumberConversion_Callback, LunaAppUi, WidgetTrait };
+use crate::tools::ToolView;
+use crate::{ Global_NumberConversion_Callback, LunaAppUi };
 
 
 // TODO instead of invalid input on invalid input lmao, make the box red with the text somewhere above or below
@@ -39,9 +41,14 @@ pub struct UI_BaseConverter{
     cbBases: Vec<String>,
 }
 
-impl WidgetTrait for UI_BaseConverter {
+impl ToolView for UI_BaseConverter {
 
-    fn register_widget(ui_handle: Weak<LunaAppUi>) -> Self {
+    fn manifest() -> ToolManifest {
+        return ToolManifest::from_toml(include_str!("manifest.toml"))
+            .expect("base_converter manifest.toml is malformed");
+    }
+
+    fn bind(ui_handle: Weak<LunaAppUi>) -> Self {
 
         let mut base_converter = UI_BaseConverter {
             ui_handle,

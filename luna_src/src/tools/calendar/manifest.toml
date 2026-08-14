@@ -1,0 +1,14 @@
+id          = "luna.calendar"
+name        = "Calendar"
+version     = "0.0.1"
+description = "Monthly, daily and yearly views, with notes and upcoming events."
+category    = "time"
+
+# Will need a service once events and reminders exist, since those have to fire with
+# the page closed. Nothing runs in the background yet, so it does not claim one.
+background = false
+
+offers  = ["luna/text"]
+accepts = ["luna/text"]
+
+state_schema = 1

@@ -44,7 +44,7 @@ pub mod color_format_converter;
 
 
 /// A simple struct representing a semantic version (major.minor.patch), used in the library by each individual tool.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Version {
     pub major: u16,
     pub minor: u16,

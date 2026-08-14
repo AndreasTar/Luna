@@ -3,6 +3,16 @@
 
 import { HorizontalBox, VerticalBox, Palette } from "std-widgets.slint";
 
+// One entry in the sidebar, built from an enabled tool's manifest.
+//
+// The list is populated at runtime from the registry rather than written out here,
+// so enabling or disabling a tool changes the sidebar with no rebuild.
+export struct SidebarEntry {
+    id: string,
+    name: string,
+    category: string,
+}
+
 component SideBarItem inherits Rectangle {
     in property <int> tab-index;
     in property <bool> selected;
@@ -58,9 +68,20 @@ component SideBarItem inherits Rectangle {
 }
 
 export component SideBar inherits Rectangle {
-    in property <[string]> model: [];
+    in property <[SidebarEntry]> model: [];
     in property <string> title <=> label.text;
-    out property <int> current-item: 0;
+
+    // in-out rather than out: startup restores the tool that was open last time.
+    in-out property <int> current-item: 0;
+
+    // Pages are keyed by tool id, not by index, because the model changes as tools
+    // are enabled and disabled and an index would silently point at a different tool.
+    // Empty when nothing is selectable, which is what the empty state keys off.
+    out property <string> current-id:
+        root.model.length > 0 && root.current-item >= 0 && root.current-item < root.model.length
+            ? root.model[root.current-item].id
+            : "";
+
     out property <int> current-focused: fs.has-focus ? fs.focused-tab : -1; // The currently focused tab
 
     width: 180px;
@@ -124,7 +145,7 @@ export component SideBar inherits Rectangle {
 
                 tab-index: index;
                 has-focus: index == root.current-focused;
-                text: item;
+                text: item.name;
                 selected: index == root.current-item;
             }
         }

@@ -40,6 +40,21 @@ pub enum CoreError {
     #[error("invalid tool id {id:?}: {reason}")]
     InvalidToolId { id: String, reason: &'static str },
 
+    /// A tool manifest was malformed or self-contradictory.
+    #[error("invalid manifest for {id:?}: {reason}")]
+    InvalidManifest { id: String, reason: String },
+
+    /// Two tools claimed the same id.
+    ///
+    /// Ids key config files, data directories and scheduled jobs, so a collision is
+    /// never recoverable by picking one.
+    #[error("more than one tool declares the id {id:?}")]
+    DuplicateTool { id: String },
+
+    /// An operation named a tool that is not compiled in.
+    #[error("no tool with the id {id:?} is registered")]
+    UnknownTool { id: String },
+
     /// An IO operation failed, with the path it was operating on.
     #[error("io error at {path}: {source}")]
     Io {

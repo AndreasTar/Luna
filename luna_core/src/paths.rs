@@ -246,7 +246,7 @@ fn ensure_writable_dir(dir: &Path) -> std::result::Result<(), std::io::Error> {
 ///
 /// Tool ids are first-party and compiled in, so this is not a security boundary. It
 /// catches typos before they turn into a file written somewhere surprising.
-fn validate_tool_id(id: &str) -> Result<()> {
+pub fn validate_tool_id(id: &str) -> Result<()> {
     let invalid = |reason: &'static str| CoreError::InvalidToolId {
         id: id.to_string(),
         reason,

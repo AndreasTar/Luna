@@ -1,57 +1,72 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { SideBar } from "../helpers/sidebar_component.slint";
-import { CheckBox, StandardListView } from "std-widgets.slint";
-import { 
+import { SideBar, SidebarEntry } from "../helpers/sidebar_component.slint";
+import { CheckBox, StandardListView, Palette } from "std-widgets.slint";
+import {
     BaseConverterUI, CalendarUI
 } from "all_pages.slint";
 import { LunaLibraryGlobalSettings } from "..\helpers\gallery_settings.slint";
 
-export { Global_NumberConversion_Callback } from "..\helpers\global_callbacks.slint";
+export { Global_NumberConversion_Callback, Global_Calendar_Callback } from "..\helpers\global_callbacks.slint";
+export { SidebarEntry }
 
 export component LunaAppUi inherits Window {
     preferred-width: 700px;
     preferred-height: 500px;
     title: @tr("Luna Widget Library");
-    
-    in property <bool> test2;
+
+    // Populated from the tool registry at startup. Enabling or disabling a tool
+    // rewrites this list; nothing here is hardcoded.
+    in property <[SidebarEntry]> tools: [];
+
+    // Which tool page is showing. Set at startup to restore the last active tool,
+    // and read back on exit to record it.
+    in-out property <int> current-tool-index: 0;
+    out property <string> current-tool-id: side-bar.current-id;
+
     // icon: @image-url("../../logo/slint-logo-small-light.png");
 
     MenuBar {
-        // Menu {
-        //     title: @tr("MenuBar" => "File");
-        //     MenuItem {
-        //         title: @tr("MenuBar" => "Open");
-        //         shortcut: @keys(Control + O);
-        //     }
-        //     Menu {
-        //         title: @tr("MenuBar" => "Open Recent");
-        //         for x in 10: MenuItem { title: @tr("MenuBar" => "Recent {}", x+1);  }
-        //     }
-        //     MenuSeparator {}
-        //     MenuItem { title: @tr("MenuBar" => "Save"); }
-        //     Menu {
-        //         title: @tr("MenuBar" => "Save As");
-        //         for x in 10: MenuItem { title: @tr("MenuBar" => "Name {}", x+1);  }
-        //     }
-        //     MenuSeparator {}
-        //     MenuItem { title: @tr("MenuBar" => "MenuItem with Checkmark"); checkable: true; checked: true; }
-        // }
-        // Menu {
-        //     title: @tr("MenuBar" => "Edit");
-        //     MenuItem { title: @tr("MenuBar" => "Copy"); }
-        //     MenuItem { title: @tr("MenuBar" => "Paste"); }
-        // }
     }
 
     HorizontalLayout {
         side-bar := SideBar {
             title: @tr("Luna Widgets Library");
-            model: [@tr("Menu" => "Base Converter"), @tr("Menu" => "Calendar")];
+            model: root.tools;
+            current-item <=> root.current-tool-index;
         }
 
-        if(side-bar.current-item == 0) : BaseConverterUI {}
-        if(side-bar.current-item == 1) : CalendarUI {}
+        // Keyed by tool id rather than by index: the sidebar contents change as tools
+        // are enabled and disabled, and an index would quietly select the wrong page.
+        //
+        // This chain is written by hand for now. It is exactly what the build script
+        // will generate once tools are discovered from their folders.
+        if side-bar.current-id == "luna.base_converter" : BaseConverterUI {}
+        if side-bar.current-id == "luna.calendar" : CalendarUI {}
+
+        if side-bar.current-id == "" : Rectangle {
+            background: Palette.background;
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+
+                Text {
+                    text: @tr("No tools are enabled");
+                    font-size: 18px;
+                    horizontal-alignment: center;
+                    color: Palette.foreground;
+                }
+
+                Text {
+                    text: @tr("Enable a tool to get started.");
+                    font-size: 13px;
+                    horizontal-alignment: center;
+                    color: Palette.foreground;
+                    opacity: 0.7;
+                }
+            }
+        }
     }
 }
