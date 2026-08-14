@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use luna::number_converter;
 use luna_core::ToolManifest;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
-use crate::tools::ToolView;
+use crate::tools::{ BoundTool, ToolView };
 use crate::{ Global_NumberConversion_Callback, LunaAppUi };
 
 
@@ -18,21 +18,7 @@ use crate::{ Global_NumberConversion_Callback, LunaAppUi };
 pub const VERSION: luna::Version = luna::Version::new(1, 0, 1);
 
 
-// Remnants from egui, to be deleted / adapted
-// #[derive(Debug, Clone)]
-// pub enum BC_Message{
-//     Nothing,
-//     TLChanged(String),
-//     TRChanged(String),
-//     BLChanged(String),
-//     BRChanged(String),
-//     CustomNumChanged(String, usize, u8), // num base index
-//     CustomBaseChanged(String, u8),       // base index
-//     CustomBaseAdded,
-//     CustomBaseRemoved(u8),               // index
-// }
-
-pub struct UI_BaseConverter{
+pub struct Tool{
 
     ui_handle: Weak<LunaAppUi>,
 
@@ -41,7 +27,13 @@ pub struct UI_BaseConverter{
     cbBases: Vec<String>,
 }
 
-impl ToolView for UI_BaseConverter {
+impl BoundTool for Tool {
+    fn tool_id(&self) -> &'static str {
+        return "luna.base_converter";
+    }
+}
+
+impl ToolView for Tool {
 
     fn manifest() -> ToolManifest {
         return ToolManifest::from_toml(include_str!("manifest.toml"))
@@ -50,7 +42,7 @@ impl ToolView for UI_BaseConverter {
 
     fn bind(ui_handle: Weak<LunaAppUi>) -> Self {
 
-        let mut base_converter = UI_BaseConverter {
+        let mut base_converter = Tool {
             ui_handle,
             cbCount: 0,
             cbNums: vec![],

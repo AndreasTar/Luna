@@ -97,10 +97,8 @@ fn default_state_schema() -> u32 {
 impl ToolManifest {
     /// Parses a manifest from TOML and validates it.
     pub fn from_toml(text: &str) -> Result<Self> {
-        let manifest: Self = toml::from_str(text).map_err(|e| CoreError::InvalidManifest {
-            id: "<unparsed>".to_string(),
-            reason: e.to_string(),
-        })?;
+        let manifest: Self =
+            toml::from_str(text).map_err(|e| CoreError::ManifestParse(e.to_string()))?;
 
         manifest.validate()?;
         return Ok(manifest);
@@ -344,7 +342,7 @@ mod tests {
             "#,
         );
 
-        assert!(matches!(err, Err(CoreError::InvalidManifest { .. })), "{err:?}");
+        assert!(matches!(err, Err(CoreError::ManifestParse(_))), "{err:?}");
     }
 
     #[test]

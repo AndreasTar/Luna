@@ -1,7 +1,7 @@
 
-import { PageComponent } from "..\..\helpers\page_component.slint";
+import { PageComponent } from "../../luna_src/src/helpers/page_component.slint";
 import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
-import { Global_NumberConversion_Callback } from "..\..\helpers\global_callbacks.slint";
+import { Global_NumberConversion_Callback } from "../../luna_src/src/helpers/global_callbacks.slint";
 
 
 component InputField inherits LineEdit {
@@ -42,7 +42,7 @@ component ConversionField {
     }
 }
 
-export component BaseConverterUI inherits PageComponent {
+export component ToolPage inherits PageComponent {
 
     title: @tr("Base Converter Widget");
     description: @tr("A widget that converts numbers between the different usual bases (binary, octal, decimal, hexadecimal), and also supports custom bases.");

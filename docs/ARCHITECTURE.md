@@ -1,10 +1,10 @@
 # Luna - Architecture
 
-Status: **design agreed, not yet implemented.** Last updated 2026-08-14.
+Status: **design agreed, being built.** Last updated 2026-08-14.
 
-This document describes the target architecture for Luna. The current codebase does
-not implement most of it yet; see [Implementation roadmap](#13-implementation-roadmap)
-for the order of work and [Current state](#14-current-state-vs-target) for the gap.
+Storage and the tool host are in. The launcher, scheduler, theming and ports are not.
+See [Implementation roadmap](#13-implementation-roadmap) for what is done and what is
+next, and [Current state](#14-current-state-vs-target) for the gap.
 
 ---
 
@@ -88,9 +88,22 @@ does not compile must never leave the user without a working app.
 5. Launcher runs `cargo build --release`, swaps binaries, relaunches.
 6. App restores state, restores the previously active page, reports the new tool.
 
-**Rebuild cost is real.** A measured incremental build of `luna_ui` on this machine
-took about 69 seconds. Tools are therefore separate crates, so adding one recompiles
-that crate plus the shell rather than the entire dependency graph.
+**Rebuild cost is about 26 seconds** on this machine for a tool added to a warm build
+tree, measured. An earlier figure of 69 seconds in this document was dependency churn
+from adding a crate, not the cost of a tool, and it led to the wrong conclusion.
+
+**Tools are modules of `luna_ui`, not separate crates.** Separate crates were the
+original plan, on the theory that they would let a new tool recompile only itself plus
+the shell. Measurement says otherwise: touching a tool's `.slint` costs 10 seconds and
+touching `main.rs` costs 8, so the shell's own compile and link dominates and the
+Slint aggregate has to be regenerated inside `luna_src` either way. Separate crates
+would have saved almost nothing and cost a great deal: cargo resolves dependencies
+before `build.rs` runs, so a new tool crate would need a `Cargo.toml` edit, and "drop
+a folder in" would have needed something to rewrite that file.
+
+Modules make the flow work with no `Cargo.toml` involvement at all. If a tool ever
+grows enough heavy logic to be worth isolating, that logic belongs in `luna_lib`
+anyway.
 
 **`Cargo.lock` must be committed.** The rebuild happens on the user's machine at an
 arbitrary later date; without a lockfile, dependency resolution can drift and a
@@ -126,10 +139,13 @@ Options deliberately not taken:
 ```
 luna_lib/          published crate `luna`, pure logic, no UI, no IO
 luna_core/         host services: registry, storage, scheduler, ports
-tools/<name>/      one crate per tool: manifest + Rust + .slint
+tools/<name>/      one folder per tool: manifest.toml + mod.rs + ui.slint
 luna_src/          Slint shell + codegen build.rs  (binary `luna_app`)
 luna_launcher/     supervisor                      (binary `luna_launcher`)
 ```
+
+Tool folders are compiled as modules of `luna_src` rather than as crates; see
+section 3 for why. `tools/README.md` documents the folder contract.
 
 **`luna_lib` stays publishable**, which means it stays pure: no Slint, no filesystem,
 no host types. It holds `number_converter`, `color_format_converter`,
@@ -207,27 +223,42 @@ appears in the sidebar and in port lookups.
 
 ## 6. Build-time codegen
 
-`luna_src/build.rs` scans `tools/`, parses each manifest, and generates:
+`luna_src/build.rs` scans `tools/`, parses each manifest with the same `ToolManifest`
+type the app uses, and generates two files into `OUT_DIR`:
 
-1. **Rust**: the module tree, the registration list, and a `TOOLS` table the registry
-   consumes at startup.
-2. **Slint**: an aggregate file importing each tool's UI component and mapping tool
-   id to component, replacing the hand-written `if current-item == N : XUI {}` chain
-   in `landing_page.slint`.
-3. **Sidebar model**: driven by the registry at runtime, not the literal array
-   currently in `landing_page.slint:51`.
+1. **`src/tools/generated.rs`**: a `#[path]` module per tool, plus `manifests()` and
+   `bind_all()`.
+2. **`$OUT_DIR/tool_pages.slint`**: a `ToolPages` component importing each tool's
+   `ToolPage` under a per-tool alias, with the page chain keyed by **tool id**.
+   Imported by `landing_page.slint` through a `slint_build` include path.
 
-`slint_build` accepts include paths, so the generated `.slint` can live in `OUT_DIR`
-and still resolve imports into tool directories. Emit
-`cargo:rerun-if-changed=tools/` so a new folder triggers regeneration.
+**The Rust half goes into the source tree, not `OUT_DIR`.** Tool sources are only
+reachable through those `#[path]` declarations, and rust-analyzer does not reliably
+follow `include!(concat!(env!("OUT_DIR"), ...))`, which left tools with no completions
+or inline errors: the only way to find out whether a tool compiled was to build. A
+plain committed module file with relative `#[path]` attributes resolves natively. It
+is written only when its content changes, so builds do not churn its timestamp, and it
+is committed so a fresh clone has editor support before the first build.
+
+Keying pages by id rather than index matters: the sidebar contents change as tools are
+enabled and disabled, and an index would quietly select the wrong page.
+
+`cargo:rerun-if-changed` is emitted for `tools/` and for each tool's three files, so
+dropping a folder in triggers regeneration.
+
+Because the build script parses manifests with the app's own type, a manifest that
+builds is a manifest that loads. Malformed manifests, duplicate ids, unusable folder
+names and missing files all fail the build with the offending folder named, rather
+than surfacing later as a confusing Rust or Slint error.
 
 **Slint globals do not scale here.** Every global must be re-exported from the root
-`.slint` file to be visible to Rust, which is exactly why the calendar's
-`Global_Calendar_Callback` is currently unreachable from Rust while
-`Global_NumberConversion_Callback` works. Per-tool globals would require the
-generated file to re-export N globals and would keep reintroducing this bug. Tools
-instead expose callbacks and properties **on their own component instance**, which the
-generated glue wires up. One shared global remains, for theme (section 9).
+`.slint` file to be visible to Rust, which is why the calendar's
+`Global_Calendar_Callback` was unreachable from Rust while
+`Global_NumberConversion_Callback` worked. Per-tool globals would need the generated
+file to re-export N of them and would keep reintroducing that bug, so tools will
+expose callbacks on their own component instance instead. That last step is still
+outstanding: bindings are currently made once at startup against globals.
+
 
 ---
 
@@ -569,9 +600,10 @@ steps depend on.
    parsed from per-tool `manifest.toml`, registry with runtime enable/disable and
    service lifecycle, sidebar driven by the registry and keyed by tool id, both
    built-ins ported. The codegen half moved to step 2b.
-2b. **Build-script tool discovery and codegen.** Generates the registration list and
-   the Slint page chain from `tools/`, replacing the hand-written versions in
-   `tools/mod.rs` and `landing_page.slint`. Moves tools into their own crates.
+2b. **Build-script tool discovery and codegen.** *Done.* Tools live in `tools/<name>/`
+   and are discovered from disk; the registration list and the Slint page chain are
+   generated. Dropping a folder in is all that is needed. Still outstanding from the
+   service/view split: moving callbacks off Slint globals onto per-page instances.
 
 3. **`luna_launcher` + rebuild-on-detect + resume.** The add-a-tool model becomes real.
 4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
@@ -590,11 +622,19 @@ nothing meaningful to resume.
 
 What exists today, for orientation.
 
-**Working:** the workspace split (`luna_lib`, `luna_core` and `luna_src`), storage and
-config through `luna_core`, the base converter end-to-end, `number_converter` and
-`color_format_converter` as solid documented library modules, and the calendar's UI
-layout. The stale iced and egui files have been removed, with the `LunaPallete` work
+**Working:** the workspace split (`luna_lib`, `luna_core` and `luna_src`); storage,
+config and the database through `luna_core`; the tool registry with runtime
+enable/disable; build-script tool discovery, so a tool is a folder in `tools/`; the
+sidebar driven by the registry and pages keyed by tool id; the base converter
+end-to-end; `number_converter` and `color_format_converter` as solid documented
+library modules; and the calendar's UI layout with its callbacks now reachable from
+Rust. The stale iced and egui files have been removed, with the `LunaPallete` work
 salvaged into `palettes/`.
+
+**Outstanding from the service/view split:** tool callbacks are still bound once at
+startup against Slint globals rather than per page instance, so a `ToolView` does not
+yet have a real per-open lifecycle. The Slint side already creates and destroys pages
+correctly; only the Rust binding lags.
 
 **Known gaps and defects**, all superseded or fixed by the work above:
 

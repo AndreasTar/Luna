@@ -35,13 +35,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("startup: {notice}");
     }
 
+    // Luna spends most of its life with no window, so what it loaded is worth stating
+    // rather than leaving to be inferred from the sidebar.
+    let enabled: Vec<&str> = host.registry.enabled().map(|m| m.id.as_str()).collect();
+    eprintln!(
+        "startup: {} tools compiled in, {} enabled: {}",
+        host.registry.len(),
+        enabled.len(),
+        enabled.join(", ")
+    );
+
     let luna_app_ui = LunaAppUi::new()?;
 
     // Bound once, because callbacks live on Slint globals which outlive any page.
     // See the note on `tools::ToolView` for what changes when pages own their own
-    // callbacks.
-    let _base_converter = tools::base_converter::UI_BaseConverter::bind(luna_app_ui.as_weak());
-    let _calendar = tools::calendar::UI_Calendar::bind(luna_app_ui.as_weak());
+    // callbacks. Held for the life of the window.
+    let _bound_tools = tools::bind_all(&luna_app_ui.as_weak());
 
     populate_sidebar(&luna_app_ui, &host);
 

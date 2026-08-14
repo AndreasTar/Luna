@@ -1,7 +1,7 @@
 
-import { PageComponent } from "..\..\helpers\page_component.slint";
+import { PageComponent } from "../../luna_src/src/helpers/page_component.slint";
 import { TextEdit, ScrollView } from "std-widgets.slint";
-import { Global-Calendar-Callback, Global-Calendar-Callback, Global-Calendar-Callback } from "../../helpers/global_callbacks.slint";
+import { Global_Calendar_Callback } from "../../luna_src/src/helpers/global_callbacks.slint";
 //import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
 
 //    Simple_AMPM, //  8:00 pm |  8:00 am
@@ -487,7 +487,7 @@ component NotesView inherits Rectangle {
     }
 }
 
-export component CalendarUI inherits PageComponent {
+export component ToolPage inherits PageComponent {
     title: @tr("Calendar Widget");
     description: @tr("A calendar widget with monthly, daily and yearly views.");
     show-enable-read-only: false;

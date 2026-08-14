@@ -40,7 +40,14 @@ pub enum CoreError {
     #[error("invalid tool id {id:?}: {reason}")]
     InvalidToolId { id: String, reason: &'static str },
 
-    /// A tool manifest was malformed or self-contradictory.
+    /// A manifest could not be parsed at all, so there is no id to name it by.
+    ///
+    /// Rendered as the underlying parse error alone, because the caller already knows
+    /// which file it was reading and doubling that up reads badly.
+    #[error("{0}")]
+    ManifestParse(String),
+
+    /// A tool manifest parsed but was invalid or self-contradictory.
     #[error("invalid manifest for {id:?}: {reason}")]
     InvalidManifest { id: String, reason: String },
 

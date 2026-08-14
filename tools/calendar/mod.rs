@@ -1,16 +1,22 @@
 
-use crate::tools::ToolView;
+use crate::tools::{ BoundTool, ToolView };
 use crate::{ Global_Calendar_Callback, LunaAppUi };
 use luna_core::ToolManifest;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
 
 pub const VERSION: luna::Version = luna::Version::new(0, 0, 1);
 
-pub struct UI_Calendar {
+pub struct Tool {
     ui_handle: Weak<LunaAppUi>,
 }
 
-impl ToolView for UI_Calendar {
+impl BoundTool for Tool {
+    fn tool_id(&self) -> &'static str {
+        return "luna.calendar";
+    }
+}
+
+impl ToolView for Tool {
 
     fn manifest() -> ToolManifest {
         return ToolManifest::from_toml(include_str!("manifest.toml"))
@@ -19,7 +25,7 @@ impl ToolView for UI_Calendar {
 
     fn bind(ui_handle: Weak<LunaAppUi>) -> Self {
 
-        let calendar = UI_Calendar {
+        let calendar = Tool {
             ui_handle
         };
 
