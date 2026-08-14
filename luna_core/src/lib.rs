@@ -44,6 +44,7 @@ pub mod manifest;
 pub mod lifecycle;
 pub mod palettes;
 pub mod paths;
+pub mod ports;
 pub mod registry;
 pub mod scheduler;
 
@@ -54,6 +55,7 @@ pub use events::{EventLog, RuleEvent};
 pub use manifest::{PortType, ToolManifest};
 pub use palettes::PaletteSet;
 pub use paths::AppPaths;
+pub use ports::{Delivery, Payload, PayloadData, PortBus, PortTarget};
 pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
 pub use scheduler::{Fire, ScheduledJob, Scheduler, Upcoming};
 
@@ -157,6 +159,8 @@ pub struct Host {
     pub registry: Registry,
     /// Palettes loaded from `<install>/palettes`.
     pub palettes: PaletteSet,
+    /// Handoffs waiting to be collected by their target tools.
+    pub ports: PortBus,
     /// Recoverable problems found during startup, for the UI to surface.
     pub notices: Vec<Notice>,
 }
@@ -226,6 +230,7 @@ impl Host {
             db,
             registry: Registry::new(),
             palettes,
+            ports: PortBus::new(),
             notices,
         };
 
@@ -329,6 +334,39 @@ impl Host {
     /// Writes the current application settings to disk.
     pub fn save_config(&self) -> Result<()> {
         return self.config.save(&self.paths.app_config_file());
+    }
+
+    /// Every enabled tool that would accept this payload type from `from`.
+    ///
+    /// This is the "Send to" menu. The sender never names a receiver, so a tool that
+    /// is absent or disabled simply does not appear and nothing has to handle it.
+    pub fn send_targets(&self, from: &str, port: &PortType) -> Vec<PortTarget> {
+        return ports::targets_for(&self.registry, from, port);
+    }
+
+    /// Hands a payload from one tool to another.
+    ///
+    /// Checked against the registry first, so a tool disabled between the menu opening
+    /// and the click is refused with a reason rather than delivered into a void.
+    pub fn send_to(&mut self, from: &str, to: &str, payload: Payload) -> Result<()> {
+        ports::check_send(&self.registry, from, to, &payload.port)
+            .map_err(CoreError::from)?;
+
+        self.ports.deliver(
+            to,
+            Delivery {
+                from: from.to_string(),
+                payload,
+                at: chrono::Utc::now(),
+            },
+        );
+
+        return Ok(());
+    }
+
+    /// Collects whatever is waiting for a tool, emptying its inbox.
+    pub fn collect_deliveries(&mut self, tool_id: &str) -> Vec<Delivery> {
+        return self.ports.take(tool_id);
     }
 
     /// The application palette named by the settings.
@@ -630,6 +668,78 @@ mod tests {
             .collect();
 
         assert_eq!(ids, vec!["luna.shown".to_string()]);
+    }
+
+    fn port_tool(id: &str, accepts: &str, offers: &str) -> ToolManifest {
+        return ToolManifest::from_toml(&format!(
+            "id = \"{id}\"\nname = \"{id}\"\nversion = \"1.0.0\"\n\
+             accepts = [{accepts}]\noffers = [{offers}]\n"
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn a_payload_reaches_the_tool_that_accepts_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(port_tool("luna.editor", "", "\"luna/image\""), None).unwrap();
+        host.register_tool(port_tool("luna.ascii", "\"luna/image\"", ""), None).unwrap();
+        host.start_tools();
+
+        let image: PortType = "luna/image".parse().unwrap();
+
+        let targets = host.send_targets("luna.editor", &image);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].tool_id, "luna.ascii");
+
+        host.send_to("luna.editor", "luna.ascii", Payload::image(vec![1, 2, 3]))
+            .unwrap();
+
+        let mail = host.collect_deliveries("luna.ascii");
+
+        assert_eq!(mail.len(), 1);
+        assert_eq!(mail[0].from, "luna.editor");
+        assert!(host.collect_deliveries("luna.ascii").is_empty(), "collected once");
+    }
+
+    #[test]
+    fn sending_to_a_tool_that_is_not_installed_degrades_gracefully() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(port_tool("luna.editor", "", "\"luna/image\""), None).unwrap();
+        host.start_tools();
+
+        let image: PortType = "luna/image".parse().unwrap();
+
+        // The whole point: with nothing installed that accepts images, the menu is
+        // simply empty. Nothing to handle, nothing to explain.
+        assert!(host.send_targets("luna.editor", &image).is_empty());
+
+        // And an explicit send is refused with a reason rather than silently lost.
+        assert!(host
+            .send_to("luna.editor", "luna.ascii", Payload::image(vec![1]))
+            .is_err());
+    }
+
+    #[test]
+    fn disabling_the_receiver_removes_it_from_the_menu_and_refuses_the_send() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut host = host_in(dir.path());
+
+        host.register_tool(port_tool("luna.editor", "", "\"luna/image\""), None).unwrap();
+        host.register_tool(port_tool("luna.ascii", "\"luna/image\"", ""), None).unwrap();
+        host.start_tools();
+
+        let image: PortType = "luna/image".parse().unwrap();
+
+        host.set_tool_enabled("luna.ascii", false).unwrap();
+
+        assert!(host.send_targets("luna.editor", &image).is_empty());
+        assert!(host
+            .send_to("luna.editor", "luna.ascii", Payload::image(vec![1]))
+            .is_err());
     }
 
     #[test]

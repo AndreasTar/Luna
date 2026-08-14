@@ -382,6 +382,14 @@ candidate arrives. If false, the candidate is skipped silently.
 > *"If reminder A fired yesterday, remind me today at 12am"*
 > equals generator `daily at 00:00` plus guard `fired(A, within: yesterday)`
 
+**A job may fire ahead of what it is about.** `ScheduledJob::lead_time` separates the
+alert from its subject: a birthday on the 4th of July with a lead time of a week fires
+on the 27th of June, and the resulting `Fire` carries both `due_at` (when the alert
+went out) and `subject_at` (the event it concerns), so the notification can say what it
+is for. Several alerts for one event are several jobs sharing a schedule with different
+lead times, rather than one job holding a list, which keeps snoozing the week-before
+reminder from touching the day-of one.
+
 This keeps the scheduler dumb, since it only ever handles candidate instants, while
 allowing arbitrary conditions. Guard vocabulary is a small **typed, serialisable AST**,
 not a scripting language:
@@ -547,9 +555,17 @@ list; the editor renders a "Send to" submenu from it. If the ascii converter is 
 installed or is disabled, it simply is not in the list. Nothing breaks, and there is no
 compile-time coupling between the two tools.
 
-Large payloads are not pushed through the bus. They go into a content-addressed blob
-store and travel as `Arc`-backed handles, so sending a 50 MP image between tools costs
-a refcount.
+Large payloads are not copied. `PayloadData::Bytes` holds an `Arc<[u8]>`, so sending a
+50 MP image between tools costs a refcount. The original plan said content-addressed
+blob store; a plain `Arc` achieves the same goal, and content addressing would only add
+deduplication across sends, which nothing needs and which would mean hashing every
+payload on the way in.
+
+Delivery is a mailbox rather than a callback: a send leaves the payload in the target's
+inbox, which it collects when it next runs. Calling the receiver directly would mean
+one tool's code running partway through another tool's call stack. Inboxes are bounded,
+dropping oldest first, so a tool that is never opened cannot grow the process without
+end.
 
 ---
 
@@ -632,7 +648,9 @@ steps depend on.
    Per-role override editing is deferred until there is a proper colour picker
    widget; the settings and the resolution behind them already work and are tested.
    Recolouring the calendar off its hardcoded values is tool work.
-6. **Ports.** Cheap once the registry exists.
+6. **Ports.** *Done, `luna_core::ports`.* Typed payloads, per-tool inboxes with an
+   overflow bound, and `Host::send_targets` / `Host::send_to`. The "Send to" UI is
+   drawn by whichever tool sends, so it lands with the first tool that does.
 7. **UI state TTL, memory tuning, image editor re-apply-on-return.**
 
 Steps 1 and 2 are what make step 3 safe. Building the launcher first would mean having

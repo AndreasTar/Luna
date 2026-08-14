@@ -82,7 +82,11 @@ const MIGRATIONS: &[Migration] = &[
                 schedule TEXT    NOT NULL,
                 guard    TEXT    NOT NULL,
                 catch_up TEXT    NOT NULL,
-                enabled  INTEGER NOT NULL
+                enabled  INTEGER NOT NULL,
+                -- How far before each occurrence the job fires. Non-zero separates an
+                -- alert from the thing it is about, such as a reminder a week before a
+                -- birthday.
+                lead_seconds INTEGER NOT NULL DEFAULT 0
             ) STRICT;
 
             CREATE INDEX idx_scheduled_jobs_tool ON scheduled_jobs (tool_id);

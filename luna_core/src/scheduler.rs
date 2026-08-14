@@ -65,6 +65,18 @@ pub struct ScheduledJob {
     /// A condition checked at each candidate instant. [`Guard::Always`] to fire
     /// unconditionally.
     pub guard: Guard,
+    /// How far *before* each occurrence this job fires.
+    ///
+    /// Zero for something that happens at its scheduled time. Non-zero separates the
+    /// alert from the thing it is about: a birthday on the 4th of July with a lead
+    /// time of a week fires on the 27th of June, saying what it is for.
+    ///
+    /// Several alerts for one event are several jobs sharing a schedule with different
+    /// lead times, rather than one job with a list. That keeps acknowledging or
+    /// snoozing the week-before reminder from touching the day-of one, which is
+    /// almost always what is wanted.
+    pub lead_time: Duration,
+
     /// What to do about occurrences missed while Luna was closed.
     pub catch_up: CatchUp,
     /// Whether the job runs at all. A disabled job keeps its definition and history.
@@ -79,6 +91,7 @@ impl ScheduledJob {
             tool_id: None,
             schedule,
             guard: Guard::Always,
+            lead_time: Duration::zero(),
             catch_up: CatchUp::default(),
             enabled: true,
         };
@@ -94,6 +107,19 @@ impl ScheduledJob {
         return self;
     }
 
+    /// Fires this far ahead of the scheduled occurrence.
+    ///
+    /// ## Example
+    /// ```ignore
+    /// // "Alice's birthday, buy a gift", a week before the day itself.
+    /// ScheduledJob::new("birthday.alice.reminder", birthday_schedule)
+    ///     .reminding_before(Duration::days(7));
+    /// ```
+    pub fn reminding_before(mut self, lead_time: Duration) -> Self {
+        self.lead_time = lead_time;
+        return self;
+    }
+
     pub fn catching_up(mut self, catch_up: CatchUp) -> Self {
         self.catch_up = catch_up;
         return self;
@@ -105,8 +131,14 @@ impl ScheduledJob {
 pub struct Fire {
     pub rule_id: String,
     pub tool_id: Option<String>,
-    /// When it was originally due, which is not necessarily now.
+    /// When this alert was due to fire, which is not necessarily now.
     pub due_at: DateTime<Utc>,
+    /// The occurrence it concerns.
+    ///
+    /// The same as `due_at` unless the job has a lead time, in which case this is the
+    /// event being warned about and `due_at` is when the warning goes out. A reminder
+    /// that cannot say what it is about is not much of a reminder.
+    pub subject_at: DateTime<Utc>,
     /// Whether this is being delivered after the fact.
     ///
     /// Worth passing to the user: "this was due at 09:00 on Tuesday" reads very
@@ -119,7 +151,10 @@ pub struct Fire {
 pub struct Upcoming {
     pub rule_id: String,
     pub tool_id: Option<String>,
+    /// When the alert fires. This is what the quit prompt counts down to.
     pub due_at: DateTime<Utc>,
+    /// The occurrence it concerns, equal to `due_at` when there is no lead time.
+    pub subject_at: DateTime<Utc>,
 }
 
 /// Every registered job, and the log they record into.
@@ -157,7 +192,8 @@ impl Scheduler {
     /// Reads every job back from the database.
     pub fn reload(&mut self) -> Result<()> {
         let mut stmt = self.conn.prepare(
-            "SELECT rule_id, tool_id, schedule, guard, catch_up, enabled FROM scheduled_jobs",
+            "SELECT rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds
+             FROM scheduled_jobs",
         )?;
 
         let rows = stmt.query_map([], |row| {
@@ -167,14 +203,15 @@ impl Scheduler {
             let guard: String = row.get(3)?;
             let catch_up: String = row.get(4)?;
             let enabled: i64 = row.get(5)?;
+            let lead_seconds: i64 = row.get(6)?;
 
-            return Ok((rule_id, tool_id, schedule, guard, catch_up, enabled));
+            return Ok((rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds));
         })?;
 
         let mut jobs = BTreeMap::new();
 
         for row in rows {
-            let (rule_id, tool_id, schedule, guard, catch_up, enabled) = row?;
+            let (rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds) = row?;
 
             // A job that cannot be decoded is skipped rather than failing startup: it
             // can only come from a newer version of Luna, and refusing to start would
@@ -194,6 +231,7 @@ impl Scheduler {
                     tool_id,
                     schedule,
                     guard,
+                    lead_time: Duration::seconds(lead_seconds),
                     catch_up,
                     enabled: enabled != 0,
                 },
@@ -219,21 +257,24 @@ impl Scheduler {
         })?;
 
         self.conn.execute(
-            "INSERT INTO scheduled_jobs (rule_id, tool_id, schedule, guard, catch_up, enabled)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO scheduled_jobs
+                (rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(rule_id) DO UPDATE SET
-                tool_id  = excluded.tool_id,
-                schedule = excluded.schedule,
-                guard    = excluded.guard,
-                catch_up = excluded.catch_up,
-                enabled  = excluded.enabled",
+                tool_id      = excluded.tool_id,
+                schedule     = excluded.schedule,
+                guard        = excluded.guard,
+                catch_up     = excluded.catch_up,
+                enabled      = excluded.enabled,
+                lead_seconds = excluded.lead_seconds",
             rusqlite::params![
                 job.rule_id,
                 job.tool_id,
                 schedule,
                 guard,
                 job.catch_up.as_str(),
-                job.enabled as i64
+                job.enabled as i64,
+                job.lead_time.num_seconds()
             ],
         )?;
 
@@ -290,11 +331,16 @@ impl Scheduler {
             .values()
             .filter(|job| job.enabled)
             .filter_map(|job| {
-                job.schedule.next_after(after).map(|due_at| Upcoming {
-                    rule_id: job.rule_id.clone(),
-                    tool_id: job.tool_id.clone(),
-                    due_at,
-                })
+                // Shift the search by the lead time so the answer is when the alert
+                // goes out, which is what a countdown should show.
+                job.schedule
+                    .next_after(after + job.lead_time)
+                    .map(|subject_at| Upcoming {
+                        rule_id: job.rule_id.clone(),
+                        tool_id: job.tool_id.clone(),
+                        due_at: subject_at - job.lead_time,
+                        subject_at,
+                    })
             })
             .collect();
 
@@ -329,17 +375,29 @@ impl Scheduler {
                 continue;
             }
 
-            let occurrences =
-                job.schedule
-                    .occurrences_between(since, now, MAX_OCCURRENCES_PER_TICK);
+            // A job with a lead time fires before its occurrence, so the span searched
+            // is shifted forward by that much and the results shifted back.
+            let occurrences = job.schedule.occurrences_between(
+                since + job.lead_time,
+                now + job.lead_time,
+                MAX_OCCURRENCES_PER_TICK,
+            );
 
             if occurrences.is_empty() {
                 continue;
             }
 
+            let subject_of: std::collections::BTreeMap<DateTime<Utc>, DateTime<Utc>> =
+                occurrences
+                    .iter()
+                    .map(|&at| (at - job.lead_time, at))
+                    .collect();
+
+            let firing_times: Vec<DateTime<Utc>> = subject_of.keys().copied().collect();
+
             let cutoff = now - self.grace;
             let (missed, current): (Vec<_>, Vec<_>) =
-                occurrences.into_iter().partition(|at| *at < cutoff);
+                firing_times.into_iter().partition(|at| *at < cutoff);
 
             // Recent ones always fire: the policy is about what was missed, not about
             // suppressing ordinary work.
@@ -348,6 +406,7 @@ impl Scheduler {
                     rule_id: job.rule_id.clone(),
                     tool_id: job.tool_id.clone(),
                     due_at,
+                    subject_at: subject_of.get(&due_at).copied().unwrap_or(due_at),
                     late: false,
                 });
             }
@@ -357,6 +416,10 @@ impl Scheduler {
                     rule_id: job.rule_id.clone(),
                     tool_id: job.tool_id.clone(),
                     due_at: occurrence.due_at,
+                    subject_at: subject_of
+                        .get(&occurrence.due_at)
+                        .copied()
+                        .unwrap_or(occurrence.due_at),
                     late: occurrence.late,
                 });
             }
@@ -517,7 +580,7 @@ pub fn spawn(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{NaiveTime, TimeZone};
+    use chrono::{Datelike, NaiveTime, TimeZone};
     use luna::rules::{EventHistory, Lookback, Recurrence};
 
     fn scheduler(dir: &tempfile::TempDir) -> Scheduler {
@@ -802,6 +865,123 @@ mod tests {
 
         assert_eq!(first.len(), 1);
         assert!(second.is_empty(), "the mark must advance: {second:?}");
+    }
+
+    /// A yearly event, as a birthday would be.
+    fn yearly(month: u32, day: u32) -> Schedule {
+        return Schedule::new(
+            Recurrence::Yearly { interval: 1, month, day },
+            NaiveTime::from_hms_opt(9, 0, 0).unwrap(),
+            utc(2026, 1, 1, 0),
+        );
+    }
+
+    #[test]
+    fn a_reminder_fires_ahead_of_the_event_and_says_what_it_is_about() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = scheduler(&dir);
+
+        // "Alice's birthday, buy a gift", a week before the 4th of July.
+        s.upsert(
+            ScheduledJob::new("birthday.alice.reminder", yearly(7, 4))
+                .reminding_before(Duration::days(7)),
+        )
+        .unwrap();
+
+        let upcoming = s.next_due(utc(2026, 6, 1, 0)).unwrap();
+
+        let fires_on = upcoming.due_at.with_timezone(&chrono::Local).date_naive();
+        let event_on = upcoming.subject_at.with_timezone(&chrono::Local).date_naive();
+
+        assert_eq!(event_on.month(), 7);
+        assert_eq!(event_on.day(), 4);
+        assert_eq!(
+            (event_on - fires_on).num_days(),
+            7,
+            "the alert should land a week before the day itself"
+        );
+    }
+
+    #[test]
+    fn a_lead_time_reminder_actually_fires_at_the_lead_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = scheduler(&dir);
+
+        s.upsert(
+            ScheduledJob::new("birthday.alice.reminder", yearly(7, 4))
+                .reminding_before(Duration::days(7)),
+        )
+        .unwrap();
+
+        // Nothing yet in June, well before the lead time.
+        s.tick(utc(2026, 6, 1, 0)).unwrap();
+        assert!(s.tick(utc(2026, 6, 20, 0)).unwrap().is_empty());
+
+        // Ticking past the 27th of June delivers it, a week ahead of the event.
+        let fired = s.tick(utc(2026, 6, 28, 12)).unwrap();
+
+        assert_eq!(fired.len(), 1, "{fired:?}");
+        assert!(
+            fired[0].subject_at > fired[0].due_at,
+            "the event must be ahead of the alert"
+        );
+        assert_eq!((fired[0].subject_at - fired[0].due_at).num_days(), 7);
+    }
+
+    #[test]
+    fn the_event_itself_and_its_reminder_are_independent_jobs() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = scheduler(&dir);
+
+        // Two alerts for one event: one a week out, one on the day.
+        s.upsert(
+            ScheduledJob::new("birthday.alice.week", yearly(7, 4))
+                .reminding_before(Duration::days(7)),
+        )
+        .unwrap();
+        s.upsert(ScheduledJob::new("birthday.alice.day", yearly(7, 4))).unwrap();
+
+        let upcoming = s.upcoming(utc(2026, 6, 1, 0));
+
+        assert_eq!(upcoming.len(), 2);
+        assert_eq!(upcoming[0].rule_id, "birthday.alice.week", "the earlier alert first");
+        assert_eq!(upcoming[1].rule_id, "birthday.alice.day");
+
+        // Both concern the same moment, and each can be acknowledged on its own.
+        assert_eq!(upcoming[0].subject_at, upcoming[1].subject_at);
+    }
+
+    #[test]
+    fn a_lead_time_survives_reopening() {
+        let dir = tempfile::tempdir().unwrap();
+
+        {
+            let mut s = scheduler(&dir);
+            s.upsert(
+                ScheduledJob::new("birthday.alice.week", yearly(7, 4))
+                    .reminding_before(Duration::days(7)),
+            )
+            .unwrap();
+        }
+
+        let s = scheduler(&dir);
+
+        assert_eq!(
+            s.job("birthday.alice.week").unwrap().lead_time,
+            Duration::days(7)
+        );
+    }
+
+    #[test]
+    fn without_a_lead_time_the_alert_and_the_event_are_the_same_moment() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = scheduler(&dir);
+
+        s.upsert(ScheduledJob::new("daily", daily_at_noon(utc(2026, 8, 1, 0)))).unwrap();
+
+        let upcoming = s.next_due(utc(2026, 8, 14, 0)).unwrap();
+
+        assert_eq!(upcoming.due_at, upcoming.subject_at);
     }
 
     #[test]

@@ -58,6 +58,10 @@ pub enum CoreError {
     #[error("more than one tool declares the id {id:?}")]
     DuplicateTool { id: String },
 
+    /// A handoff between tools was refused.
+    #[error("the handoff was refused: {reason}")]
+    SendRefused { reason: String },
+
     /// An operation named a tool that is not compiled in.
     #[error("no tool with the id {id:?} is registered")]
     UnknownTool { id: String },
