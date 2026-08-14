@@ -69,6 +69,25 @@ const MIGRATIONS: &[Migration] = &[
             CREATE INDEX idx_rule_events_tool ON rule_events (tool_id);
         ",
     },
+    Migration {
+        version: 3,
+        name: "scheduled_jobs",
+        sql: "
+            -- Registered scheduled work. Stores the recurrence rule, never a computed
+            -- next-fire timestamp: a stored instant goes wrong the moment a clock, a
+            -- timezone or a daylight saving rule moves.
+            CREATE TABLE scheduled_jobs (
+                rule_id  TEXT    NOT NULL PRIMARY KEY,
+                tool_id  TEXT,
+                schedule TEXT    NOT NULL,
+                guard    TEXT    NOT NULL,
+                catch_up TEXT    NOT NULL,
+                enabled  INTEGER NOT NULL
+            ) STRICT;
+
+            CREATE INDEX idx_scheduled_jobs_tool ON scheduled_jobs (tool_id);
+        ",
+    },
 ];
 
 /// An open connection to Luna's database, migrated to the current schema.

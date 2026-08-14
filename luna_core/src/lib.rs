@@ -45,6 +45,7 @@ pub mod lifecycle;
 pub mod palettes;
 pub mod paths;
 pub mod registry;
+pub mod scheduler;
 
 pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
 pub use db::Database;
@@ -54,6 +55,7 @@ pub use manifest::{PortType, ToolManifest};
 pub use palettes::PaletteSet;
 pub use paths::AppPaths;
 pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
+pub use scheduler::{Fire, ScheduledJob, Scheduler, Upcoming};
 
 use std::path::PathBuf;
 

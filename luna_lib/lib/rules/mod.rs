@@ -25,6 +25,10 @@
 //! Lookbacks are additionally capped at [`MAX_LOOKBACK_DAYS`] so a mistaken rule cannot
 //! make evaluation arbitrarily expensive.
 
+pub mod recurrence;
+
+pub use recurrence::{MonthDay, NthWeek, Recurrence, Schedule};
+
 use chrono::{DateTime, Datelike, Duration as ChronoDuration, Local, TimeZone, Utc};
 
 pub const VERSION: crate::Version = crate::Version::new(0, 1, 0);
@@ -38,6 +42,7 @@ pub const MAX_LOOKBACK_DAYS: i64 = 366;
 
 /// Something that happened to a scheduled rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EventKind {
     /// The rule fired and the user was notified.
     Fired,
@@ -117,6 +122,7 @@ impl TimeWindow {
 /// fired at 23:00 yesterday is still *yesterday* when the candidate runs at 00:00
 /// today, and a plain duration would miss most of the day.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Lookback {
     /// A fixed span ending at the evaluation instant.
     LastMinutes(i64),
@@ -214,6 +220,7 @@ pub trait EventHistory {
 /// A small typed tree rather than an expression language: it has to be serialisable,
 /// inspectable in a UI, and impossible to make expensive by accident.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Guard {
     /// No condition. The candidate always fires.
     Always,
@@ -337,6 +344,7 @@ impl Guard {
 /// notifications, which is worse than useless: the user dismisses all of them and
 /// stops reading the ones that matter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CatchUp {
     /// Fire every missed occurrence, oldest first.
     ///
@@ -451,6 +459,7 @@ pub fn missed_to_fire(missed: &[DateTime<Utc>], policy: CatchUp) -> Vec<Occurren
 
 /// How urgent a window task currently is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Urgency {
     /// Before the window opens. Not shown at all.
     Dormant,
@@ -509,6 +518,7 @@ pub struct WindowState {
 /// `soft_start` is the anchor itself, so offsets are measured from there: `target` is
 /// when the work is due, and `hard_end` is when it becomes critical.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WindowShape {
     /// How long after the anchor the task becomes visible.
     pub visible_after: ChronoDuration,
@@ -598,6 +608,7 @@ impl WindowShape {
 
 /// What a window task measures its interval from.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Anchor {
     /// The window restarts from when the work was last actually done.
     ///
@@ -617,6 +628,7 @@ pub enum Anchor {
 
 /// A task that should happen somewhere within a period, escalating as it elapses.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WindowTask {
     /// Identifies the task in the event log.
     pub rule: String,

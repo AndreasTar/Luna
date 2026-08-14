@@ -364,10 +364,17 @@ reminder does.
 Every instant-based rule decomposes into a **temporal generator** plus an optional
 **guard**.
 
-The generator produces candidate instants from the clock alone. This is RFC 5545
-`RRULE` territory, so use the `rrule` crate rather than inventing syntax. It covers
-"second Sunday of the month", intervals, counts and until-dates, and it gives `.ics`
-import/export nearly free for the calendar later.
+The generator produces candidate instants from the clock alone. `luna::rules`
+implements this directly as `Schedule`: daily, weekly by weekday, monthly by day
+number or nth weekday, and yearly, each with an interval and an optional end.
+
+The `rrule` crate was the original plan and was measured instead: 26 transitive
+dependencies, including a timezone database and a regex engine, both of which exist
+for parsing `RRULE` *strings* rather than for the recurrence maths. That is a poor
+trade for a pattern set this small in a crate whose selling point is being light. The
+model still maps onto the `RRULE` fields (`FREQ`, `INTERVAL`, `BYDAY`, `BYMONTHDAY`),
+so string parsing can be layered on for `.ics` interoperability later without changing
+anything.
 
 The guard is a boolean predicate over **event history**, evaluated only when a
 candidate arrives. If false, the candidate is skipped silently.
@@ -614,12 +621,10 @@ steps depend on.
    Supervisor with the exit-code protocol, cargo rebuild, binary swap with `.prev`
    rollback, startup scan for tool changes, and an in-app prompt gated on whether a
    rebuild is possible at all.
-4. **Scheduler + rule engine + event log.** *In progress.* Done: the pure engine in
-   `luna::rules` (guard AST with calendar-aware lookbacks, window tasks with
-   `RollingFromCompletion` anchors and escalating urgency, catch-up policy), and the
-   event log in `luna_core::events` backed by SQLite, implementing `EventHistory`.
-   Outstanding: RRULE recurrence for `Anchor::FixedSchedule`, and the scheduler
-   runtime that materialises occurrences and wakes on them.
+4. **Scheduler + rule engine + event log.** *Done.* `luna::rules` holds the pure
+   engine (guard AST, calendar-aware lookbacks, recurrence, window urgency, catch-up
+   policy); `luna_core::events` is the SQLite-backed `EventHistory`;
+   `luna_core::scheduler` registers jobs, ticks, and runs on its own thread.
 5. **Palette loading, picker and resolution + `Theme` global.** *Mostly done.*
    `luna::palette` holds the role set, colour type, resolution chain and WCAG contrast
    checking; `luna_core::palettes` loads and validates files; the `Theme` global is
