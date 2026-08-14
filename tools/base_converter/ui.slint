@@ -1,20 +1,60 @@
 
 import { PageComponent } from "../../luna_src/src/helpers/page_component.slint";
-import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView } from "std-widgets.slint";
+import { Button, VerticalBox, LineEdit, GridBox, HorizontalBox, ScrollView, Switch, CheckBox } from "std-widgets.slint";
 import { Global_NumberConversion_Callback } from "../../luna_src/src/helpers/global_callbacks.slint";
 
+// Sizing, in one place so it can be tuned without hunting through the layout.
+//
+// Slint has no character unit, and the default font is proportional, so these are
+// eyeball figures rather than exact metrics. Change the two base numbers and
+// everything derived from them follows.
+global FieldMetrics {
+    // Roughly the width of one character and the height of one line.
+    out property <length> char_width: 8px;
+    out property <length> line_height: 22px;
 
+    // The floor for the four boxes at the top: this many characters across, one line tall.
+    out property <length> min_width: 27 * char_width;
+    out property <length> min_height: line_height;
+
+    // How much beyond the floor a box may grow before it stops and the surplus
+    // becomes padding instead. This is the "a tiny bit" dial.
+    out property <length> grow_width: 270px;
+    out property <length> grow_height: 27px;
+
+    out property <length> max_width: min_width + grow_width;
+    out property <length> max_height: min_height + grow_height;
+
+    // The custom rows along the bottom are the wide ones, so they get their own set of
+    // numbers rather than borrowing the small boxes' maximum.
+    out property <length> custom_min_width: min_width;
+    out property <length> custom_max_width: 2.2 * max_width;
+    out property <length> custom_min_height: line_height * 1.4;
+    out property <length> custom_max_height: line_height * 7.5;
+
+    // The little caption above each of the four boxes. It needs a stated maximum, not
+    // just a stated size: a layout's maximum is the sum of its children's, so one
+    // unbounded label would make the whole box unbounded and the centring around it
+    // would never come into play.
+    out property <length> label_height: 16px;
+
+    // The base box only ever holds two digits, so it stays narrow while the value
+    // beside it takes the width.
+    out property <length> base_min_width: 12 * char_width;
+    out property <length> base_max_width: 19 * char_width;
+}
+
+// Carries the floor only. Maxima are stated where the field is used, because the same
+// field is a small box at the top of the page and a wide one at the bottom.
 component InputField inherits LineEdit {
-    min_width: 200px;
-    min_height: 24px;
-    preferred_width: 240px;
-    preferred_height: 40px;
-    max_width: 400px;
-    max_height: 66px;
+    min-width: FieldMetrics.min_width;
+    min-height: FieldMetrics.min_height;
 
     input_type: decimal;
 }
 
+// One labelled conversion box, centred on both axes within whatever cell holds it, and
+// free to grow with the window until it reaches its maximum.
 component ConversionField {
     in property <string> convBase : "Default";
     in property <string> convPlaceholder : "Default";
@@ -23,22 +63,170 @@ component ConversionField {
     in property <InputType> input_type;
     callback user_edited <=> field.edited;
 
-    min-width: 300px;
-    min-height: 50px;
-    preferred-width: 350px;
-    preferred-height: 60px;
+    VerticalLayout {
 
-    public pure function setText(t: string) -> string{
-        return t;
+        // Spacers rather than `alignment: center`.
+        //
+        // An alignment other than the default hands every child its preferred size and
+        // pockets whatever is left over, which is exactly why these boxes sat at their
+        // minimum however large the window became. A spacer with a small stretch factor
+        // centres the box just as well and still lets it grow: the box stretches until
+        // it reaches the maximum below, and only then do the spacers start taking the
+        // surplus and turning it into padding.
+        Rectangle { vertical-stretch: 1; }
+
+        HorizontalLayout {
+            vertical-stretch: 50;
+
+            Rectangle { horizontal-stretch: 1; }
+
+            VerticalLayout {
+                horizontal-stretch: 50;
+                max-width: FieldMetrics.max_width;
+                spacing: 4px;
+
+                Text {
+                    vertical-stretch: 0;
+                    max-height: FieldMetrics.label_height;
+                    text: convBase;
+                    font-size: 12px;
+                    horizontal-alignment: left;
+                }
+
+                field := InputField {
+                    max-height: FieldMetrics.max_height;
+
+                    input-type: input_type;
+                    placeholder_text: convPlaceholder;
+                    text <=> convValue;
+                }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+        }
+
+        Rectangle { 
+            vertical-stretch: 1;
+            min-height: 16px;
+        }
     }
+}
 
+// One arbitrary-base row: a switch, the value, then the base pinned to the right hand
+// end with its complaint, if it has one, immediately to its left.
+component CustomBaseField {
+    in property <string> convPlaceholder : "Number in this base";
+    in-out property <string> convValue : "";
+    in-out property <string> baseValue : "";
 
-    field := InputField {
+    // A row that is switched off is frozen. Both its boxes go insensitive, and the page
+    // puts back whatever the row was holding after a conversion rather than letting the
+    // new figures overwrite it. That includes an empty value: off means untouched.
+    in-out property <bool> row_enabled: true;
+
+    // 2 to 36 is the range the converter accepts. Above 36 there are no digits left to
+    // write with, which is the wider notation problem tracked in the number_converter
+    // issue rather than something this row can decide. WILL BE FIXED to accept any.
+    property <float> base_number: baseValue.to-float();
+    property <bool> base_valid: baseValue != ""
+                             && base_number >= 2
+                             && base_number <= 36
+                             && Math.floor(base_number) == base_number;
+
+    callback user_edited(string);
+    callback base_edited(string);
+    callback row_toggled(bool);
+
+    VerticalLayout {
+
+        Rectangle { 
+            vertical-stretch: 5; 
+            min-height: 15px;
+        }
+
+        HorizontalLayout {
+            
+            value_field := InputField {
+                horizontal-stretch: 50;
+                vertical-stretch: 90;
+                min-width: FieldMetrics.custom_min_width;
+                max-width: FieldMetrics.custom_max_width;
+                min-height: FieldMetrics.custom_min_height;
+                max-height: FieldMetrics.custom_max_height;
+
+                // Letters are digits once the base passes 10, so this one cannot be
+                // restricted to the numeric keypad the way the base beside it is.
+                input-type: text;
+                enabled: root.row_enabled;
+                placeholder_text: convPlaceholder;
+                text <=> convValue;
+
+                edited(str) => { root.user_edited(str); }
+            }
+
+            Rectangle {
+                vertical-stretch: 90;
+                horizontal-stretch: 5;
+            }
+
+            VerticalLayout {
+                vertical-stretch: 90;
+                horizontal-stretch: 5;
+
+                HorizontalLayout {
+                    
+                    warning := Text {
+                        horizontal-stretch: 0;
+                        // Kept in the layout when the base is fine rather than removed from it,
+                        // so the boxes do not jump sideways as it comes and goes.
+                        visible: root.row_enabled && !root.base_valid;
+                        min-width: 129px;
+
+                        text: root.baseValue == "" ? @tr("Input a base first ->") : @tr("base must be 2 to 36 ->");
+                        font-size: 14px;
+                        color: #d08a20;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+
+                    Rectangle {width: 27px;}
+                
+
+                    base_field := LineEdit {
+                        horizontal-stretch: 0;
+                        min-width: FieldMetrics.base_min_width;
+                        max-width: FieldMetrics.base_max_width;
+                        min-height: FieldMetrics.custom_min_height;
+                        max-height: FieldMetrics.custom_max_height;
+
+                        input-type: decimal;
+                        enabled: root.row_enabled;
+                        placeholder-text: @tr("Base");
+                        text <=> baseValue;
+
+                        edited(str) => { root.base_edited(str); }
+                    }
+
+                    Rectangle {width: 20px;}
+
+                    toggle := CheckBox {
+                        
+                        horizontal-stretch: 0;
+                        checked <=> root.row_enabled;
+                        toggled => { root.row_toggled(self.checked); }
+                    }
+                } 
+                
+                Rectangle { 
+                    vertical-stretch: 5; 
+                }
+            }
+        }
         
-        input-type: input_type;
-        placeholder_text: convPlaceholder;
-        text <=> convValue;
-
+        Rectangle { 
+            vertical-stretch: 5; 
+            min-height: 15px;
+        }
     }
 }
 
@@ -48,103 +236,157 @@ export component ToolPage inherits PageComponent {
     description: @tr("A widget that converts numbers between the different usual bases (binary, octal, decimal, hexadecimal), and also supports custom bases.");
     show-enable-read-only: false;
     show-enable-page-widgets-switch: false;
-    
+
     preferred_height: 500px;
     preferred_width: 1000px;
 
+    // Four fixed bases followed by three arbitrary ones. The Rust side zips these two
+    // arrays together, so both must stay the same length and the same order.
     in-out property <[int]> allBases: [
-        10, 2, 16, 8, 0
+        10, 2, 16, 8, 0, 0, 0
     ];
 
     in-out property <[string]> allNums: [
-        "", "", "", "", ""
+        "", "", "", "", "", "", ""
     ];
 
-    in property <int> cusBasesCount : 1;
-    in property <[string]> cusNums;
-    in property <[string]> cusBases;
+    // How many custom rows the bottom half shows.
+    in property <int> customCount: 3;
 
     function convert_and_set_numbers_vec(index: int, number: string) {
         allNums = Global_NumberConversion_Callback.request_convert_number(allNums, allBases, index, number);
+
+        // Assigned rather than bound, because `text <=> convValue` two-way binding is
+        // replaced the moment the user types into a field. Every box except the one
+        // being edited has to be pushed the new value.
         dec.convValue = allNums[0];
         bin.convValue = allNums[1];
         hex.convValue = allNums[2];
         oct.convValue = allNums[3];
+
+        // A switched-off row keeps what it is holding. The conversion above rewrote its
+        // slot along with all the others, so the held value goes back into the array
+        // rather than the new one coming out of it.
+        if (cus0.row_enabled) { cus0.convValue = allNums[4]; } else { allNums[4] = cus0.convValue; }
+        if (cus1.row_enabled) { cus1.convValue = allNums[5]; } else { allNums[5] = cus1.convValue; }
+        if (cus2.row_enabled) { cus2.convValue = allNums[6]; } else { allNums[6] = cus2.convValue; }
     }
 
-    layout := HorizontalLayout {
+    // Sets the base of a custom row, then reconverts from whichever box last had a
+    // value, so changing a base updates that row immediately.
+    function set_custom_base(slot: int, base: string) {
+        allBases[slot] = base == "" ? 0 : base.to-float();
+        convert_and_set_numbers_vec(0, allNums[0]);
+    }
 
-        min-height: 400px;
-        min-width: 600px;
+    // Switching a row back on brings it into line with the rest of the page. Switching
+    // one off does nothing, which is the point of it.
+    function custom_row_toggled(on: bool) {
+        if (on) { convert_and_set_numbers_vec(0, allNums[0]); }
+    }
 
-        preferred-height: 600px;
-        preferred-width: 1000px;
+    VerticalLayout {
 
-        grid := GridBox {
+        padding: 10px;
+        spacing: 10px;
 
-            dec := ConversionField {
+        // 40 / 60 top to bottom. Slint distributes surplus space in proportion to the
+        // stretch factors, so these are the split rather than absolute heights: each
+        // half still keeps whatever its contents need as a floor.
+        fixed_area := Rectangle {
+            vertical-stretch: 30;
 
-                row: 1;
-                col: 1;
+            HorizontalLayout {
+                // Spacers on both sides, weighted well below the grid so the boxes fill
+                // out first and only the leftover past their maximum becomes padding.
+                Rectangle { horizontal-stretch: 1; }
 
-                convBase: "Dec";
-                convPlaceholder: "Input a decimal number:";
-                convValue: allNums[0];
+                grid := GridLayout {
+                    spacing: 12px;
+                    horizontal-stretch: 50;
 
-                user_edited(str) => { 
-                    convert_and_set_numbers_vec(0, str);
+                    Row {
+                        dec := ConversionField {
+                            convBase: "Dec";
+                            convPlaceholder: "Input a Decimal number";
+                            convValue: allNums[0];
+                            user_edited(str) => { convert_and_set_numbers_vec(0, str); }
+                        }
+
+                        bin := ConversionField {
+                            convBase: "Bin";
+                            convPlaceholder: "Input a Binary number";
+                            convValue: allNums[1];
+                            user_edited(str) => { convert_and_set_numbers_vec(1, str); }
+                        }
+                    }
+
+                    Row {
+                        hex := ConversionField {
+                            convBase: "Hex";
+                            convPlaceholder: "Input a Hexadecimal number";
+                            convValue: allNums[2];
+                            input-type: text;
+                            user_edited(str) => { convert_and_set_numbers_vec(2, str); }
+                        }
+
+                        oct := ConversionField {
+                            convBase: "Oct";
+                            convPlaceholder: "Input an Octal number";
+                            convValue: allNums[3];
+                            user_edited(str) => { convert_and_set_numbers_vec(3, str); }
+                        }
+                    }
                 }
-            }
 
-            bin := ConversionField {
-
-                row: 1;
-                col: 2;
-
-                convBase: "Bin";
-                convPlaceholder: "Input a binary number:";
-                convValue: allNums[1];
-
-                user_edited(str) => { 
-                    convert_and_set_numbers_vec(1, str);
-                }
-            }
-
-            hex := ConversionField {
-
-                row: 2;
-                col: 1;
-
-                convBase: "Hex";
-                convPlaceholder: "Input a hexadecimal number:";
-                convValue: allNums[2];
-                input-type: text;
-
-                user_edited(str) => { 
-                    convert_and_set_numbers_vec(2, str);
-                }
-            }
-
-            oct := ConversionField {
-
-                row: 2;
-                col: 2;
-
-                convBase: "Oct";
-                convPlaceholder: "Input a octal number:";
-                convValue: allNums[3];
-
-                user_edited(str) => { 
-                    convert_and_set_numbers_vec(3, str);
-                }
+                Rectangle { horizontal-stretch: 1; }
             }
         }
 
-        customAreaArea := GridBox {} // TODO this type is for testing
+        custom_area := Rectangle {
+            vertical-stretch: 70;
+
+            HorizontalLayout {
+                // Spacers on both sides, weighted well below the grid so the boxes fill
+                // out first and only the leftover past their maximum becomes padding.
+                Rectangle { 
+                    horizontal-stretch: 1; 
+                    max-width: 15px;
+                }
+
+                VerticalLayout {
+                    // No alignment here either: the three rows share this half between them
+                    // rather than huddling at the top of it at their minimum size.
+                    spacing: 8px;
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                    }
+
+                    cus0 := CustomBaseField {
+                        user_edited(str) => { convert_and_set_numbers_vec(4, str); }
+                        base_edited(str) => { set_custom_base(4, str); }
+                        row_toggled(on) => { custom_row_toggled(on); }
+                    }
+
+                    cus1 := CustomBaseField {
+                        user_edited(str) => { convert_and_set_numbers_vec(5, str); }
+                        base_edited(str) => { set_custom_base(5, str); }
+                        row_toggled(on) => { custom_row_toggled(on); }
+                    }
+
+                    cus2 := CustomBaseField {
+                        user_edited(str) => { convert_and_set_numbers_vec(6, str); }
+                        base_edited(str) => { set_custom_base(6, str); }
+                        row_toggled(on) => { custom_row_toggled(on); }
+                    }
+                }
+
+                Rectangle { 
+                    horizontal-stretch: 1; 
+                    max-width: 15px;
+                }
+            }
+        }
     }
-    
 }
-
-
-
-

@@ -15,10 +15,14 @@ export component PageComponent inherits VerticalBox {
     accessible-role: tab-panel;
     accessible-label: root.title;
 
-    HorizontalBox { 
+    HorizontalBox {
 
-        //preferred-height: 50px;
-        alignment: center;
+        // Full width, fixed height. `vertical-stretch: 0` keeps it at its natural
+        // height whatever the window does, and the default horizontal stretch lets the
+        // spacer below push the title and the switches to opposite ends. The former
+        // `alignment: center` collapsed that spacer to nothing and bunched the whole
+        // bar into the middle of the page.
+        vertical-stretch: 0;
 
         Text {
             font-size: 20px;
@@ -53,5 +57,17 @@ export component PageComponent inherits VerticalBox {
         }
     }
 
-    @children
+    // The page content takes every pixel the bar above does not.
+    //
+    // The explicit stretch is the part that matters. A stretch factor of 0 only means
+    // "do not grow" while something else in the layout is willing to: when every item
+    // in a layout reports 0, Slint falls back to splitting the surplus equally, and the
+    // bar grows with the window after all. A tool page whose content happened to report
+    // 0 (a column of fixed-height widgets, say) triggered exactly that. Stating 1 here
+    // guarantees the total is never 0, whatever the tool puts inside.
+    VerticalLayout {
+        vertical-stretch: 1;
+
+        @children
+    }
 }

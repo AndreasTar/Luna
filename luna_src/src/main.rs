@@ -74,7 +74,7 @@ fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
     // rather than leaving to be inferred from the sidebar.
     let enabled: Vec<&str> = host.registry.enabled().map(|m| m.id.as_str()).collect();
     eprintln!(
-        "startup: {} tools compiled in, {} enabled: {}",
+        "startup: {} tools compiled, {} enabled:\n\t- {}",
         host.registry.len(),
         enabled.len(),
         enabled.join(", ")

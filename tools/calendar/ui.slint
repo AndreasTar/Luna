@@ -95,6 +95,10 @@ component HourCellButton inherits Rectangle {
 component DayCellButton inherits Rectangle {
     in property <DayCell> day_data;
     in property <bool> visible_days_num: true;
+    // The same cell is drawn at two very different sizes: a readable date in the
+    // monthly view, a speck in the yearly one. The caller sets the type size to match
+    // the cell it asked for.
+    in property <length> day_font_size: 14px;
 
     callback day_clicked(int);
 
@@ -111,10 +115,22 @@ component DayCellButton inherits Rectangle {
     ta := TouchArea { clicked => { root.day_clicked(root.day_data.day_num); } }
 
     // TODO add more cases for is_today & has_hover etc
-    Text {
+    if visible_days_num : Text {
+        // Fills the cell, so the alignments below have the cell to align within rather
+        // than the width of the digits themselves.
+        width: 100%;
+        height: 100%;
+
+        // States its own minimum as zero so the cell can shrink smaller than the number
+        // it holds. A Text otherwise reports the size of its glyphs as a hard minimum,
+        // and that propagates all the way out to the window: with twelve months of them
+        // on screen it was the year view, not the day view, deciding how small Luna
+        // could be. The number is clipped rather than resized when the cell gets tight.
+        min-width: 0px;
+        min-height: 0px;
+
         text: root.day_data.day_num;
-        visible: visible_days_num;
-        font-size: 14px;
+        font-size: root.day_font_size;
         font-weight: FontWeight.semi-bold;
         color: root.day_data.is_selected ? white
              : root.day_data.is_today    ? #2266cc
@@ -146,12 +162,17 @@ component MonthCellButton inherits Rectangle {
 
     // TODO add more cases for is_today & has_hover etc
     VerticalLayout {
-        
-        padding: 10px;
+
+        // Twelve of these sit side by side, so every pixel of padding here is twelve
+        // pixels of minimum width on the window. Kept to the low end of the 5 to 15
+        // range the rest of the calendar uses.
+        padding: 5px;
+        spacing: 2px;
 
         Text {
             text: root.month_data.month_num;
             font-size: 13px;
+            vertical-stretch: 0;
             color: root.month_data.is_selected ? white
                 : root.month_data.is_current  ? #2266cc
                 : root.month_data.in_year     ? #a0a0a0
@@ -189,9 +210,9 @@ component DailyView inherits Rectangle {
 
     outer_hour := VerticalLayout {
         padding: 10px;
-        padding-bottom: 20px;
 
         date := Text {
+            vertical-stretch: 0;
             color: white;
             text: current_date;
             vertical-alignment: center;
@@ -201,6 +222,13 @@ component DailyView inherits Rectangle {
 
         hours_layout := VerticalLayout {
 
+            // The hours take the height, not the date above them. Worth stating even
+            // though there are only two children: a layout whose children all report a
+            // stretch of 0 does not leave the extra space alone, it splits it equally
+            // between them, so the date line would grow at the same rate as the whole
+            // day. The 24 cells inside are left at 0 precisely for that reason: equal
+            // shares is what an hour grid wants.
+            vertical-stretch: 1;
             spacing: 2px;
 
             for h in 24 : HourCellButton {
@@ -253,12 +281,13 @@ component MonthlyView inherits Rectangle {
         padding-bottom: 10px;
 
         days_grid := GridLayout {
-            
+
+            vertical-stretch: 1;
             preferred-width: day_cell_dims * 7 + 5px;
             preferred-height: day_cell_dims * 6 + 5px;
 
             date := Text {
-                
+
                 col: 1;
                 colspan: 4;
                 row: 0;
@@ -292,6 +321,11 @@ component MonthlyView inherits Rectangle {
                 col: Math.mod((d), 7);
                 row: ((d) / 7) + 2;
 
+                // A grid row takes the smallest stretch among its cells, so marking the
+                // day cells is what keeps the two header rows above at their own height
+                // instead of growing along with the dates.
+                vertical-stretch: 1;
+
                 preferred-width: day_cell_dims;
                 preferred-height: day_cell_dims;
 
@@ -312,7 +346,15 @@ component MonthlyView inherits Rectangle {
 component YearlyView inherits Rectangle {
     
     in property <int> current_year;
-    in property <length> day_cell_dims: 25px;
+    // The floor for one day cell, not the size it stays at: the grids below hand out
+    // whatever the window has spare on top of this. Small, because a whole year is
+    // 366 of them and the monthly view is where a date is meant to be comfortable.
+    in property <length> day_cell_dims: 12px;
+    // Sized off the cell so the two stay in proportion. Override it on its own if the
+    // digits want to be bigger or smaller than the cell implies. Note that this does
+    // not follow the window: the cells grow, the digits stay put.
+    in property <length> day_font_size: day_cell_dims * 0.8;
+    in property <bool> show_day_numbers: true;
 
     pure function get_monthly_day_count(month: int, leap_year: bool) -> int {
         return  month == 1  ? 31 
@@ -340,10 +382,12 @@ component YearlyView inherits Rectangle {
 
     outer_layout := VerticalLayout {
 
-        min-width: year_text.min-width + months_grid.min-width;
-        min-height: year_text.min-height + months_grid.min-height;
-
-        alignment: start;
+        // No `alignment`. An alignment other than the default stretch hands every child
+        // its preferred size and parks the leftover space at one end, which is why the
+        // grid below used to sit in the top corner with the rest of the panel empty
+        // underneath it. Left as stretch, the year text keeps its natural height (a Text
+        // does not stretch) and the grid takes everything else.
+        spacing: 5px;
 
         year_text := Text {
             text: current_year;
@@ -352,19 +396,24 @@ component YearlyView inherits Rectangle {
         }
 
         months_grid := GridLayout {
-            
-            spacing: 5px;
-            padding: 10px;
-            padding-bottom: 20px;
-            height: 100%;
 
+            // Takes the panel's height rather than sharing it with the year label.
+            vertical-stretch: 1;
+            spacing: 5px;
+            padding: 5px;
+
+            // Four across, three down. Three across is the more usual shape for a year
+            // at a glance, but it is a third taller, and height is the scarce dimension
+            // on this page: the day view next door is 24 hours tall on its own.
             for months[m] in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : MonthCellButton {
-                
+
                 col: Math.mod(m, 3);
                 row: m / 3 ;
-                
-                min-height: day_cell_dims * 5;
-                min-width: day_cell_dims * 6;
+
+                // Nothing sized here. The day cells state a minimum, the grid around
+                // them adds it up, and the month cell inherits the total plus its own
+                // label and padding. Writing it out by hand a second time only creates
+                // something that can disagree with the cells it is meant to describe.
 
                 month_data: {
                     month_num: m+1,
@@ -376,17 +425,24 @@ component YearlyView inherits Rectangle {
 
                 days_grid := GridLayout {
 
-                    min-height: day_cell_dims * 4;
-                    min-width: day_cell_dims * 5;
+                    // And the days take the month cell's height rather than sharing it
+                    // with the month number above them.
+                    vertical-stretch: 1;
 
                     for days[d] in get_monthly_day_count(m+1, false) : DayCellButton {
                         col: Math.mod((d), 7);
                         row: (d) / 7 ;
 
-                        visible_days_num: true;
+                        visible_days_num: root.show_day_numbers;
+                        day_font_size: root.day_font_size;
 
-                        // preferred-height: day_cell_dims;
-                        // preferred-width: day_cell_dims;
+                        // Minimum rather than preferred. A preferred size is what an
+                        // element settles at when the layout has space to spare, so the
+                        // cells sat at their 12px ideal and left the panel half empty;
+                        // as a minimum it is the floor they shrink to and the grid
+                        // spends the surplus on them instead.
+                        min-height: day_cell_dims;
+                        min-width: day_cell_dims;
 
                         day_clicked => { day_clicked(d, m, 2026) } // HACK hardcoded year
 
@@ -453,12 +509,16 @@ component UpcomingView inherits Rectangle {
         padding: 5px;
 
         title_text := Text {
+            vertical-stretch: 0;
             text: "UPCOMING";
         }
 
         events_scroll_area := ScrollView {
+            // The list takes the panel, the heading keeps its line.
+            vertical-stretch: 1;
+
             for event[e] in upcoming_events: UpcomingEventButton {
-                
+
             }
         }
     }
@@ -478,10 +538,13 @@ component NotesView inherits Rectangle {
 
 
         date_text := Text {
+            vertical-stretch: 0;
             text: "Notes " + current_date;
         }
 
         notes_field := TextEdit {
+            // Same again: the writing area takes the panel, the date keeps its line.
+            vertical-stretch: 1;
             font-size: 12px;
         }
     }
@@ -495,43 +558,87 @@ export component ToolPage inherits PageComponent {
 
     padding-left: 10px;
     padding-right: 10px;
-    padding-bottom: 20px;
+    padding-bottom: 10px;
     padding-top: 10px;
 
+    // What the page opens at. The minimum is not stated anywhere; it falls out of the
+    // three columns and lands around 880 by 620.
+    preferred_width: 1200px;
+    preferred_height: 760px;
 
+
+    // Three columns: month over year on the left, the day in the middle, upcoming over
+    // notes on the right.
+    //
+    // Nothing here declares a min-width or min-height for the layouts themselves. Slint
+    // already works those out from the children and propagates them up to the window,
+    // so writing the arithmetic by hand is both redundant and easy to get backwards:
+    // in a horizontal layout the min height is the *tallest* child, not the sum, and in
+    // a vertical layout the min width is the *widest* child, not the sum.
+    //
+    // Nothing sets a percentage width either. An explicit width on a child overrides
+    // the layout's own distribution, so it fights the child's min-width instead of
+    // respecting it, and the percentages did not leave room for the spacing between
+    // columns.
+    //
+    // Instead each column states its own minimum and maximum, and the spacers on the
+    // outside take whatever is left over. That gives the window a natural minimum size
+    // with no maximum, and turns surplus width into even padding rather than stretching
+    // the columns past the point where they look right.
     outer_layout := HorizontalLayout {
 
-        min-width: month_year_layout.min-width + day_view.min-width + upcoming_notes_layout.min-width;
-        min-height: month_year_layout.min-height + day_view.min-height + upcoming_notes_layout.min-height;
-        height: 100%;
-        width: 100%;
         spacing: 5px;
-        padding-bottom: 25px;
+        padding-bottom: 10px;
+
+        // The spacers stretch far more slowly than the columns do. With everything on
+        // the default factor of 1 the surplus was split five ways, so padding appeared
+        // at the edges while the columns were still nowhere near the width they are
+        // allowed to reach. Weighted like this the columns fill out to their maximum
+        // first and only what is left over past that becomes padding.
+        Rectangle { 
+            horizontal-stretch: 1; 
+            max-width: 15px;
+        }
 
         month_year_layout := VerticalLayout {
 
-            min-width: month_view.min-width + year_view.min-width;
-            min-height: month_view.min-height + year_view.min-height;
-
-            width: 30%;
-            padding-bottom: 10px;
-            
+            horizontal-stretch: 30;
+            // No min-width. The year view below states what a legible day cell costs,
+            // and twelve months of them decide this column's minimum far more reliably
+            // than a number typed here, which was quietly narrower than its contents.
+            max-width: 520px;
+            padding-bottom: 5px;
+            spacing: 5px;
 
             month_view := MonthlyView {
 
+                // The month grows first but stops at 260, and the year below takes the
+                // rest of the column. Both need a factor above 0: an unmarked pair would
+                // be split down the middle regardless of how much each one can use.
+                vertical-stretch: 1;
+
                 current_date_string: "Test Date";
                 day_cell_dims: 20px;
+
+                min-height: 180px;
+                max-height: 260px;
             }
 
             year_view := YearlyView {
 
+                vertical-stretch: 3;
                 current_year: 2026;
-                day_cell_dims: 25px;
+
+                // No min-height either, for the same reason: three rows of months know
+                // their own floor, and the column takes the rest of the height.
             }
         }
-        
+
         day_view := DailyView {
-            width: 45%;
+
+            horizontal-stretch: 40;
+            min-width: 260px;
+            max-width: 640px;
 
             current_date: "Test date";
 
@@ -539,18 +646,30 @@ export component ToolPage inherits PageComponent {
         }
 
         upcoming_notes_layout := VerticalLayout {
-            padding-bottom: 14px;
-            width: 25%;
 
-            upcoming_view := UpcomingView {}
-            notes_view := NotesView {}
+            horizontal-stretch: 30;
+            min-width: 180px;
+            max-width: 400px;
+            padding-bottom: 5px;
+            spacing: 5px;
 
+            upcoming_view := UpcomingView {
+                vertical-stretch: 1;
+                min-height: 120px;
+                max-height: 300px;
+            }
+
+            notes_view := NotesView {
+                vertical-stretch: 2;
+                min-height: 140px;
+                max-height: 600px;
+            }
         }
 
-
-
-
-
+        Rectangle { 
+            horizontal-stretch: 1; 
+            max-width: 15px;
+        }
     }
 
 }
