@@ -1,0 +1,171 @@
+import { ScrollView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+
+// One palette offered in the picker.
+//
+// Unusable palettes appear too, with `usable: false` and the reason filled in. A file
+// the user wrote and cannot find in the list looks like the app ignoring them, so a
+// broken palette is shown and explained rather than skipped.
+export struct PaletteEntry {
+    id: string,
+    name: string,
+    description: string,
+    appearance: string,
+    usable: bool,
+    problem: string,
+
+    // A few representative roles, enough to recognise a palette at a glance.
+    swatch_background: brush,
+    swatch_text: brush,
+    swatch_primary: brush,
+    swatch_success: brush,
+    swatch_warning: brush,
+    swatch_error: brush,
+}
+
+component Swatch inherits Rectangle {
+    in property <brush> fill;
+
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: Theme.border;
+    background: fill;
+}
+
+component PaletteRow inherits Rectangle {
+    in property <PaletteEntry> entry;
+    in property <bool> selected;
+
+    callback chosen();
+
+    height: 74px;
+    border-radius: 8px;
+    border-width: selected ? 2px : 1px;
+    border-color: selected ? Theme.highlight : Theme.border;
+
+    background: !entry.usable ? Theme.background-secondary
+              : selected      ? Theme.background-tertiary
+              : ta.has-hover  ? Theme.background-secondary
+              : Theme.background;
+
+    ta := TouchArea {
+        enabled: entry.usable;
+        clicked => { root.chosen(); }
+    }
+
+    HorizontalLayout {
+        padding: 10px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            horizontal-stretch: 1;
+
+            HorizontalLayout {
+                spacing: 6px;
+
+                Text {
+                    text: entry.name;
+                    font-size: 14px;
+                    font-weight: FontWeight.semi-bold;
+                    color: entry.usable ? Theme.text : Theme.text-tertiary;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: entry.appearance;
+                    font-size: 11px;
+                    color: Theme.text-tertiary;
+                    vertical-alignment: center;
+                }
+
+                if selected : Text {
+                    text: @tr("in use");
+                    font-size: 11px;
+                    color: Theme.highlight;
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                // The problem replaces the description, because when a palette cannot
+                // be used that is the only thing worth reading.
+                text: entry.usable ? entry.description : entry.problem;
+                font-size: 11px;
+                color: entry.usable ? Theme.text-secondary : Theme.error;
+                wrap: word-wrap;
+                overflow: elide;
+            }
+        }
+
+        if entry.usable : HorizontalLayout {
+            alignment: end;
+            spacing: 4px;
+
+            VerticalLayout {
+                alignment: center;
+                HorizontalLayout {
+                    spacing: 4px;
+                    Swatch { fill: entry.swatch-background; }
+                    Swatch { fill: entry.swatch-text; }
+                    Swatch { fill: entry.swatch-primary; }
+                    Swatch { fill: entry.swatch-success; }
+                    Swatch { fill: entry.swatch-warning; }
+                    Swatch { fill: entry.swatch-error; }
+                }
+            }
+        }
+    }
+}
+
+export component PalettePicker inherits Rectangle {
+    in property <[PaletteEntry]> palettes;
+    in property <string> active-id;
+    in property <string> palettes-folder;
+
+    callback palette-chosen(string);
+
+    background: Theme.background;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 4px;
+
+        Text {
+            text: @tr("Palette");
+            font-size: 20px;
+            color: Theme.text;
+        }
+
+        Text {
+            text: @tr("Drop a .toml file into {} and reopen this page to add your own. Light and dark are separate palettes, not two settings.", root.palettes-folder);
+            font-size: 11px;
+            color: Theme.text-secondary;
+            wrap: word-wrap;
+        }
+
+        Rectangle { height: 8px; }
+
+        if root.palettes.length == 0 : Text {
+            text: @tr("No palette files were found. Luna is using its built-in colours.");
+            font-size: 13px;
+            color: Theme.text-secondary;
+        }
+
+        ScrollView {
+            VerticalLayout {
+                spacing: 6px;
+                alignment: start;
+
+                for entry in root.palettes : PaletteRow {
+                    entry: entry;
+                    selected: entry.id == root.active-id;
+                    chosen => { root.palette-chosen(entry.id); }
+                }
+            }
+        }
+    }
+}

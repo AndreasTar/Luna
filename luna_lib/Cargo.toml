@@ -29,10 +29,12 @@ crate-type = ["lib"]   # The crate types to generate.
 all = [
     "number_converter",
     "img_manipulator",
-    "color_format_converter"
+    "color_format_converter",
+    "palette"
 ]
-default = ["number_converter", "img_manipulator"]
+default = ["number_converter", "img_manipulator", "palette"]
 number_converter = []
 img_manipulator = ["dep:image", "dep:bytesize"]
 #img_to_ascii = ["img_manipulator"]
 color_format_converter = []
+palette = []

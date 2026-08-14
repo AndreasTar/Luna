@@ -1,0 +1,41 @@
+// The colours currently in force.
+//
+// Repopulated from Rust whenever the active tool changes, because a tool may use a
+// different palette or override individual roles. Components read `Theme.warning` and
+// never learn that overrides exist, which is what lets one tool be restyled without
+// touching any of them.
+//
+// One global is enough because one tool page is visible at a time. If two were ever
+// shown side by side this would have to become a per-component property.
+export global Theme {
+    in property <brush> primary:                #331166;
+    in property <brush> secondary:              #2b0a5e;
+    in property <brush> tertiary:               #ffffff;
+    in property <brush> quaternary:             #ffffff;
+
+    in property <brush> text:                   #dbc5fc;
+    in property <brush> text_secondary:         #7b60a6;
+    in property <brush> text_tertiary:          #3e0c8a;
+    in property <brush> text_quaternary:        #c73aa1;
+
+    in property <brush> background:             #160236;
+    in property <brush> background_secondary:   #191919;
+    in property <brush> background_tertiary:    #1c083b;
+    in property <brush> background_quaternary:  #ffffff;
+
+    in property <brush> border:                 #191919;
+    in property <brush> border_secondary:       #7b649e;
+    in property <brush> border_tertiary:        #a791c9;
+    in property <brush> border_quaternary:      #571a46;
+
+    in property <brush> success:                #ffffff;
+    in property <brush> warning:                #ffffff;
+    in property <brush> error:                  #ff0000;
+    in property <brush> info:                   #ffffff;
+    in property <brush> danger:                 #ffffff;
+
+    in property <brush> inactive:               #ffffff;
+    in property <brush> disabled:               #ffffff;
+
+    in property <brush> highlight:              #8f6fbf;
+}

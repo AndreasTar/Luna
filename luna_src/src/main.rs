@@ -4,8 +4,9 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use luna::palette::{Resolved, Role};
 use luna_core::lifecycle::{self, RebuildCapability, ShutdownIntent};
-use luna_core::{Host, SidebarEntry as CoreSidebarEntry};
+use luna_core::{Host, SidebarEntry as CoreSidebarEntry, ToolConfig};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 mod tools;
@@ -64,16 +65,204 @@ fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
     // callbacks. Held for the life of the window.
     let _bound_tools = tools::bind_all(&luna_app_ui.as_weak());
 
-    populate_sidebar(&luna_app_ui, &host);
-
     let intent = Rc::new(Cell::new(ShutdownIntent::Exit));
-    wire_tool_change_banner(&luna_app_ui, &host, &intent);
+    let host = Rc::new(std::cell::RefCell::new(host));
+
+    populate_sidebar(&luna_app_ui, &host.borrow());
+
+    wire_tool_change_banner(&luna_app_ui, &host.borrow(), &intent);
+    wire_theme(&luna_app_ui, &host.borrow());
+    wire_palette_picker(&luna_app_ui, &host);
 
     luna_app_ui.run()?;
 
-    shut_down(&luna_app_ui, &mut host);
+    shut_down(&luna_app_ui, &mut host.borrow_mut());
 
     return Ok(intent.get());
+}
+
+/// Fills the palette picker and applies a chosen palette immediately.
+///
+/// Choosing a palette rewrites the `Theme` global and saves the setting straight away.
+/// A preview that only takes effect on restart would make the swatches the only
+/// feedback, which is not enough to judge a palette by.
+fn wire_palette_picker(ui: &LunaAppUi, host: &Rc<std::cell::RefCell<Host>>) {
+    {
+        let host_ref = host.borrow();
+        ui.set_palettes(build_palette_model(&host_ref));
+        ui.set_active_palette_id(SharedString::from(host_ref.app_palette().id.clone()));
+        ui.set_palettes_folder(SharedString::from(
+            host_ref.paths.palettes_dir().display().to_string(),
+        ));
+    }
+
+    ui.on_palette_chosen({
+        let ui = ui.as_weak();
+        let host = host.clone();
+
+        move |id| {
+            let Some(ui) = ui.upgrade() else {
+                return;
+            };
+
+            let mut host = host.borrow_mut();
+            host.config.palette = id.to_string();
+
+            if let Err(e) = host.save_config() {
+                eprintln!("could not save the palette choice: {e}");
+            }
+
+            // Reapply to the tool currently on screen, so the change is visible the
+            // moment it is made.
+            let active = ui.get_current_tool_id();
+            let resolved = host.palette_for_tool(active.as_str());
+
+            push_theme(&ui, &resolved);
+            ui.set_active_palette_id(id);
+        }
+    });
+}
+
+/// Builds the picker's model, including palettes that could not be loaded.
+fn build_palette_model(host: &Host) -> ModelRc<PaletteEntry> {
+    let brush = |color: luna::palette::Color| -> slint::Brush {
+        return slint::Brush::SolidColor(slint::Color::from_argb_u8(
+            color.a, color.r, color.g, color.b,
+        ));
+    };
+
+    let mut entries: Vec<PaletteEntry> = host
+        .palettes
+        .all()
+        .iter()
+        .map(|p| PaletteEntry {
+            id: SharedString::from(p.id.clone()),
+            name: SharedString::from(p.name.clone()),
+            description: SharedString::from(p.description.clone()),
+            appearance: SharedString::from(p.appearance.as_str()),
+            usable: true,
+            problem: SharedString::new(),
+            swatch_background: brush(p.get(Role::Background)),
+            swatch_text: brush(p.get(Role::Text)),
+            swatch_primary: brush(p.get(Role::Primary)),
+            swatch_success: brush(p.get(Role::Success)),
+            swatch_warning: brush(p.get(Role::Warning)),
+            swatch_error: brush(p.get(Role::Error)),
+        })
+        .collect();
+
+    // Listed rather than skipped: a file the user wrote and cannot find looks like
+    // the app ignoring them.
+    for problem in &host.palettes.problems {
+        let name = problem
+            .path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| problem.path.display().to_string());
+
+        entries.push(PaletteEntry {
+            id: SharedString::new(),
+            name: SharedString::from(name),
+            description: SharedString::new(),
+            appearance: SharedString::new(),
+            usable: false,
+            problem: SharedString::from(problem.reason.clone()),
+            ..Default::default()
+        });
+    }
+
+    return ModelRc::new(VecModel::from(entries));
+}
+
+/// Pushes the resolved palette into the `Theme` global, and keeps it current.
+///
+/// Resolution happens here rather than in Slint because a tool may use a different
+/// palette or override individual roles, and the three-layer chain that works out is
+/// Rust's job. Components only ever see a finished palette.
+fn wire_theme(ui: &LunaAppUi, host: &Host) {
+    // Palette problems are already reported through Host::notices; no need to repeat
+    // them here.
+    let app_palette = host.app_palette();
+    eprintln!(
+        "startup: palette {:?} ({} loaded)",
+        app_palette.id,
+        host.palettes.all().len()
+    );
+
+    // The active tool decides the palette, so it is reapplied on every page change.
+    let apply = {
+        let ui = ui.as_weak();
+        let palettes = host.palettes.clone();
+        let app_palette = app_palette.clone();
+
+        move |tool_config: ToolConfig| {
+            if let Some(ui) = ui.upgrade() {
+                let resolved = palettes.resolve_for_tool(&app_palette, &tool_config);
+                push_theme(&ui, &resolved);
+            }
+        }
+    };
+
+    apply(ToolConfig::default());
+
+    // Reapply whenever the visible tool changes. Slint has no change callback on a
+    // property, so this hangs off the sidebar selection the same way the page does.
+    let configs: std::collections::BTreeMap<String, ToolConfig> = host
+        .registry
+        .all()
+        .filter_map(|m| host.registry.config(&m.id).ok().map(|c| (m.id.clone(), c.clone())))
+        .collect();
+
+    ui.on_tool_changed({
+        let apply = apply.clone();
+        move |tool_id| {
+            let config = configs.get(tool_id.as_str()).cloned().unwrap_or_default();
+            apply(config);
+        }
+    });
+}
+
+/// Copies a resolved palette into the Slint `Theme` global.
+fn push_theme(ui: &LunaAppUi, resolved: &Resolved) {
+    let theme = ui.global::<Theme>();
+
+    let c = |role: Role| -> slint::Brush {
+        let color = resolved.get(role);
+        return slint::Brush::SolidColor(slint::Color::from_argb_u8(
+            color.a, color.r, color.g, color.b,
+        ));
+    };
+
+    theme.set_primary(c(Role::Primary));
+    theme.set_secondary(c(Role::Secondary));
+    theme.set_tertiary(c(Role::Tertiary));
+    theme.set_quaternary(c(Role::Quaternary));
+
+    theme.set_text(c(Role::Text));
+    theme.set_text_secondary(c(Role::TextSecondary));
+    theme.set_text_tertiary(c(Role::TextTertiary));
+    theme.set_text_quaternary(c(Role::TextQuaternary));
+
+    theme.set_background(c(Role::Background));
+    theme.set_background_secondary(c(Role::BackgroundSecondary));
+    theme.set_background_tertiary(c(Role::BackgroundTertiary));
+    theme.set_background_quaternary(c(Role::BackgroundQuaternary));
+
+    theme.set_border(c(Role::Border));
+    theme.set_border_secondary(c(Role::BorderSecondary));
+    theme.set_border_tertiary(c(Role::BorderTertiary));
+    theme.set_border_quaternary(c(Role::BorderQuaternary));
+
+    theme.set_success(c(Role::Success));
+    theme.set_warning(c(Role::Warning));
+    theme.set_error(c(Role::Error));
+    theme.set_info(c(Role::Info));
+    theme.set_danger(c(Role::Danger));
+
+    theme.set_inactive(c(Role::Inactive));
+    theme.set_disabled(c(Role::Disabled));
+
+    theme.set_highlight(c(Role::Highlight));
 }
 
 /// Compares the tools on disk against the ones in this binary and offers a rebuild.

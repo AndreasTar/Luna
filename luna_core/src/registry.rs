@@ -57,10 +57,6 @@ pub trait ToolService: Send {
 }
 
 /// What a service is given when it starts.
-///
-/// Deliberately narrow for now. Database access arrives with the scheduler, which is
-/// where the question of a connection per service versus a shared pool has to be
-/// answered properly.
 pub struct ServiceContext<'a> {
     /// The id of the tool this service belongs to.
     pub tool_id: &'a str,
@@ -68,6 +64,18 @@ pub struct ServiceContext<'a> {
     pub paths: &'a AppPaths,
     /// The tool's current settings.
     pub config: &'a ToolConfig,
+    /// Where the shared database lives.
+    ///
+    /// A path rather than an open connection, deliberately. `rusqlite::Connection` is
+    /// `Send` but not `Sync`, and services run off the UI thread and eventually on
+    /// threads of their own, so a shared handle would have to be behind a lock that
+    /// every tool contends on. Each service opens its own connection to the same file
+    /// instead; WAL mode is built for exactly that, allowing concurrent readers
+    /// alongside one writer.
+    ///
+    /// Open one with [`crate::Database::open`], which applies the same pragmas and
+    /// runs any outstanding migrations.
+    pub database: &'a std::path::Path,
 }
 
 /// Builds a fresh service for a tool.
@@ -227,10 +235,13 @@ impl Registry {
 
         let mut service = factory();
 
+        let database = paths.database_file();
+
         let ctx = ServiceContext {
             tool_id: &entry.manifest.id,
             paths,
             config: &entry.config,
+            database: &database,
         };
 
         service.start(&ctx)?;
@@ -370,10 +381,17 @@ mod tests {
     }
 
     impl ToolService for SpyService {
-        fn start(&mut self, _ctx: &ServiceContext<'_>) -> Result<()> {
+        fn start(&mut self, ctx: &ServiceContext<'_>) -> Result<()> {
             if self.fail_on_start {
                 return Err(CoreError::UnknownTool { id: "boom".to_string() });
             }
+
+            // A service must be able to reach its own storage and the database from
+            // what it is handed, without going looking for either.
+            assert!(!ctx.tool_id.is_empty());
+            assert!(ctx.paths.tool_data_dir(ctx.tool_id).is_ok());
+            assert!(ctx.database.ends_with("luna.db"), "got {:?}", ctx.database);
+
             self.counters.started.fetch_add(1, Ordering::SeqCst);
             return Ok(());
         }

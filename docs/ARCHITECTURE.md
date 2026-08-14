@@ -2,7 +2,7 @@
 
 Status: **design agreed, being built.** Last updated 2026-08-14.
 
-Storage, the tool host and the launcher are in. The scheduler, theming, ports and tray
+Storage, the tool host, the launcher and theming are in. The scheduler, ports and tray
 are not. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
 what is next, and [Current state](#14-current-state-vs-target) for the gap.
 
@@ -616,8 +616,13 @@ steps depend on.
    rebuild is possible at all.
 4. **Scheduler + rule engine + event log.** Instants, guards, windows, escalation,
    catch-up. Reminders survive restarts.
-5. **Palette loading, picker and resolution + `Theme` global.** Low risk, immediately
-   visible; can slot in anywhere after step 2.
+5. **Palette loading, picker and resolution + `Theme` global.** *Mostly done.*
+   `luna::palette` holds the role set, colour type, resolution chain and WCAG contrast
+   checking; `luna_core::palettes` loads and validates files; the `Theme` global is
+   repopulated per tool; the picker lists palettes with swatches and applies on click.
+   Outstanding: UI for per-tool palettes and per-role overrides (the settings and the
+   resolution behind them already work), and recolouring the calendar off its
+   hardcoded values, which is tool work.
 6. **Ports.** Cheap once the registry exists.
 7. **UI state TTL, memory tuning, image editor re-apply-on-return.**
 

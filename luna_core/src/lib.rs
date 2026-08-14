@@ -41,6 +41,7 @@ pub mod db;
 pub mod error;
 pub mod manifest;
 pub mod lifecycle;
+pub mod palettes;
 pub mod paths;
 pub mod registry;
 
@@ -48,6 +49,7 @@ pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
 pub use db::Database;
 pub use error::{CoreError, Result};
 pub use manifest::{PortType, ToolManifest};
+pub use palettes::PaletteSet;
 pub use paths::AppPaths;
 pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
 
@@ -95,6 +97,17 @@ pub enum Notice {
         /// Why it could not start.
         reason: String,
     },
+
+    /// A palette file could not be used.
+    ///
+    /// Surfaced rather than skipped: the user wrote that file and is waiting to see it
+    /// in the picker, so silence would look like the app ignoring them.
+    PaletteUnusable {
+        /// The palette file that failed to load.
+        path: PathBuf,
+        /// What was wrong with it.
+        reason: String,
+    },
 }
 
 impl std::fmt::Display for Notice {
@@ -116,6 +129,11 @@ impl std::fmt::Display for Notice {
                 f,
                 "The tool {id} could not start ({reason}) and has been disabled."
             ),
+            Notice::PaletteUnusable { path, reason } => write!(
+                f,
+                "The palette {} {reason}, so it is not available.",
+                path.display()
+            ),
         };
     }
 }
@@ -133,6 +151,8 @@ pub struct Host {
     pub db: Database,
     /// Every compiled-in tool, and which of them are running.
     pub registry: Registry,
+    /// Palettes loaded from `<install>/palettes`.
+    pub palettes: PaletteSet,
     /// Recoverable problems found during startup, for the UI to surface.
     pub notices: Vec<Notice>,
 }
@@ -187,11 +207,21 @@ impl Host {
 
         let db = Database::open(&paths.database_file())?;
 
+        let palettes = PaletteSet::load_dir(paths.palettes_dir());
+
+        for problem in &palettes.problems {
+            notices.push(Notice::PaletteUnusable {
+                path: problem.path.clone(),
+                reason: problem.reason.clone(),
+            });
+        }
+
         let host = Self {
             paths,
             config,
             db,
             registry: Registry::new(),
+            palettes,
             notices,
         };
 
@@ -295,6 +325,29 @@ impl Host {
     /// Writes the current application settings to disk.
     pub fn save_config(&self) -> Result<()> {
         return self.config.save(&self.paths.app_config_file());
+    }
+
+    /// The application palette named by the settings.
+    ///
+    /// Falls back rather than failing, so a typo in `app.toml` or an empty palettes
+    /// folder produces a plain app rather than an unstyled one.
+    pub fn app_palette(&self) -> luna::palette::Palette {
+        return self.palettes.app_palette(&self.config.palette);
+    }
+
+    /// The finished palette for one tool, with its overrides applied.
+    ///
+    /// Tools with no settings of their own get the application palette unchanged.
+    pub fn palette_for_tool(&self, tool_id: &str) -> luna::palette::Resolved {
+        let app = self.app_palette();
+
+        let config = self
+            .registry
+            .config(tool_id)
+            .cloned()
+            .unwrap_or_default();
+
+        return self.palettes.resolve_for_tool(&app, &config);
     }
 
     /// Loads one tool's settings, falling back to defaults if missing or broken.

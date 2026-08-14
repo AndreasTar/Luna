@@ -41,6 +41,9 @@ pub mod img_manipulator;
 #[cfg(feature = "color_format_converter")]
 pub mod color_format_converter;
 
+#[cfg(feature = "palette")]
+pub mod palette;
+
 
 
 /// A simple struct representing a semantic version (major.minor.patch), used in the library by each individual tool.
