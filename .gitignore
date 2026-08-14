@@ -19,6 +19,7 @@
 /data/
 /logs/
 luna_app.prev.exe
+luna.lock
 /.claude
 
 # Drafted GitHub issues, staged locally before being filed by hand.

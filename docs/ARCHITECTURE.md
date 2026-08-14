@@ -1,9 +1,10 @@
 # Luna - Architecture
 
-Status: **design agreed, being built.** Last updated 2026-08-14.
+Status: **core complete.** Last updated 2026-08-14.
 
-Storage, the tool host, the launcher and theming are in. The scheduler is part built,
-and ports and tray are not started. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
+Every step of the implementation roadmap is done. What remains is tool work: the tools
+themselves, their settings surfaces, and recolouring the calendar off its hardcoded
+values. See [Implementation roadmap](#13-implementation-roadmap) for what is done and
 what is next, and [Current state](#14-current-state-vs-target) for the gap.
 
 **One thing worth knowing if you are writing a tool:** the rebuild flow means the
@@ -595,10 +596,22 @@ Oil change is Overdue (11 days).
 This is the one piece of information that actually changes the user's decision, so it
 is worth building properly rather than showing a generic confirmation.
 
-**Tools may object to shutdown.** A shutdown hook returns
-`Allow | NeedsConfirmation(message) | RequestDelay(reason)`, which is enough for "file
-conversion in progress, about 30s remaining" to hold the door briefly, and for an
-unsaved editor to say so.
+**Tools may object to shutdown.** `ToolService::on_shutdown_request` returns
+`Allow | NeedsConfirmation | RequestDelay`, which is enough for "file conversion in
+progress" to hold the door briefly and for an unsaved editor to say so. A tool cannot
+refuse outright, and a delay is capped at 30 seconds: a tool that could block
+indefinitely would be a tool that can trap the user in the app.
+
+**The tray and hide-on-close are one feature.** Hiding the window only makes sense if
+there is somewhere to click to get it back, so if the tray cannot be created the close
+button asks about quitting instead of hiding. Tray menu events arrive on their own
+channel rather than through the windowing loop, so a `slint::Timer` drains them four
+times a second; reaching into Slint's backend would tie Luna to a version of it.
+
+**One instance per install.** A lock file in the install directory, held open with
+write access unshared, so Windows itself refuses a second opener and frees the lock
+however the process dies. A lock needing cleanup on exit would survive a crash and stop
+Luna from ever starting again.
 
 **Restart** reuses the launcher path minus the compile step (exit code `10`).
 
@@ -667,6 +680,30 @@ Steps 1 and 2 are what make step 3 safe. Building the launcher first would mean 
 nothing meaningful to resume.
 
 ---
+
+## 13a. Distributing a build
+
+A release build is a **single self-contained executable**. Dropped into an empty folder
+and run, it creates `config/`, `data/`, `logs/` and `palettes/` for itself and works.
+Measured at 17 MB.
+
+Three things are worth knowing before handing one to someone:
+
+- **Palettes do not travel with it.** The four bundled palettes are files, not compiled
+  data, so a lone executable falls back to the built-in palette and the picker is
+  empty. Copy `palettes/` alongside to ship them.
+- **It needs a writable folder.** Everything lives beside the executable, so Downloads
+  or Desktop is fine and `Program Files` without elevation is not. That case is
+  detected and explained rather than failing obscurely.
+- **`vcruntime140.dll` is a dynamic dependency**, as it is for anything built with the
+  MSVC toolchain. Present on essentially any machine that has run a Microsoft-built
+  application, but not guaranteed on a clean install. Building with
+  `-C target-feature=+crt-static` removes it, at some cost in size, and is worth testing
+  if the binary is going to strangers.
+
+Adding tools is correctly unavailable in such a copy: there are no sources next to the
+executable, so the UI reports `NoSources` and explains that tools come with a new
+release.
 
 ## 14. Current state vs. target
 

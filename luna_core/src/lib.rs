@@ -40,6 +40,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod events;
+pub mod instance;
 pub mod manifest;
 pub mod lifecycle;
 pub mod palettes;
@@ -47,6 +48,7 @@ pub mod paths;
 pub mod ports;
 pub mod registry;
 pub mod scheduler;
+pub mod shutdown;
 pub mod ui_state;
 
 pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
@@ -59,6 +61,7 @@ pub use paths::AppPaths;
 pub use ports::{Delivery, Payload, PayloadData, PortBus, PortTarget};
 pub use registry::{Registry, ServiceContext, ServiceFactory, SidebarEntry, ToolService};
 pub use scheduler::{Fire, ScheduledJob, Scheduler, Upcoming};
+pub use shutdown::{ShutdownReport, ShutdownVote, ToolVote};
 pub use ui_state::UiStateStore;
 
 use std::path::PathBuf;
@@ -373,6 +376,16 @@ impl Host {
     /// Collects whatever is waiting for a tool, emptying its inbox.
     pub fn collect_deliveries(&mut self, tool_id: &str) -> Vec<Delivery> {
         return self.ports.take(tool_id);
+    }
+
+    /// Assembles what the user needs in order to decide whether to quit.
+    ///
+    /// Asks every running service, then adds whatever is scheduled. `upcoming` comes
+    /// from the scheduler, which the host does not own: it runs on its own thread, so
+    /// the caller passes in what it reported.
+    pub fn shutdown_report(&mut self, upcoming: Vec<Upcoming>) -> ShutdownReport {
+        let votes = self.registry.poll_shutdown();
+        return ShutdownReport::assemble(votes, upcoming);
     }
 
     /// Saves a tool's transient interface state, if its settings allow it.

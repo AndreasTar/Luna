@@ -46,6 +46,17 @@ pub trait ToolService: Send {
         return Ok(());
     }
 
+    /// Asked whether Luna may close.
+    ///
+    /// The default allows it. Override when the tool can be mid-flight in a way that
+    /// stopping would corrupt, such as a conversion writing its output.
+    ///
+    /// A tool cannot refuse outright: the strongest answer holds the door briefly, so
+    /// a wedged tool can never trap the user in the app.
+    fn on_shutdown_request(&mut self) -> crate::shutdown::ShutdownVote {
+        return crate::shutdown::ShutdownVote::Allow;
+    }
+
     /// Called once, before the service is dropped.
     ///
     /// The last chance to flush state. Errors are reported but do not prevent the
@@ -338,6 +349,31 @@ impl Registry {
     /// Enabled tools that can produce the given payload type.
     pub fn offering(&self, port: &PortType) -> Vec<&ToolManifest> {
         return self.enabled().filter(|m| m.offers(port)).collect();
+    }
+
+    /// Asks every running service whether Luna may close.
+    ///
+    /// Tools with no service, or that are disabled, have nothing in flight and are not
+    /// asked.
+    pub fn poll_shutdown(&mut self) -> Vec<crate::shutdown::ToolVote> {
+        let mut votes = Vec::new();
+
+        for (id, entry) in self.entries.iter_mut() {
+            let Some(service) = entry.service.as_mut() else {
+                continue;
+            };
+
+            let vote = service.on_shutdown_request();
+
+            if !vote.is_allow() {
+                votes.push(crate::shutdown::ToolVote {
+                    tool_id: id.clone(),
+                    vote,
+                });
+            }
+        }
+
+        return votes;
     }
 
     fn entry(&self, tool_id: &str) -> Result<&ToolEntry> {

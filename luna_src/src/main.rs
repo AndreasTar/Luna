@@ -1,11 +1,16 @@
 #![allow(unused, dead_code, non_snake_case, non_camel_case_types)]
-//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+// No console window in release. Kept in debug, where the startup lines and the
+// scheduler's output are worth seeing.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::cell::Cell;
 use std::rc::Rc;
 
 use luna::palette::{Resolved, Role};
+use luna_core::instance::{self, InstanceCheck};
 use luna_core::lifecycle::{self, RebuildCapability, ShutdownIntent};
+use luna_core::shutdown::ShutdownReport;
+use luna_core::Scheduler;
 use luna_core::{Host, SidebarEntry as CoreSidebarEntry, ToolConfig};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
@@ -29,12 +34,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
+    // Before anything touches the database or the config: two Lunas sharing one
+    // install would quietly disagree about everything.
+    let paths = luna_core::AppPaths::discover()?;
+
+    let _instance = match instance::acquire(paths.install_dir())? {
+        InstanceCheck::Acquired(lock) => lock,
+        InstanceCheck::AlreadyRunning { pid } => {
+            // Not an error. The user clicked the shortcut because they wanted Luna,
+            // and one is already there.
+            match pid {
+                Some(pid) => eprintln!("Luna is already running (process {pid})."),
+                None => eprintln!("Luna is already running."),
+            }
+            return Ok(ShutdownIntent::Exit);
+        }
+    };
+
     // env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     // Storage, settings and the registry come up before any window exists. Background
     // services do not need a UI, and eventually the window will be destroyed while
     // the app keeps running.
-    let mut host = Host::bootstrap()?;
+    let mut host = Host::bootstrap_at(paths)?;
 
     for manifest in tools::manifests() {
         // No service factories yet: neither tool declares `background`. The argument
@@ -74,11 +96,173 @@ fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
     wire_theme(&luna_app_ui, &host.borrow());
     wire_palette_picker(&luna_app_ui, &host);
 
+    // The scheduler runs whether or not a window exists, which is the point of it.
+    // Nothing registers jobs yet, so it idles; surfacing what it fires is UI work for
+    // whichever tool owns the job.
+    let _scheduler = match luna_core::scheduler::spawn(
+        host.borrow().paths.database_file(),
+        std::time::Duration::from_secs(30),
+        |fires| {
+            for fire in fires {
+                eprintln!(
+                    "scheduler: {} fired (due {}{})",
+                    fire.rule_id,
+                    fire.due_at,
+                    if fire.late { ", late" } else { "" }
+                );
+            }
+        },
+    ) {
+        Ok(handle) => Some(handle),
+        Err(e) => {
+            eprintln!("startup: the scheduler could not start: {e}");
+            None
+        }
+    };
+
+    let tray = wire_shutdown(&luna_app_ui, &host, &intent);
+
+    let _tray = tray;
+
     luna_app_ui.run()?;
 
     shut_down(&luna_app_ui, &mut host.borrow_mut());
 
     return Ok(intent.get());
+}
+
+/// Wires the tray, the close button and the quit prompt together.
+///
+/// These are one feature, not three. Hiding the window only makes sense if there is a
+/// tray to bring it back from, and quitting only makes sense after the user has been
+/// told what stops. Returns the tray, which must be kept alive to stay in the tray.
+fn wire_shutdown(
+    ui: &LunaAppUi,
+    host: &Rc<std::cell::RefCell<Host>>,
+    intent: &Rc<Cell<ShutdownIntent>>,
+) -> Option<helpers::tray::Tray> {
+    let tray = helpers::tray::build(ui, {
+        let ui = ui.as_weak();
+        let host = host.clone();
+
+        move |action| {
+            let Some(ui) = ui.upgrade() else {
+                return;
+            };
+
+            match action {
+                helpers::tray::TrayAction::Show => {
+                    let _ = ui.show();
+                    let _ = ui.window().set_minimized(false);
+                }
+                helpers::tray::TrayAction::Quit => request_quit(&ui, &host),
+            }
+        }
+    });
+
+    ui.set_has_tray(tray.is_some());
+
+    // Closing the window hides it when there is a tray to get it back from, and asks
+    // about quitting when there is not. Silently exiting on a close click would be the
+    // one thing an always-running app must not do.
+    let has_tray = tray.is_some();
+
+    ui.window().on_close_requested({
+        let ui = ui.as_weak();
+        let host = host.clone();
+
+        move || {
+            let Some(ui) = ui.upgrade() else {
+                return slint::CloseRequestResponse::HideWindow;
+            };
+
+            if has_tray {
+                // Hidden, not quit. The scheduler and every service keep running.
+                return slint::CloseRequestResponse::HideWindow;
+            }
+
+            request_quit(&ui, &host);
+
+            return slint::CloseRequestResponse::KeepWindowShown;
+        }
+    });
+
+    ui.on_cancel_quit({
+        let ui = ui.as_weak();
+        move || {
+            if let Some(ui) = ui.upgrade() {
+                ui.set_showing_quit_prompt(false);
+            }
+        }
+    });
+
+    ui.on_minimise_to_tray({
+        let ui = ui.as_weak();
+        move || {
+            if let Some(ui) = ui.upgrade() {
+                ui.set_showing_quit_prompt(false);
+                let _ = ui.hide();
+            }
+        }
+    });
+
+    ui.on_confirm_quit({
+        let intent = intent.clone();
+        move || {
+            intent.set(ShutdownIntent::Exit);
+            let _ = slint::quit_event_loop();
+        }
+    });
+
+    return tray;
+}
+
+/// Decides whether quitting needs to be asked about, and asks if so.
+///
+/// An idle Luna closes without a prompt. One with reminders pending, or a tool mid
+/// conversion, says so first: that is the piece of information that actually changes
+/// the answer.
+fn request_quit(ui: &LunaAppUi, host: &Rc<std::cell::RefCell<Host>>) {
+    let report = build_shutdown_report(host);
+    let now = chrono::Utc::now();
+
+    if report.can_close_silently() {
+        let _ = slint::quit_event_loop();
+        return;
+    }
+
+    let lines: Vec<SharedString> = report
+        .lines(now)
+        .into_iter()
+        .map(SharedString::from)
+        .collect();
+
+    ui.set_quit_headline(SharedString::from(report.headline(now)));
+    ui.set_quit_lines(ModelRc::new(VecModel::from(lines)));
+    ui.set_showing_quit_prompt(true);
+
+    // The prompt is useless behind a hidden window, which is where Quit from the tray
+    // leaves it.
+    let _ = ui.show();
+}
+
+/// Asks the tools and the scheduler what closing would interrupt.
+fn build_shutdown_report(host: &Rc<std::cell::RefCell<Host>>) -> ShutdownReport {
+    // A short-lived connection rather than sharing the scheduler thread's: the thread
+    // owns its own and is not `Sync`. Reading the job table is cheap.
+    let upcoming = {
+        let database = host.borrow().paths.database_file();
+
+        match Scheduler::open(&database) {
+            Ok(scheduler) => scheduler.upcoming(chrono::Utc::now()),
+            Err(e) => {
+                eprintln!("could not read scheduled work for the quit prompt: {e}");
+                Vec::new()
+            }
+        }
+    };
+
+    return host.borrow_mut().shutdown_report(upcoming);
 }
 
 /// Fills the palette picker and applies a chosen palette immediately.

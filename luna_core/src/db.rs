@@ -82,14 +82,25 @@ const MIGRATIONS: &[Migration] = &[
                 schedule TEXT    NOT NULL,
                 guard    TEXT    NOT NULL,
                 catch_up TEXT    NOT NULL,
-                enabled  INTEGER NOT NULL,
-                -- How far before each occurrence the job fires. Non-zero separates an
-                -- alert from the thing it is about, such as a reminder a week before a
-                -- birthday.
-                lead_seconds INTEGER NOT NULL DEFAULT 0
+                enabled  INTEGER NOT NULL
             ) STRICT;
 
             CREATE INDEX idx_scheduled_jobs_tool ON scheduled_jobs (tool_id);
+        ",
+    },
+    Migration {
+        version: 4,
+        name: "job_lead_time",
+        sql: "
+            -- How far before each occurrence the job fires. Non-zero separates an alert
+            -- from the thing it is about, such as a reminder a week before a birthday.
+            --
+            -- Added as its own migration rather than by editing version 3, which had
+            -- already been applied. Changing a shipped migration leaves every existing
+            -- database without the change, because the runner only applies versions it
+            -- has not seen.
+            ALTER TABLE scheduled_jobs
+                ADD COLUMN lead_seconds INTEGER NOT NULL DEFAULT 0;
         ",
     },
 ];
@@ -326,6 +337,63 @@ mod tests {
             .unwrap();
 
         assert_eq!(enabled, 1);
+    }
+
+    #[test]
+    fn a_database_stopped_at_an_older_version_catches_all_the_way_up() {
+        // The failure this guards against is subtle and was hit for real: editing an
+        // already-shipped migration leaves every existing database without the change,
+        // because the runner only applies versions it has not seen. Stepping a database
+        // up one version at a time is the only way to notice.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("luna.db");
+
+        let latest = Database::expected_schema_version();
+
+        for stop_at in 1..latest {
+            let _ = std::fs::remove_file(&path);
+
+            // Bring a database up to an intermediate version, as an older release
+            // would have left it.
+            {
+                let conn = Connection::open(&path).unwrap();
+                conn.execute_batch(
+                    "CREATE TABLE IF NOT EXISTS _luna_schema (
+                        version    INTEGER NOT NULL PRIMARY KEY,
+                        name       TEXT    NOT NULL,
+                        applied_at INTEGER NOT NULL
+                    ) STRICT;",
+                )
+                .unwrap();
+
+                for migration in MIGRATIONS.iter().filter(|m| m.version <= stop_at) {
+                    conn.execute_batch(migration.sql).unwrap();
+                    conn.execute(
+                        "INSERT INTO _luna_schema (version, name, applied_at) VALUES (?1, ?2, 0)",
+                        rusqlite::params![migration.version, migration.name],
+                    )
+                    .unwrap();
+                }
+            }
+
+            // Then open it the way the app would, and check it arrives complete.
+            let db = Database::open(&path).unwrap();
+            assert_eq!(
+                db.schema_version().unwrap(),
+                latest,
+                "a database at version {stop_at} did not catch up"
+            );
+
+            // Every table the app relies on must be usable, not merely present.
+            db.conn()
+                .execute_batch(
+                    "SELECT rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds
+                     FROM scheduled_jobs;
+                     SELECT rule_id, kind, at, tool_id, note FROM rule_events;
+                     SELECT key, value FROM _luna_meta;",
+                )
+                .unwrap_or_else(|e| panic!("schema unusable after upgrading from {stop_at}: {e}"));
+        }
     }
 
     #[test]
