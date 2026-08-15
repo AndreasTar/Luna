@@ -16,7 +16,7 @@ export { Global_NumberConversion_Callback, Global_Calendar_Callback, Global_Cale
 
 // The shapes the calendar's models travel in. Re-exported so Rust gets generated types
 // to build them with; a struct only reachable through an import is not enough.
-export { DayCell, MonthCell, HourCell, EventCell, UpcomingEventsCell } from "..\helpers\global_callbacks.slint";
+export { DayCell, MonthCell, HourCell, EventCell, UpcomingEventsCell, EventDraft } from "..\helpers\global_callbacks.slint";
 
 // Re-exported so Rust can push the resolved palette into it. A global is only visible
 // to Rust if the root file exports it, which is what made the calendar's callbacks

@@ -146,6 +146,73 @@ pub fn local_hour_of(at: DateTime<Utc>) -> u32 {
     return at.with_timezone(&Local).hour();
 }
 
+/// Parses `YYYY-MM-DD`, the form the editor's date field holds.
+///
+/// Strict rather than forgiving: a field that silently accepted "2026-13-45" and landed
+/// somewhere else entirely is worse than one that refuses and keeps the dialog open.
+pub fn parse_day(text: &str) -> Option<NaiveDate> {
+    return NaiveDate::parse_from_str(text.trim(), "%Y-%m-%d").ok();
+}
+
+/// Parses `HH:MM`, the form the editor's time fields hold.
+///
+/// A bare hour is accepted too, since typing 9 for nine o'clock is the obvious thing to
+/// do and refusing it would be pedantry. It is handled here rather than by a second
+/// format string because chrono will not build a time from an hour alone: with no minute
+/// in the input there is nothing to construct one from.
+pub fn parse_time(text: &str) -> Option<NaiveTime> {
+    let text = text.trim();
+
+    if let Ok(time) = NaiveTime::parse_from_str(text, "%H:%M") {
+        return Some(time);
+    }
+
+    let hour: u32 = text.parse().ok()?;
+
+    return NaiveTime::from_hms_opt(hour, 0, 0);
+}
+
+/// `YYYY-MM-DD`.
+pub fn format_day(day: NaiveDate) -> String {
+    return day.format("%Y-%m-%d").to_string();
+}
+
+/// `HH:MM`.
+pub fn format_time(time: NaiveTime) -> String {
+    return time.format("%H:%M").to_string();
+}
+
+/// A local date and time as a UTC instant.
+///
+/// Goes through the same spring-forward walk as [`day_bounds`], so an entry written at a
+/// clock time that does not exist lands on the first one that does rather than vanishing.
+pub fn local_instant(day: NaiveDate, time: NaiveTime) -> DateTime<Utc> {
+    let naive = day.and_time(time);
+
+    if let Some(local) = Local.from_local_datetime(&naive).earliest() {
+        return local.with_timezone(&Utc);
+    }
+
+    for minutes in 1..=120 {
+        let shifted = naive + Duration::minutes(minutes);
+
+        if let Some(local) = Local.from_local_datetime(&shifted).earliest() {
+            return local.with_timezone(&Utc);
+        }
+    }
+
+    return local_start_of_day(day);
+}
+
+/// Where an instant falls within a local day, in hours, as a fraction.
+///
+/// 09:30 is 9.5. Measured from `day_start` rather than from the instant's own day, so an
+/// entry that began yesterday reads as negative and one running past midnight reads past
+/// 24, which is what the day column needs to draw it in the right place.
+pub fn hours_from(day_start: DateTime<Utc>, at: DateTime<Utc>) -> f32 {
+    return (at - day_start).num_minutes() as f32 / 60.0;
+}
+
 pub const MONTH_NAMES: [&str; 12] = [
     "January",
     "February",
@@ -331,6 +398,51 @@ mod tests {
 
         assert_eq!(local_date_of(start), grid[0].date);
         assert!(local_date_of(end - Duration::seconds(1)) == grid[MONTH_CELLS - 1].date);
+    }
+
+    #[test]
+    fn a_date_field_round_trips() {
+        let day = date(2026, 8, 14);
+
+        assert_eq!(format_day(day), "2026-08-14");
+        assert_eq!(parse_day("2026-08-14"), Some(day));
+        assert_eq!(parse_day(" 2026-08-14 "), Some(day), "surrounding space is fine");
+        assert_eq!(parse_day("2026-13-45"), None, "an impossible date is refused");
+        assert_eq!(parse_day("tomorrow"), None);
+    }
+
+    #[test]
+    fn a_time_field_round_trips() {
+        let at = NaiveTime::from_hms_opt(9, 30, 0).unwrap();
+
+        assert_eq!(format_time(at), "09:30");
+        assert_eq!(parse_time("09:30"), Some(at));
+        assert_eq!(parse_time("9"), NaiveTime::from_hms_opt(9, 0, 0), "a bare hour works");
+        assert_eq!(parse_time("25:00"), None);
+    }
+
+    #[test]
+    fn half_past_is_half_way_through_the_hour() {
+        // What the day column needs: 09:30 has to land between the 9 and 10 rows rather
+        // than being rounded onto one of them.
+        let day = date(2026, 8, 14);
+        let (start, _) = day_bounds(day);
+
+        let at = local_instant(day, NaiveTime::from_hms_opt(9, 30, 0).unwrap());
+        assert_eq!(hours_from(start, at), 9.5);
+
+        let quarter = local_instant(day, NaiveTime::from_hms_opt(14, 45, 0).unwrap());
+        assert_eq!(hours_from(start, quarter), 14.75);
+    }
+
+    #[test]
+    fn an_instant_past_midnight_reads_past_twenty_four() {
+        let day = date(2026, 8, 14);
+        let (start, _) = day_bounds(day);
+
+        let at = local_instant(day + Duration::days(1), NaiveTime::from_hms_opt(2, 0, 0).unwrap());
+
+        assert_eq!(hours_from(start, at), 26.0);
     }
 
     #[test]

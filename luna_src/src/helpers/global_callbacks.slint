@@ -39,15 +39,47 @@ export struct HourCell {
     is_current: bool,
 }
 
-// One entry as the day view draws it. Hours are measured from the start of the day being
-// shown, so an entry running to 02:00 the next morning ends at hour 26 and needs no
-// second cell to say so.
+// One entry as the day view draws it.
+//
+// Hours are fractional and measured from the start of the day being shown: an entry at
+// 09:30 starts at 9.5 and is drawn halfway between the two rows, and one running to
+// 02:00 the next morning ends at 26 and needs no second cell to say so. The column shows
+// whole hours because minute labels on 24 rows are noise, but the blocks themselves land
+// where they actually belong.
 export struct EventCell {
     id: int,
     title: string,
-    start_hour: int,
-    end_hour: int,
+    start_hour: float,
+    end_hour: float,
     all_day: bool,
+    repeats: bool,
+    has_reminder: bool,
+    is_selected: bool,
+}
+
+// An entry as the editor works on it, in both directions: Rust fills it to open the
+// dialog prefilled, the dialog hands it back on save.
+//
+// Strings for the date and times because that is what the fields hold, and parsing them
+// belongs on the Rust side where a bad value can be rejected with the calendar's own
+// date rules rather than by arithmetic in a binding.
+export struct EventDraft {
+    // Zero for a new entry, otherwise the entry being edited.
+    id: int,
+    title: string,
+    // YYYY-MM-DD.
+    day: string,
+    // HH:MM, both ignored when all_day is set.
+    start_time: string,
+    end_time: string,
+    all_day: bool,
+    // 0 none, 1 daily, 2 weekly, 3 monthly, 4 yearly. An index rather than a string so
+    // the dialog's dropdown and the stored value cannot drift apart in translation.
+    repeat_kind: int,
+    // How far ahead the reminder fires. Both zero means it fires with the entry.
+    remind_days: int,
+    remind_hours: int,
+    description: string,
 }
 
 export struct UpcomingEventsCell {
@@ -76,6 +108,16 @@ export global Global_Calendar_Data {
 
     in property <[UpcomingEventsCell]> upcoming;
 
+    // The entry the user has clicked, or 0 for none. What the edit button acts on.
+    in property <int> selected_event_id;
+
+    // The entry editor. Rust fills the draft and raises the flag, so the dialog never
+    // has to work out what it is editing or what today is.
+    in property <bool> editor_open;
+    in property <EventDraft> draft;
+    // Set when the draft is an existing entry, for the delete button and the title.
+    in property <bool> editor_is_edit;
+
     // The note for the selected day. Pushed on every selection change; the page reports
     // edits back through `note_edited`.
     in property <string> note_body;
@@ -99,8 +141,19 @@ export global Global_Calendar_Callback {
     callback upcoming_selected(int);
 
     // Entries.
-    callback event_added(title: string, start_hour: int, end_hour: int, remind_days: int);
+    callback event_selected(int);
     callback event_removed(int);
+
+    // The editor. Opening is a request rather than a flag the page sets, because Rust
+    // has to fill the draft first: a dialog that opened before it was prefilled would
+    // show the previous entry for a frame.
+    //
+    // `hour` is -1 when the request did not come from a time, such as the add button or
+    // a double click on a date in the month grid.
+    callback editor_new_requested(day_index: int, hour: int);
+    callback editor_edit_requested(int);
+    callback editor_submitted(EventDraft);
+    callback editor_cancelled();
 
     // Notes.
     callback note_edited(string);

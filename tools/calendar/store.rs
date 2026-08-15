@@ -18,6 +18,69 @@ use luna_core::{Database, Result};
 
 use super::dates;
 
+/// How often an entry comes round.
+///
+/// Stored as its own short word in the `recurrence` column rather than as a serialised
+/// rule, because this is the whole vocabulary the editor offers. A serialised
+/// `luna::rules::Recurrence` would store intervals and weekday sets that nothing can
+/// enter and nothing can display, and would need migrating the first time that type
+/// changed shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Repeat {
+    #[default]
+    Never,
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+}
+
+impl Repeat {
+    /// The stored word, or `None` for an entry that does not repeat.
+    pub fn as_str(self) -> Option<&'static str> {
+        return match self {
+            Repeat::Never => None,
+            Repeat::Daily => Some("daily"),
+            Repeat::Weekly => Some("weekly"),
+            Repeat::Monthly => Some("monthly"),
+            Repeat::Yearly => Some("yearly"),
+        };
+    }
+
+    /// Reads the stored word back. Anything unrecognised means it does not repeat,
+    /// because a rule nobody can interpret must not become a rule that fires forever.
+    pub fn from_stored(value: Option<&str>) -> Self {
+        return match value {
+            Some("daily") => Repeat::Daily,
+            Some("weekly") => Repeat::Weekly,
+            Some("monthly") => Repeat::Monthly,
+            Some("yearly") => Repeat::Yearly,
+            _ => Repeat::Never,
+        };
+    }
+
+    /// The index the editor's dropdown uses, in the order it lists them.
+    pub fn as_index(self) -> i32 {
+        return match self {
+            Repeat::Never => 0,
+            Repeat::Daily => 1,
+            Repeat::Weekly => 2,
+            Repeat::Monthly => 3,
+            Repeat::Yearly => 4,
+        };
+    }
+
+    pub fn from_index(index: i32) -> Self {
+        return match index {
+            1 => Repeat::Daily,
+            2 => Repeat::Weekly,
+            3 => Repeat::Monthly,
+            4 => Repeat::Yearly,
+            _ => Repeat::Never,
+        };
+    }
+}
+
 /// One entry in the calendar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalendarEvent {
@@ -26,6 +89,7 @@ pub struct CalendarEvent {
     pub starts_at: DateTime<Utc>,
     pub ends_at: DateTime<Utc>,
     pub all_day: bool,
+    pub repeat: Repeat,
     /// How long before the entry its reminder fires. Zero means no separate reminder.
     pub reminder_lead: Duration,
     pub notes: String,
@@ -54,7 +118,7 @@ impl Store {
         to: DateTime<Utc>,
     ) -> Result<Vec<CalendarEvent>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes
+            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
              FROM calendar_event
              WHERE starts_at < ?2 AND ends_at > ?1
              ORDER BY starts_at, id",
@@ -98,7 +162,7 @@ impl Store {
     /// The next entries starting at or after `after`.
     pub fn upcoming(&self, after: DateTime<Utc>, limit: usize) -> Result<Vec<CalendarEvent>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes
+            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
              FROM calendar_event
              WHERE ends_at > ?1
              ORDER BY starts_at, id
@@ -113,12 +177,28 @@ impl Store {
         return collect(rows);
     }
 
+    /// One entry by id, or `None` if it has gone.
+    pub fn event(&self, id: i64) -> Result<Option<CalendarEvent>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
+             FROM calendar_event
+             WHERE id = ?1",
+        )?;
+
+        let mut rows = stmt.query_map(rusqlite::params![id], row_to_event)?;
+
+        return match rows.next() {
+            Some(row) => Ok(Some(row?)),
+            None => Ok(None),
+        };
+    }
+
     /// Adds an entry, returning the id it was given.
     pub fn insert(&self, event: &CalendarEvent) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO calendar_event
-                (title, starts_at, ends_at, all_day, reminder_lead_seconds, notes)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                (title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 event.title,
                 event.starts_at.timestamp(),
@@ -126,10 +206,38 @@ impl Store {
                 event.all_day as i64,
                 event.reminder_lead.num_seconds(),
                 event.notes,
+                event.repeat.as_str(),
             ],
         )?;
 
         return Ok(self.conn.last_insert_rowid());
+    }
+
+    /// Rewrites an existing entry, keeping its id and so its reminder.
+    pub fn update(&self, event: &CalendarEvent) -> Result<()> {
+        self.conn.execute(
+            "UPDATE calendar_event SET
+                title                 = ?2,
+                starts_at             = ?3,
+                ends_at               = ?4,
+                all_day               = ?5,
+                reminder_lead_seconds = ?6,
+                notes                 = ?7,
+                recurrence            = ?8
+             WHERE id = ?1",
+            rusqlite::params![
+                event.id,
+                event.title,
+                event.starts_at.timestamp(),
+                event.ends_at.timestamp(),
+                event.all_day as i64,
+                event.reminder_lead.num_seconds(),
+                event.notes,
+                event.repeat.as_str(),
+            ],
+        )?;
+
+        return Ok(());
     }
 
     pub fn delete(&self, id: i64) -> Result<()> {
@@ -142,7 +250,7 @@ impl Store {
     /// Every entry that wants a reminder, for registering with the scheduler.
     pub fn events_with_reminders(&self) -> Result<Vec<CalendarEvent>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes
+            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
              FROM calendar_event
              ORDER BY starts_at, id",
         )?;
@@ -206,6 +314,7 @@ fn row_to_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<CalendarEvent> {
         ends_at: DateTime::from_timestamp(ends, 0).unwrap_or_default(),
         all_day: all_day != 0,
         reminder_lead: Duration::seconds(lead),
+        repeat: Repeat::from_stored(row.get::<_, Option<String>>(7)?.as_deref()),
         notes: row.get::<_, Option<String>>(6)?.unwrap_or_default(),
     });
 }
@@ -247,6 +356,7 @@ mod tests {
             starts_at: start + Duration::hours(from_hour),
             ends_at: start + Duration::hours(to_hour),
             all_day: false,
+            repeat: Repeat::Never,
             reminder_lead: Duration::zero(),
             notes: String::new(),
         };

@@ -17,17 +17,17 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use chrono::{Datelike, Duration, Local, NaiveDate, Timelike, Utc};
-use luna::rules::{Recurrence, Schedule};
+use luna::rules::{MonthDay, Recurrence, Schedule};
 use luna_core::{ScheduledJob, Scheduler, ServiceContext, ServiceFactory, ToolManifest, ToolService};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
 
 use crate::tools::{BoundTool, ToolView, ViewContext};
 use crate::{
-    DayCell, EventCell, Global_Calendar_Callback, Global_Calendar_Data, HourCell, LunaAppUi,
-    MonthCell, UpcomingEventsCell,
+    DayCell, EventCell, EventDraft, Global_Calendar_Callback, Global_Calendar_Data, HourCell,
+    LunaAppUi, MonthCell, UpcomingEventsCell,
 };
 
-use store::{CalendarEvent, Store};
+use store::{CalendarEvent, Repeat, Store};
 
 pub const VERSION: luna::Version = luna::Version::new(0, 2, 0);
 
@@ -48,6 +48,11 @@ struct State {
     database: PathBuf,
     /// The note as edited but not yet written.
     pending_note: Option<String>,
+    /// The entry the user has clicked, or 0. What the edit button acts on.
+    selected_event: i64,
+    /// Whether the entry editor is up, and what it is working on.
+    editor_open: bool,
+    draft: EventDraft,
 }
 
 impl State {
@@ -102,6 +107,9 @@ impl ToolView for Tool {
             store,
             database,
             pending_note: None,
+            selected_event: 0,
+            editor_open: false,
+            draft: EventDraft::default(),
         }));
 
         let Some(ui) = calendar.ui_handle.upgrade() else {
@@ -205,12 +213,48 @@ fn wire(ui: &LunaAppUi, state: &Rc<RefCell<State>>) {
         }
     });
 
-    handler!(on_event_added, |s, title: SharedString, start: i32, end: i32, remind_days: i32| {
-        add_event(&mut s, &title, start, end, remind_days);
+    handler!(on_event_selected, |s, id: i32| {
+        s.selected_event = id as i64;
     });
 
     handler!(on_event_removed, |s, id: i32| {
         remove_event(&mut s, id as i64);
+    });
+
+    handler!(on_editor_new_requested, |s, day_index: i32, hour: i32| {
+        // A day index of -1 means the day already selected, which is what the add button
+        // and the day column both want; anything else is a cell in the month grid.
+        let day = if day_index < 0 {
+            s.selected
+        } else {
+            s.grid()
+                .get(day_index as usize)
+                .map(|cell| cell.date)
+                .unwrap_or(s.selected)
+        };
+
+        s.selected = day;
+        s.anchor = day;
+        s.draft = new_draft(day, hour);
+        s.editor_open = true;
+    });
+
+    handler!(on_editor_edit_requested, |s, id: i32| {
+        let Ok(Some(event)) = s.store.event(id as i64) else {
+            return;
+        };
+
+        s.selected_event = event.id;
+        s.draft = draft_of(&event);
+        s.editor_open = true;
+    });
+
+    handler!(on_editor_cancelled, |s| {
+        s.editor_open = false;
+    });
+
+    handler!(on_editor_submitted, |s, draft: EventDraft| {
+        submit_draft(&mut s, &draft);
     });
 
     handler!(on_note_saved, |s| {
@@ -230,37 +274,139 @@ fn wire(ui: &LunaAppUi, state: &Rc<RefCell<State>>) {
     });
 }
 
-/// Adds an entry to the selected day.
+/// A blank draft for a new entry.
 ///
-/// Hours are clamped rather than rejected: the editor takes free text, and a person
-/// typing 25 means the end of the day, not an error dialog.
-fn add_event(state: &mut State, title: &str, start: i32, end: i32, remind_days: i32) {
-    let title = title.trim();
+/// Prefilled with the day in view and, when the request came from a time, that hour. The
+/// point is that the common case takes no typing: double clicking 14:00 on a Tuesday
+/// should offer a Tuesday 14:00 entry rather than an empty form.
+fn new_draft(day: NaiveDate, hour: i32) -> EventDraft {
+    let now = Local::now();
 
-    if title.is_empty() {
-        return;
-    }
-
-    let start_hour = start.clamp(0, 23);
-    // At least an hour long, and never running more than a day.
-    let end_hour = end.clamp(start_hour + 1, start_hour + 24);
-
-    let (day_start, _) = dates::day_bounds(state.selected);
-
-    let event = CalendarEvent {
-        id: 0,
-        title: title.to_string(),
-        starts_at: day_start + Duration::hours(start_hour as i64),
-        ends_at: day_start + Duration::hours(end_hour as i64),
-        all_day: false,
-        reminder_lead: Duration::days(remind_days.clamp(0, 365) as i64),
-        notes: String::new(),
+    // The hour that was asked for, else the current hour when the day in view is today,
+    // else a reasonable start to the working day.
+    let start_hour = if hour >= 0 {
+        hour.clamp(0, 23) as u32
+    } else if day == now.date_naive() {
+        now.hour()
+    } else {
+        9
     };
 
-    match state.store.insert(&event) {
-        Ok(id) => sync_reminder(state, id, &event),
-        Err(e) => eprintln!("calendar: the entry could not be saved: {e}"),
+    let start = chrono::NaiveTime::from_hms_opt(start_hour, 0, 0).unwrap_or_default();
+    let end = chrono::NaiveTime::from_hms_opt((start_hour + 1).min(23), 0, 0).unwrap_or_default();
+
+    return EventDraft {
+        id: 0,
+        title: SharedString::new(),
+        day: dates::format_day(day).into(),
+        start_time: dates::format_time(start).into(),
+        end_time: dates::format_time(end).into(),
+        all_day: false,
+        repeat_kind: 0,
+        remind_days: 0,
+        remind_hours: 0,
+        description: SharedString::new(),
+    };
+}
+
+/// An existing entry as the editor sees it.
+fn draft_of(event: &CalendarEvent) -> EventDraft {
+    let start = event.starts_at.with_timezone(&Local);
+    let end = event.ends_at.with_timezone(&Local);
+
+    let lead = event.reminder_lead.num_minutes().max(0);
+
+    return EventDraft {
+        id: event.id as i32,
+        title: event.title.clone().into(),
+        day: dates::format_day(start.date_naive()).into(),
+        start_time: dates::format_time(start.time()).into(),
+        end_time: dates::format_time(end.time()).into(),
+        all_day: event.all_day,
+        repeat_kind: event.repeat.as_index(),
+        remind_days: (lead / (60 * 24)) as i32,
+        remind_hours: ((lead % (60 * 24)) / 60) as i32,
+        description: event.notes.clone().into(),
+    };
+}
+
+/// Reads a draft back into an entry.
+///
+/// Returns nothing when the date or the start time cannot be read, so the dialog stays
+/// open with what was typed still in it. Guessing would be worse: an entry silently filed
+/// on the wrong day tells the user nothing, where a dialog that will not close does.
+fn event_from_draft(draft: &EventDraft) -> Option<CalendarEvent> {
+    let title = draft.title.trim();
+
+    if title.is_empty() {
+        return None;
     }
+
+    let day = dates::parse_day(&draft.day)?;
+
+    let (starts_at, ends_at) = if draft.all_day {
+        dates::day_bounds(day)
+    } else {
+        let start = dates::parse_time(&draft.start_time)?;
+        let start_at = dates::local_instant(day, start);
+
+        // An end before its start is read as running past midnight, which is what a
+        // 22:00 to 02:00 entry means. Anything unreadable, or equal to the start, gets
+        // an hour: a zero length entry would be invisible in the day column.
+        let end_at = match dates::parse_time(&draft.end_time) {
+            Some(end) if end > start => dates::local_instant(day, end),
+            Some(end) if end < start => dates::local_instant(day + Duration::days(1), end),
+            _ => start_at + Duration::hours(1),
+        };
+
+        (start_at, end_at)
+    };
+
+    let lead = Duration::days(draft.remind_days.clamp(0, 3650) as i64)
+        + Duration::hours(draft.remind_hours.clamp(0, 23) as i64);
+
+    return Some(CalendarEvent {
+        id: draft.id as i64,
+        title: title.to_string(),
+        starts_at,
+        ends_at,
+        all_day: draft.all_day,
+        repeat: Repeat::from_index(draft.repeat_kind),
+        reminder_lead: lead,
+        notes: draft.description.to_string(),
+    });
+}
+
+/// Writes a draft back, as a new entry or over the one it came from.
+fn submit_draft(state: &mut State, draft: &EventDraft) {
+    let Some(event) = event_from_draft(draft) else {
+        eprintln!("calendar: the entry could not be read, so nothing was saved");
+        return;
+    };
+
+    let id = if event.id == 0 {
+        match state.store.insert(&event) {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("calendar: the entry could not be saved: {e}");
+                return;
+            }
+        }
+    } else {
+        if let Err(e) = state.store.update(&event) {
+            eprintln!("calendar: the entry could not be saved: {e}");
+            return;
+        }
+
+        event.id
+    };
+
+    sync_reminder(state, id, &event);
+
+    state.selected = dates::local_date_of(event.starts_at);
+    state.anchor = state.selected;
+    state.selected_event = id;
+    state.editor_open = false;
 }
 
 fn remove_event(state: &mut State, id: i64) {
@@ -296,7 +442,7 @@ fn reminder_rule_id(event_id: i64) -> String {
 /// against; without that the reminder would only start working after a restart.
 /// The scheduled job that reminds about one entry.
 ///
-/// One function, used both when an entry is added and when the background half sweeps
+/// One function, used both when an entry is saved and when the background half sweeps
 /// the database at startup. Built in one place because two descriptions of the same rule
 /// is one more than can be kept in agreement.
 ///
@@ -305,10 +451,9 @@ fn reminder_rule_id(event_id: i64) -> String {
 /// timezone or a daylight saving rule moves, and the recurrence is re-evaluated against
 /// whatever the clock says now.
 ///
-/// A one-off is a recurrence bounded to a single occurrence. It is written as a yearly
-/// rule on its own date with `until` set just past it, so nothing produces a second one.
-/// Leaving `until` unset would quietly turn every dentist appointment into an annual
-/// tradition.
+/// A one-off is a recurrence bounded to a single occurrence: a yearly rule on its own
+/// date with `until` set just past it. Leaving `until` unset would quietly turn every
+/// dentist appointment into an annual tradition.
 ///
 /// The lead time is what separates the reminder from the thing it is about: an entry on
 /// the 4th of July with seven days of lead fires on the 27th of June, and the fire still
@@ -317,22 +462,32 @@ fn reminder_job(id: i64, event: &CalendarEvent) -> Option<ScheduledJob> {
     let local = event.starts_at.with_timezone(&Local);
     let at = chrono::NaiveTime::from_hms_opt(local.hour(), local.minute(), 0)?;
 
-    let mut schedule = Schedule::new(
-        Recurrence::Yearly {
+    let recurrence = match event.repeat {
+        Repeat::Daily => Recurrence::Daily { interval: 1 },
+        Repeat::Weekly => Recurrence::Weekly {
+            interval: 1,
+            weekdays: vec![local.weekday()],
+        },
+        Repeat::Monthly => Recurrence::Monthly {
+            interval: 1,
+            day: MonthDay::OnDay(local.day()),
+        },
+        // A yearly entry and a one-off share their rule; only the bound below differs.
+        Repeat::Yearly | Repeat::Never => Recurrence::Yearly {
             interval: 1,
             month: local.month(),
             day: local.day(),
         },
-        at,
-        // A moment before the entry, because occurrences are searched over a half-open
-        // span that excludes its start. Anchored on the entry itself, the entry's own
-        // occurrence would be the one thing the schedule never produced.
-        event.starts_at - Duration::seconds(1),
-    );
+    };
 
-    // Every entry is one-off for now. Repeating entries are the `recurrence` column,
-    // which nothing writes yet: that is the editor's job, not this function's.
-    schedule = schedule.until(event.starts_at + Duration::seconds(1));
+    // A moment before the entry, because occurrences are searched over a half-open span
+    // that excludes its start. Anchored on the entry itself, the entry's own occurrence
+    // would be the one thing the schedule never produced.
+    let mut schedule = Schedule::new(recurrence, at, event.starts_at - Duration::seconds(1));
+
+    if event.repeat == Repeat::Never {
+        schedule = schedule.until(event.starts_at + Duration::seconds(1));
+    }
 
     return Some(
         ScheduledJob::new(reminder_rule_id(id), schedule)
@@ -450,20 +605,30 @@ fn refresh(ui: &LunaAppUi, state: &State) {
         .unwrap_or_default()
         .iter()
         .map(|event| {
-            // Measured from the start of the day being shown, so an entry that began
-            // yesterday starts at hour 0 and one running past midnight ends past 24.
-            let start = (event.starts_at - day_start).num_minutes() as f32 / 60.0;
-            let end = (event.ends_at - day_start).num_minutes() as f32 / 60.0;
+            // Fractional and measured from the start of the day being shown: 09:30 is
+            // 9.5, an entry that began yesterday is negative, and one running past
+            // midnight goes past 24. Clamped to the day so a block cannot be drawn off
+            // the top or bottom of the column, but not rounded: rounding to the hour is
+            // what would put a half past start on the wrong line.
+            let start = dates::hours_from(day_start, event.starts_at);
+            let end = dates::hours_from(day_start, event.ends_at);
 
             return EventCell {
                 id: event.id as i32,
                 title: event.title.clone().into(),
-                start_hour: start.floor().max(0.0) as i32,
-                end_hour: end.ceil().min(48.0) as i32,
+                start_hour: start.max(0.0),
+                end_hour: end.min(24.0),
                 all_day: event.all_day,
+                repeats: event.repeat != Repeat::Never,
+                has_reminder: event.reminder_lead > Duration::zero(),
+                is_selected: event.id == state.selected_event,
             };
         })
         .collect();
+
+    // Asked before the model takes ownership, because the selection is only valid while
+    // the entry it names is still on screen.
+    let day_holds_selection = day_events_hold(&day_events, state.selected_event);
 
     data.set_day_events(ModelRc::new(VecModel::from(day_events)));
 
@@ -485,6 +650,8 @@ fn refresh(ui: &LunaAppUi, state: &State) {
         })
         .collect();
 
+    let upcoming_holds_selection = upcoming_holds(&upcoming, state.selected_event);
+
     data.set_upcoming(ModelRc::new(VecModel::from(upcoming)));
 
     // The note for the selected day. An unsaved edit survives a refresh, so stepping the
@@ -496,6 +663,30 @@ fn refresh(ui: &LunaAppUi, state: &State) {
 
     data.set_note_unsaved(state.pending_note.is_some());
     data.set_note_body(note.into());
+
+    // The selection only counts while the entry is still on screen somewhere, so the
+    // edit button cannot act on something that has been deleted or scrolled out of the
+    // period in view.
+    let still_present =
+        state.selected_event != 0 && (day_holds_selection || upcoming_holds_selection);
+
+    data.set_selected_event_id(if still_present {
+        state.selected_event as i32
+    } else {
+        0
+    });
+
+    data.set_editor_open(state.editor_open);
+    data.set_editor_is_edit(state.draft.id != 0);
+    data.set_draft(state.draft.clone());
+}
+
+fn day_events_hold(events: &[EventCell], id: i64) -> bool {
+    return events.iter().any(|cell| cell.id as i64 == id);
+}
+
+fn upcoming_holds(events: &[UpcomingEventsCell], id: i64) -> bool {
+    return events.iter().any(|cell| cell.event_id as i64 == id);
 }
 
 /// The calendar's background half.
@@ -554,6 +745,7 @@ mod tests {
             starts_at: starts,
             ends_at: starts + Duration::hours(1),
             all_day: false,
+            repeat: Repeat::Never,
             reminder_lead: Duration::days(lead_days),
             notes: String::new(),
         };
@@ -616,6 +808,100 @@ mod tests {
             1,
             "five years should still hold exactly one occurrence, got {occurrences:?}"
         );
+    }
+
+    #[test]
+    fn a_repeating_entry_keeps_coming_round() {
+        // The mirror of the test above: with a repeat set, the bound must not be applied
+        // or the toggle would do nothing.
+        let mut event = birthday(7, 4, 0);
+        event.repeat = Repeat::Yearly;
+
+        let job = reminder_job(event.id, &event).expect("the job should be buildable");
+
+        let from = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        let to = Utc.with_ymd_and_hms(2031, 1, 1, 0, 0, 0).unwrap();
+
+        let occurrences = job.schedule.occurrences_between(from, to, 50);
+
+        assert_eq!(occurrences.len(), 5, "2026 through 2030, got {occurrences:?}");
+    }
+
+    #[test]
+    fn a_weekly_entry_repeats_on_its_own_weekday() {
+        let mut event = birthday(7, 4, 0);
+        event.repeat = Repeat::Weekly;
+
+        let job = reminder_job(event.id, &event).expect("the job should be buildable");
+
+        let from = Utc.with_ymd_and_hms(2026, 8, 1, 0, 0, 0).unwrap();
+        let to = Utc.with_ymd_and_hms(2026, 9, 1, 0, 0, 0).unwrap();
+
+        let occurrences = job.schedule.occurrences_between(from, to, 50);
+        let weekday = dates::local_date_of(event.starts_at).weekday();
+
+        assert!(occurrences.len() >= 4, "a month holds four weeks or more");
+
+        for at in &occurrences {
+            assert_eq!(
+                dates::local_date_of(*at).weekday(),
+                weekday,
+                "every occurrence should land on the entry's own weekday"
+            );
+        }
+    }
+
+    #[test]
+    fn a_draft_round_trips_through_an_entry() {
+        // What the editor does on open and on save, back to back: what goes in has to be
+        // what comes out, or editing an entry would quietly change it.
+        let mut event = birthday(7, 4, 7);
+        event.repeat = Repeat::Monthly;
+        event.notes = "buy a gift".to_string();
+
+        let draft = draft_of(&event);
+
+        assert_eq!(draft.day, "2026-07-04");
+        assert_eq!(draft.start_time, "09:00");
+        assert_eq!(draft.remind_days, 7);
+        assert_eq!(draft.repeat_kind, Repeat::Monthly.as_index());
+
+        let back = event_from_draft(&draft).expect("the draft should read back");
+
+        assert_eq!(back.title, event.title);
+        assert_eq!(back.starts_at, event.starts_at);
+        assert_eq!(back.ends_at, event.ends_at);
+        assert_eq!(back.repeat, event.repeat);
+        assert_eq!(back.reminder_lead, event.reminder_lead);
+        assert_eq!(back.notes, event.notes);
+    }
+
+    #[test]
+    fn a_draft_ending_before_it_starts_runs_past_midnight() {
+        let mut draft = draft_of(&birthday(7, 4, 0));
+        draft.start_time = "22:00".into();
+        draft.end_time = "02:00".into();
+
+        let event = event_from_draft(&draft).expect("the draft should read back");
+
+        assert_eq!(
+            event.ends_at - event.starts_at,
+            Duration::hours(4),
+            "22:00 to 02:00 is four hours, not minus twenty"
+        );
+    }
+
+    #[test]
+    fn a_draft_without_a_usable_date_is_refused() {
+        let mut draft = draft_of(&birthday(7, 4, 0));
+        draft.day = "not a date".into();
+
+        assert!(event_from_draft(&draft).is_none());
+
+        let mut blank = draft_of(&birthday(7, 4, 0));
+        blank.title = "   ".into();
+
+        assert!(event_from_draft(&blank).is_none(), "a blank title is not an entry");
     }
 
     #[test]
