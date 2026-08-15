@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use chrono::{Datelike, Duration, Local, NaiveDate, Timelike, Utc};
-use luna::rules::{MonthDay, Recurrence, Schedule};
+use luna::rules::{Recurrence, Schedule};
 use luna_core::{ScheduledJob, Scheduler, ServiceContext, ServiceFactory, ToolManifest, ToolService};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
 
@@ -462,23 +462,15 @@ fn reminder_job(id: i64, event: &CalendarEvent) -> Option<ScheduledJob> {
     let local = event.starts_at.with_timezone(&Local);
     let at = chrono::NaiveTime::from_hms_opt(local.hour(), local.minute(), 0)?;
 
-    let recurrence = match event.repeat {
-        Repeat::Daily => Recurrence::Daily { interval: 1 },
-        Repeat::Weekly => Recurrence::Weekly {
-            interval: 1,
-            weekdays: vec![local.weekday()],
-        },
-        Repeat::Monthly => Recurrence::Monthly {
-            interval: 1,
-            day: MonthDay::OnDay(local.day()),
-        },
-        // A yearly entry and a one-off share their rule; only the bound below differs.
-        Repeat::Yearly | Repeat::Never => Recurrence::Yearly {
-            interval: 1,
-            month: local.month(),
-            day: local.day(),
-        },
-    };
+    // The entry's own pattern, so the reminder fires on exactly the occurrences the day
+    // view draws. A one-off has no pattern, and stands in as a yearly rule bounded below
+    // to a single occurrence: the scheduler describes work by recurrence, so that is the
+    // shape a single instant has to take.
+    let recurrence = event.recurrence().unwrap_or(Recurrence::Yearly {
+        interval: 1,
+        month: local.month(),
+        day: local.day(),
+    });
 
     // A moment before the entry, because occurrences are searched over a half-open span
     // that excludes its start. Anchored on the entry itself, the entry's own occurrence

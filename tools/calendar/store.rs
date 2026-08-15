@@ -12,7 +12,8 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use chrono::{DateTime, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
+use luna::rules::{MonthDay, Recurrence, Schedule};
 use luna_core::rusqlite::{self, Connection};
 use luna_core::{Database, Result};
 
@@ -95,6 +96,135 @@ pub struct CalendarEvent {
     pub notes: String,
 }
 
+/// The most occurrences one entry can contribute to a single query.
+///
+/// A daily entry across a year view is 365 of them, which is legitimate; the cap is only
+/// here so a pattern that somehow produced instants without advancing cannot spin.
+const MAX_OCCURRENCES: usize = 500;
+
+impl CalendarEvent {
+    /// How long the entry runs.
+    pub fn duration(&self) -> Duration {
+        return (self.ends_at - self.starts_at).max(Duration::zero());
+    }
+
+    /// The pattern this entry follows, or `None` when it happens once.
+    ///
+    /// Derived from the entry rather than stored alongside it: a weekly entry repeats on
+    /// the weekday it starts on, a monthly one on its day number. Storing those
+    /// separately would let them disagree with the date the entry actually has.
+    pub fn recurrence(&self) -> Option<Recurrence> {
+        let local = self.starts_at.with_timezone(&Local);
+
+        return match self.repeat {
+            Repeat::Never => None,
+            Repeat::Daily => Some(Recurrence::Daily { interval: 1 }),
+            Repeat::Weekly => Some(Recurrence::Weekly {
+                interval: 1,
+                weekdays: vec![local.weekday()],
+            }),
+            Repeat::Monthly => Some(Recurrence::Monthly {
+                interval: 1,
+                day: MonthDay::OnDay(local.day()),
+            }),
+            Repeat::Yearly => Some(Recurrence::Yearly {
+                interval: 1,
+                month: local.month(),
+                day: local.day(),
+            }),
+        };
+    }
+
+    /// The schedule its occurrences fall on, or `None` when it happens once.
+    ///
+    /// The same schedule type the scheduler uses, so what the day view draws and what
+    /// the reminder fires on cannot drift apart: there is one description of when an
+    /// entry happens, and both read it.
+    pub fn schedule(&self) -> Option<Schedule> {
+        let local = self.starts_at.with_timezone(&Local);
+        let at = NaiveTime::from_hms_opt(local.hour(), local.minute(), 0)?;
+
+        // Anchored a moment before the entry, because occurrences are searched over a
+        // span that excludes its start. Anchored on the entry itself, the entry's own
+        // first occurrence would be the one thing the schedule never produced.
+        return Some(Schedule::new(
+            self.recurrence()?,
+            at,
+            self.starts_at - Duration::seconds(1),
+        ));
+    }
+
+    /// This entry as it falls on one particular occurrence, keeping its length.
+    ///
+    /// The id is kept, so selecting or deleting an occurrence acts on the entry it came
+    /// from. There are no per-occurrence exceptions yet: every occurrence of an entry is
+    /// the same entry.
+    fn at_occurrence(&self, starts_at: DateTime<Utc>) -> Self {
+        let span = self.duration();
+
+        let mut occurrence = self.clone();
+        occurrence.starts_at = starts_at;
+        occurrence.ends_at = starts_at + span;
+
+        return occurrence;
+    }
+
+    /// Every occurrence overlapping `[from, to)`.
+    pub fn occurrences_in(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Vec<Self> {
+        let Some(schedule) = self.schedule() else {
+            // Happens once: it is either in the window or it is not.
+            return if self.starts_at < to && self.ends_at > from {
+                vec![self.clone()]
+            } else {
+                Vec::new()
+            };
+        };
+
+        // Reach back by the entry's own length, so an occurrence that began before the
+        // window and is still running inside it is not missed.
+        let search_from = from - self.duration() - Duration::seconds(1);
+
+        return schedule
+            .occurrences_between(search_from, to, MAX_OCCURRENCES)
+            .into_iter()
+            .map(|at| self.at_occurrence(at))
+            .filter(|occurrence| occurrence.starts_at < to && occurrence.ends_at > from)
+            .collect();
+    }
+
+    /// The first occurrence still running or yet to come at `after`.
+    ///
+    /// For the upcoming list, which shows one row per entry rather than every occurrence:
+    /// a daily entry would otherwise fill the whole list with itself.
+    pub fn next_occurrence(&self, after: DateTime<Utc>) -> Option<Self> {
+        let Some(schedule) = self.schedule() else {
+            return if self.ends_at > after {
+                Some(self.clone())
+            } else {
+                None
+            };
+        };
+
+        // Start the search a whole length back, so one that is part way through counts as
+        // current rather than being skipped over.
+        let mut cursor = after - self.duration() - Duration::seconds(1);
+
+        // At most two steps: the first may still end before `after`, the next cannot.
+        for _ in 0..2 {
+            let at = schedule.next_after(cursor)?;
+            let occurrence = self.at_occurrence(at);
+
+            if occurrence.ends_at > after {
+                return Some(occurrence);
+            }
+
+            cursor = at;
+        }
+
+        return None;
+    }
+}
+
 /// The calendar's view of the database.
 pub struct Store {
     conn: Connection,
@@ -108,11 +238,36 @@ impl Store {
         });
     }
 
-    /// Every entry overlapping `[from, to)`, earliest first.
+    /// Every occurrence overlapping `[from, to)`, earliest first.
     ///
-    /// Overlap rather than containment, so a multi-day entry shows up on every day it
-    /// runs through rather than only the one it started on.
+    /// Two queries rather than one, because the two kinds of entry are found in
+    /// different ways. A one-off is a row that overlaps the window and SQL can test that
+    /// directly. A repeating entry's row sits on its *first* occurrence, which is
+    /// usually long before the window and would never match that test, so those are
+    /// fetched whole and expanded here.
+    ///
+    /// What comes back are occurrences, not rows: a weekly entry in a month window
+    /// arrives four or five times, each carrying its own date and the id of the entry it
+    /// came from. Every view is built on this, so marking the month grid, drawing the
+    /// day column and listing what is coming all follow a repeat without knowing it.
     pub fn events_between(
+        &self,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<CalendarEvent>> {
+        let mut events = self.one_off_events_between(from, to)?;
+
+        for entry in self.repeating_entries(Some(to))? {
+            events.extend(entry.occurrences_in(from, to));
+        }
+
+        events.sort_by(|a, b| a.starts_at.cmp(&b.starts_at).then(a.id.cmp(&b.id)));
+
+        return Ok(events);
+    }
+
+    /// The non-repeating rows overlapping `[from, to)`.
+    fn one_off_events_between(
         &self,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
@@ -120,7 +275,7 @@ impl Store {
         let mut stmt = self.conn.prepare(
             "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
              FROM calendar_event
-             WHERE starts_at < ?2 AND ends_at > ?1
+             WHERE recurrence IS NULL AND starts_at < ?2 AND ends_at > ?1
              ORDER BY starts_at, id",
         )?;
 
@@ -128,6 +283,22 @@ impl Store {
             rusqlite::params![from.timestamp(), to.timestamp()],
             row_to_event,
         )?;
+
+        return collect(rows);
+    }
+
+    /// The repeating rows, as stored. `before` drops entries that had not begun yet.
+    fn repeating_entries(&self, before: Option<DateTime<Utc>>) -> Result<Vec<CalendarEvent>> {
+        let cutoff = before.map(|at| at.timestamp()).unwrap_or(i64::MAX);
+
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
+             FROM calendar_event
+             WHERE recurrence IS NOT NULL AND starts_at < ?1
+             ORDER BY starts_at, id",
+        )?;
+
+        let rows = stmt.query_map(rusqlite::params![cutoff], row_to_event)?;
 
         return collect(rows);
     }
@@ -159,12 +330,16 @@ impl Store {
         return Ok(days);
     }
 
-    /// The next entries starting at or after `after`.
+    /// What is coming, earliest first.
+    ///
+    /// A repeating entry contributes its next occurrence only, not every one it will ever
+    /// have. Listing them all would mean a daily entry filling the panel with itself, and
+    /// the question the list answers is what is coming up, not how often.
     pub fn upcoming(&self, after: DateTime<Utc>, limit: usize) -> Result<Vec<CalendarEvent>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, title, starts_at, ends_at, all_day, reminder_lead_seconds, notes, recurrence
              FROM calendar_event
-             WHERE ends_at > ?1
+             WHERE recurrence IS NULL AND ends_at > ?1
              ORDER BY starts_at, id
              LIMIT ?2",
         )?;
@@ -174,7 +349,18 @@ impl Store {
             row_to_event,
         )?;
 
-        return collect(rows);
+        let mut events = collect(rows)?;
+
+        for entry in self.repeating_entries(None)? {
+            if let Some(next) = entry.next_occurrence(after) {
+                events.push(next);
+            }
+        }
+
+        events.sort_by(|a, b| a.starts_at.cmp(&b.starts_at).then(a.id.cmp(&b.id)));
+        events.truncate(limit);
+
+        return Ok(events);
     }
 
     /// One entry by id, or `None` if it has gone.
@@ -472,6 +658,187 @@ mod tests {
 
         store.set_note(day, "  ", now).unwrap();
         assert_eq!(store.note(day).unwrap(), "", "a blank note should be removed");
+    }
+
+    fn repeating(title: &str, day: NaiveDate, from_hour: i64, repeat: Repeat) -> CalendarEvent {
+        let mut event = timed(title, day, from_hour, from_hour + 1);
+        event.repeat = repeat;
+
+        return event;
+    }
+
+    #[test]
+    fn a_weekly_entry_shows_on_every_one_of_its_weekdays() {
+        // The point of the whole expansion: the row sits on one date, but the month it
+        // starts in has to show it four or five times.
+        let (_dir, store) = store();
+        let first = date(2026, 8, 4);
+
+        store
+            .insert(&repeating("Standup", first, 9, Repeat::Weekly))
+            .unwrap();
+
+        let (from, _) = dates::day_bounds(date(2026, 8, 1));
+        let (to, _) = dates::day_bounds(date(2026, 9, 1));
+
+        let found = store.events_between(from, to).unwrap();
+        let days: Vec<u32> = found
+            .iter()
+            .map(|e| dates::local_date_of(e.starts_at).day())
+            .collect();
+
+        assert_eq!(days, vec![4, 11, 18, 25], "every Tuesday from the 4th");
+
+        for occurrence in &found {
+            assert_eq!(occurrence.id, found[0].id, "all one entry");
+            assert_eq!(
+                occurrence.ends_at - occurrence.starts_at,
+                Duration::hours(1),
+                "an occurrence keeps the entry's length"
+            );
+        }
+    }
+
+    #[test]
+    fn a_repeating_entry_shows_in_a_month_it_did_not_start_in() {
+        // The case the old query could never answer: the stored row is in August and the
+        // window is October, so nothing overlaps and the entry would simply vanish.
+        let (_dir, store) = store();
+
+        store
+            .insert(&repeating("Rent", date(2026, 8, 1), 9, Repeat::Monthly))
+            .unwrap();
+
+        let (from, _) = dates::day_bounds(date(2026, 10, 1));
+        let (to, _) = dates::day_bounds(date(2026, 11, 1));
+
+        let found = store.events_between(from, to).unwrap();
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            dates::local_date_of(found[0].starts_at),
+            date(2026, 10, 1),
+            "on its day of the month, in the month being looked at"
+        );
+    }
+
+    #[test]
+    fn a_daily_entry_marks_every_day_of_the_month() {
+        let (_dir, store) = store();
+
+        store
+            .insert(&repeating("Pills", date(2026, 8, 1), 8, Repeat::Daily))
+            .unwrap();
+
+        let (from, _) = dates::day_bounds(date(2026, 8, 1));
+        let (to, _) = dates::day_bounds(date(2026, 9, 1));
+
+        let days = store.days_with_events(from, to).unwrap();
+
+        assert_eq!(days.len(), 31, "August has 31 of them");
+        assert!(days.contains(&date(2026, 8, 31)));
+    }
+
+    #[test]
+    fn a_yearly_entry_comes_back_the_next_year() {
+        let (_dir, store) = store();
+
+        store
+            .insert(&repeating("Birthday", date(2026, 7, 4), 9, Repeat::Yearly))
+            .unwrap();
+
+        let (from, _) = dates::day_bounds(date(2029, 7, 1));
+        let (to, _) = dates::day_bounds(date(2029, 8, 1));
+
+        let found = store.events_between(from, to).unwrap();
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(dates::local_date_of(found[0].starts_at), date(2029, 7, 4));
+    }
+
+    #[test]
+    fn a_repeating_entry_does_not_show_before_it_starts() {
+        let (_dir, store) = store();
+
+        store
+            .insert(&repeating("Standup", date(2026, 8, 4), 9, Repeat::Weekly))
+            .unwrap();
+
+        let (from, _) = dates::day_bounds(date(2026, 7, 1));
+        let (to, _) = dates::day_bounds(date(2026, 8, 1));
+
+        assert!(
+            store.events_between(from, to).unwrap().is_empty(),
+            "a repeat runs forward from its entry, not in both directions"
+        );
+    }
+
+    #[test]
+    fn a_days_occurrence_keeps_its_time_of_day() {
+        // What the day column draws. An occurrence three weeks along still starts at the
+        // entry's own time, not at midnight or at the original date.
+        let (_dir, store) = store();
+
+        store
+            .insert(&repeating("Standup", date(2026, 8, 4), 9, Repeat::Weekly))
+            .unwrap();
+
+        let day = date(2026, 8, 25);
+        let (from, to) = dates::day_bounds(day);
+
+        let found = store.events_between(from, to).unwrap();
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(dates::hours_from(from, found[0].starts_at), 9.0);
+        assert_eq!(dates::hours_from(from, found[0].ends_at), 10.0);
+    }
+
+    #[test]
+    fn upcoming_lists_a_repeating_entry_once() {
+        // A daily entry has infinitely many occurrences ahead of it. The list answers
+        // what is coming, so it takes the next one and stops.
+        let (_dir, store) = store();
+        let start = date(2026, 8, 1);
+
+        store
+            .insert(&repeating("Pills", start, 8, Repeat::Daily))
+            .unwrap();
+        store.insert(&timed("Dentist", date(2026, 8, 3), 9, 10)).unwrap();
+
+        let (from, _) = dates::day_bounds(date(2026, 8, 2));
+        let found = store.upcoming(from, 40).unwrap();
+
+        let titles: Vec<&str> = found.iter().map(|e| e.title.as_str()).collect();
+        assert_eq!(titles, vec!["Pills", "Dentist"]);
+
+        assert_eq!(
+            dates::local_date_of(found[0].starts_at),
+            date(2026, 8, 2),
+            "the next occurrence, not the first one ever"
+        );
+    }
+
+    #[test]
+    fn an_occurrence_part_way_through_still_counts_as_current() {
+        let (_dir, store) = store();
+        let start = date(2026, 8, 1);
+
+        // 08:00 to 09:00 every day.
+        store
+            .insert(&repeating("Pills", start, 8, Repeat::Daily))
+            .unwrap();
+
+        let (day_start, _) = dates::day_bounds(date(2026, 8, 5));
+        let mid = day_start + Duration::minutes(8 * 60 + 30);
+
+        let found = store.upcoming(mid, 10).unwrap();
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            dates::local_date_of(found[0].starts_at),
+            date(2026, 8, 5),
+            "the one running right now, not tomorrow's"
+        );
     }
 
     #[test]
