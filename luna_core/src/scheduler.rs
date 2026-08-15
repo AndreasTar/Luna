@@ -157,12 +157,24 @@ pub struct Upcoming {
     pub subject_at: DateTime<Utc>,
 }
 
+/// Bumped in `_luna_meta` whenever the job table is written.
+///
+/// The scheduler runs on its own thread with its own connection, holding the jobs in
+/// memory so a tick does not hit the database for every rule. A tool adding a job writes
+/// through a connection of its own, which that copy knows nothing about. Rather than
+/// give the thread a channel to be poked down, each tick compares one integer and
+/// reloads when it has moved: a tool writes a reminder, the next tick sees it, and
+/// nothing has to know who else is holding the database open.
+const JOBS_REVISION_KEY: &str = "scheduled_jobs_revision";
+
 /// Every registered job, and the log they record into.
 pub struct Scheduler {
     conn: Connection,
     log: EventLog,
     jobs: BTreeMap<String, ScheduledJob>,
     grace: Duration,
+    /// The revision the in-memory jobs were read at.
+    seen_revision: i64,
 }
 
 impl Scheduler {
@@ -176,6 +188,7 @@ impl Scheduler {
             log,
             jobs: BTreeMap::new(),
             grace: DEFAULT_GRACE,
+            seen_revision: 0,
         };
 
         scheduler.reload()?;
@@ -189,8 +202,44 @@ impl Scheduler {
         return self;
     }
 
+    /// The revision the job table is currently at.
+    ///
+    /// Absent or unreadable counts as zero: a database that has never had a job written
+    /// to it has nothing to be out of date about.
+    fn revision(&self) -> i64 {
+        return self
+            .conn
+            .query_row(
+                "SELECT value FROM _luna_meta WHERE key = ?1",
+                rusqlite::params![JOBS_REVISION_KEY],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+    }
+
+    /// Records that the job table has changed, so other schedulers reload.
+    fn bump_revision(&mut self) -> Result<()> {
+        let next = self.revision() + 1;
+
+        self.conn.execute(
+            "INSERT INTO _luna_meta (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![JOBS_REVISION_KEY, next.to_string()],
+        )?;
+
+        // This scheduler already has the change in memory, so it must not reload on its
+        // own account and undo nothing.
+        self.seen_revision = next;
+
+        return Ok(());
+    }
+
     /// Reads every job back from the database.
     pub fn reload(&mut self) -> Result<()> {
+        self.seen_revision = self.revision();
+
         let mut stmt = self.conn.prepare(
             "SELECT rule_id, tool_id, schedule, guard, catch_up, enabled, lead_seconds
              FROM scheduled_jobs",
@@ -279,6 +328,7 @@ impl Scheduler {
         )?;
 
         self.jobs.insert(job.rule_id.clone(), job);
+        self.bump_revision()?;
 
         return Ok(());
     }
@@ -291,6 +341,7 @@ impl Scheduler {
         )?;
 
         self.jobs.remove(rule_id);
+        self.bump_revision()?;
 
         return Ok(());
     }
@@ -304,6 +355,7 @@ impl Scheduler {
 
         self.jobs
             .retain(|_, job| job.tool_id.as_deref() != Some(tool_id));
+        self.bump_revision()?;
 
         return Ok(removed);
     }
@@ -362,6 +414,12 @@ impl Scheduler {
     ///
     /// Returns what fired, for the caller to notify.
     pub fn tick(&mut self, now: DateTime<Utc>) -> Result<Vec<Fire>> {
+        // Somebody else wrote to the job table since the last look. One integer read per
+        // tick is a cheap way to stay current with tools that register their own work.
+        if self.revision() != self.seen_revision {
+            self.reload()?;
+        }
+
         let since = self.last_tick()?.unwrap_or(now);
 
         // A clock that moved backwards, or a first run. Nothing sensible to catch up
@@ -619,6 +677,59 @@ mod tests {
         assert_eq!(job.tool_id.as_deref(), Some("luna.reminders"));
         assert_eq!(job.catch_up, CatchUp::FireLate);
         assert!(job.enabled);
+    }
+
+    #[test]
+    fn a_job_added_by_another_connection_is_picked_up_on_the_next_tick() {
+        // The running scheduler holds its jobs in memory, so a tool registering a
+        // reminder through its own connection is invisible to it until something says
+        // otherwise. Without this the reminder would only start working after a restart,
+        // which is the sort of thing that looks like it works right up until it matters.
+        let dir = tempfile::tempdir().unwrap();
+
+        let mut running = scheduler(&dir);
+        running.tick(utc(2026, 8, 1, 0)).unwrap();
+        assert_eq!(running.jobs().count(), 0);
+
+        {
+            let mut tool = scheduler(&dir);
+            tool.upsert(
+                ScheduledJob::new("added.later", daily_at_noon(utc(2026, 8, 1, 0)))
+                    .owned_by("luna.calendar"),
+            )
+            .unwrap();
+        }
+
+        let fires = running.tick(utc(2026, 8, 1, 13)).unwrap();
+
+        assert_eq!(running.jobs().count(), 1, "the new job should have been reloaded");
+        assert_eq!(fires.len(), 1, "and it should have fired at noon");
+        assert_eq!(fires[0].rule_id, "added.later");
+    }
+
+    #[test]
+    fn a_removal_by_another_connection_is_picked_up_on_the_next_tick() {
+        let dir = tempfile::tempdir().unwrap();
+
+        {
+            let mut tool = scheduler(&dir);
+            tool.upsert(ScheduledJob::new("doomed", daily_at_noon(utc(2026, 8, 1, 0))))
+                .unwrap();
+        }
+
+        let mut running = scheduler(&dir);
+        assert_eq!(running.jobs().count(), 1);
+        running.tick(utc(2026, 8, 1, 0)).unwrap();
+
+        {
+            let mut tool = scheduler(&dir);
+            tool.remove("doomed").unwrap();
+        }
+
+        let fires = running.tick(utc(2026, 8, 1, 13)).unwrap();
+
+        assert_eq!(running.jobs().count(), 0, "the job should have gone");
+        assert!(fires.is_empty(), "and a removed job must not fire");
     }
 
     #[test]

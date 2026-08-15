@@ -10,22 +10,25 @@ pub(crate) mod base_converter;
 #[path = "../../../tools/calendar/mod.rs"]
 pub(crate) mod calendar;
 
-use super::{ BoundTool, ToolView };
+use super::{ BoundTool, ToolView, ViewContext };
 
-/// Every tool's manifest, for the registry.
-pub(crate) fn manifests() -> Vec<luna_core::ToolManifest> {
+/// Every tool as the registry takes it: the manifest, and the background half
+/// for a tool that declares one.
+pub(crate) fn registrations()
+-> Vec<(luna_core::ToolManifest, Option<luna_core::ServiceFactory>)> {
     return vec![
-        base_converter::Tool::manifest(),
-        calendar::Tool::manifest(),
+        (base_converter::Tool::manifest(), base_converter::Tool::service()),
+        (calendar::Tool::manifest(), calendar::Tool::service()),
     ];
 }
 
 /// Binds every tool's callbacks and returns the bound views to be kept alive.
 pub(crate) fn bind_all(
     ui: &slint::Weak<crate::LunaAppUi>,
+    ctx: &ViewContext<'_>,
 ) -> Vec<Box<dyn BoundTool>> {
     return vec![
-        Box::new(base_converter::Tool::bind(ui.clone())),
-        Box::new(calendar::Tool::bind(ui.clone())),
+        Box::new(base_converter::Tool::bind(ui.clone(), ctx)),
+        Box::new(calendar::Tool::bind(ui.clone(), ctx)),
     ];
 }

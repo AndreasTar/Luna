@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use luna::number_converter;
 use luna_core::ToolManifest;
 use slint::{ ComponentHandle, Model, ModelRc, SharedString, Weak };
-use crate::tools::{ BoundTool, ToolView };
+use crate::tools::{ BoundTool, ToolView, ViewContext };
 use crate::{ Global_NumberConversion_Callback, LunaAppUi };
 
 
@@ -40,7 +40,7 @@ impl ToolView for Tool {
             .expect("base_converter manifest.toml is malformed");
     }
 
-    fn bind(ui_handle: Weak<LunaAppUi>) -> Self {
+    fn bind(ui_handle: Weak<LunaAppUi>, _ctx: &ViewContext<'_>) -> Self {
 
         let mut base_converter = Tool {
             ui_handle,

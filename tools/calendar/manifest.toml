@@ -1,12 +1,12 @@
 id          = "luna.calendar"
 name        = "Calendar"
-version     = "0.0.1"
+version     = "0.2.0"
 description = "Monthly, daily and yearly views, with notes and upcoming events."
 category    = "time"
 
-# Will need a service once events and reminders exist, since those have to fire with
-# the page closed. Nothing runs in the background yet, so it does not claim one.
-background = false
+# Reminders have to fire with the page closed, and with Luna in the tray, so the
+# calendar runs a background half that registers them with the scheduler at startup.
+background = true
 
 offers  = ["luna/text"]
 accepts = ["luna/text"]

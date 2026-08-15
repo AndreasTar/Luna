@@ -45,7 +45,7 @@ scheduled jobs, so changing it after shipping orphans all three.
 ## mod.rs
 
 ```rust
-use crate::tools::{ BoundTool, ToolView };
+use crate::tools::{ BoundTool, ToolView, ViewContext };
 use crate::LunaAppUi;
 use luna_core::ToolManifest;
 use slint::Weak;
@@ -64,7 +64,13 @@ impl ToolView for Tool {
             .expect("my_tool manifest.toml is malformed");
     }
 
-    fn bind(ui_handle: Weak<LunaAppUi>) -> Self {
+    fn bind(ui_handle: Weak<LunaAppUi>, ctx: &ViewContext<'_>) -> Self {
+        // ctx.paths is where the tool reads and writes. Open the shared database with
+        // luna_core::Database::open(ctx.paths.database_file()), or take a folder of the
+        // tool's own with ctx.paths.ensure_tool_data_dir. A path rather than an open
+        // connection, because a rusqlite Connection is Send but not Sync.
+        let _ = ctx;
+
         return Tool { ui_handle };
     }
 }
@@ -97,8 +103,26 @@ and implements `luna_core::ToolService`, which the registry starts when the tool
 enabled and drops when it is disabled. A tool that declares `background = true` but
 registers no service factory fails at startup rather than quietly doing nothing.
 
+The factory is returned from `ToolView::service`, which defaults to `None`:
+
+```rust
+fn service() -> Option<luna_core::ServiceFactory> {
+    return Some(Box::new(|| Box::new(MyService::default())));
+}
+```
+
+A factory rather than an instance, because disabling a tool drops its service and
+re-enabling has to build a fresh one.
+
 Do not declare it otherwise. An idle service is memory spent for nothing, and idle
 footprint is the point of the background model.
+
+**Registering scheduled work.** A service opens its own `luna_core::Scheduler` and
+upserts jobs owned by its tool id. The running scheduler thread holds its jobs in
+memory, so it will not see a write from another connection by itself; writing bumps a
+revision in `_luna_meta` that the thread compares on each tick and reloads when it has
+moved. That is what lets a job registered mid-session fire without a restart. Removing
+a tool takes its jobs with it through `Scheduler::remove_tool`.
 
 ## Editor support
 

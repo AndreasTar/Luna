@@ -103,6 +103,47 @@ const MIGRATIONS: &[Migration] = &[
                 ADD COLUMN lead_seconds INTEGER NOT NULL DEFAULT 0;
         ",
     },
+    Migration {
+        version: 5,
+        name: "calendar",
+        sql: "
+            -- Calendar entries. Times are unix seconds UTC, like every other instant in
+            -- here, including for all-day entries: those store the local day's midnight
+            -- to the next midnight, converted on the way in. Storing a wall-clock string
+            -- instead would make 'what is on this day' a string comparison that breaks
+            -- the moment the machine moves timezone.
+            CREATE TABLE calendar_event (
+                id        INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                title     TEXT    NOT NULL,
+                starts_at INTEGER NOT NULL,
+                ends_at   INTEGER NOT NULL,
+                all_day   INTEGER NOT NULL,
+                -- A serialised luna::rules::Schedule for a repeating entry, null for a
+                -- one-off. Serialised rather than given columns of its own because the
+                -- recurrence engine already owns that shape, and two descriptions of one
+                -- rule is one more than can be kept in agreement.
+                recurrence TEXT,
+                -- How long before the entry its reminder fires. Zero means the reminder
+                -- is the entry itself; non-zero separates the two, which is what a
+                -- birthday with 'buy a gift' a week earlier needs.
+                reminder_lead_seconds INTEGER NOT NULL DEFAULT 0,
+                notes     TEXT
+            ) STRICT;
+
+            -- Every read is 'what falls in this span', for a day, a month or the list of
+            -- what is coming.
+            CREATE INDEX idx_calendar_event_span ON calendar_event (starts_at, ends_at);
+
+            -- One free-text note per day. Keyed by the local date as YYYY-MM-DD rather
+            -- than by an instant: a note belongs to the day as written on the wall, not
+            -- to a moment in it.
+            CREATE TABLE calendar_note (
+                day        TEXT    NOT NULL PRIMARY KEY,
+                body       TEXT    NOT NULL,
+                updated_at INTEGER NOT NULL
+            ) STRICT;
+        ",
+    },
 ];
 
 /// An open connection to Luna's database, migrated to the current schema.

@@ -4,6 +4,8 @@
 import { Switch, GridBox, ListView, ScrollView, HorizontalBox, VerticalBox, Palette } from "std-widgets.slint";
 
 import { LunaLibraryGlobalSettings } from "gallery_settings.slint";
+import { Chrome, IconButton } from "icon_button.slint";
+import { Theme } from "theme.slint";
 
 export component PageComponent inherits VerticalBox {
     in property <string> title: @tr("default title");
@@ -12,48 +14,119 @@ export component PageComponent inherits VerticalBox {
     in property <bool> show-enable-page-widgets-switch: false; // TODO adapt these switches
     in property <bool> show-enable-read-only: false;
 
+    // The cog at the left of the bar. The panel it belongs to does not exist yet, so the
+    // state is tracked here and a placeholder strip stands in for it. A tool that grows
+    // real settings reads `showing-tool-settings` and draws its own.
+    callback settings-clicked();
+    in-out property <bool> showing-tool-settings: false;
+
     accessible-role: tab-panel;
     accessible-label: root.title;
 
-    HorizontalBox {
+    // The bar across the top of every tool page.
+    //
+    // Two children of one grid cell, so the layout hands both the full width of the bar.
+    // The name is centred on the bar itself that way, rather than on whatever space the
+    // controls happen to leave over, which would put it off centre by half the
+    // difference between the two sides. A Text takes no input, so the controls beneath
+    // it still take their clicks.
+    top-bar := GridLayout {
 
-        // Full width, fixed height. `vertical-stretch: 0` keeps it at its natural
-        // height whatever the window does, and the default horizontal stretch lets the
-        // spacer below push the title and the switches to opposite ends. The former
-        // `alignment: center` collapsed that spacer to nothing and bunched the whole
-        // bar into the middle of the page.
+        // Full width, natural height, whatever the window does. A stretch factor of 0
+        // only holds while something else in the layout is willing to grow, which is
+        // what the wrapper around the page content below is for.
         vertical-stretch: 0;
 
+        HorizontalLayout {
+            row: 0;
+            col: 0;
+
+            padding: Chrome.chrome_padding;
+            spacing: Chrome.chrome_spacing;
+
+            // The "send to tool" dropdown goes here, on the left.
+
+            // Spacer
+            Rectangle { }
+
+            if show-enable-page-widgets-switch: Switch {
+                horizontal-stretch: 0;
+                text: @tr("Widgets enabled");
+                checked <=> LunaLibraryGlobalSettings.widgets-enabled;
+                enabled: true;
+            }
+
+            if show-enable-read-only: Switch {
+                horizontal-stretch: 0;
+                text: @tr("Widgets read-only");
+                checked <=> LunaLibraryGlobalSettings.widgets-read-only;
+                enabled: true;
+            }
+
+            // Light and dark are two palettes, not two modes of one, so this asks the
+            // shell to swap which palette is active rather than recolouring the current
+            // one. Until that pairing exists in settings it still flips the widget
+            // styling, which is all the switch it replaced ever did.
+            //
+            // `Palette.color-scheme` stays the single record of which scheme is showing.
+            // Keeping a second copy alongside it would only be one more thing that can
+            // disagree with what is on screen.
+            IconButton {
+                icon: Palette.color-scheme == ColorScheme.dark ? "☀" : "☽";
+                label: Palette.color-scheme == ColorScheme.dark
+                     ? @tr("Switch to the light palette")
+                     : @tr("Switch to the dark palette");
+                clicked => {
+                    Palette.color-scheme = Palette.color-scheme == ColorScheme.dark
+                                         ? ColorScheme.light
+                                         : ColorScheme.dark;
+                    Theme.scheme_toggled(Palette.color-scheme == ColorScheme.dark);
+                }
+            }
+
+            IconButton {
+                icon: "⚙";
+                label: @tr("Tool settings");
+                active: root.showing-tool-settings;
+                clicked => {
+                    root.showing-tool-settings = !root.showing-tool-settings;
+                    root.settings-clicked();
+                }
+            }
+        }
+
         Text {
+            row: 0;
+            col: 0;
+
+            // Zero, so a long name cannot widen the bar and through it the window. It
+            // can still run under the controls either side of it at narrow widths, which
+            // is the price of centring on the bar rather than between them.
+            min-width: 0px;
+
             font-size: 20px;
             text <=> root.title;
+            horizontal-alignment: center;
             vertical-alignment: center;
+            overflow: elide;
         }
+    }
 
-        // Spacer
-        Rectangle { }
+    // Stands in for the settings panel until there is one, so the cog does something
+    // visible rather than nothing. Replace the whole strip when a tool has real settings
+    // to show.
+    if root.showing-tool-settings : Rectangle {
+        vertical-stretch: 0;
+        height: Chrome.dock_height;
+        border-radius: Chrome.corner_radius;
+        background: Theme.background_secondary;
 
-        if show-enable-page-widgets-switch: Switch {
-            horizontal-stretch: 0;
-            text: @tr("Widgets enabled");
-            checked <=> LunaLibraryGlobalSettings.widgets-enabled;
-            enabled: true;
-        }
-
-        if show-enable-read-only: Switch {
-            horizontal-stretch: 0;
-            text: @tr("Widgets read-only");
-            checked <=> LunaLibraryGlobalSettings.widgets-read-only;
-            enabled: true;
-        }
-
-        Switch {
-            horizontal-stretch: 0;
-            text: @tr("Dark Mode");
-            checked: Palette.color-scheme == ColorScheme.dark;
-            toggled => {
-                Palette.color-scheme = self.checked ? ColorScheme.dark : ColorScheme.light;
-            }
+        Text {
+            text: @tr("This tool has no settings yet.");
+            font-size: 13px;
+            color: Theme.text_secondary;
+            horizontal-alignment: center;
+            vertical-alignment: center;
         }
     }
 

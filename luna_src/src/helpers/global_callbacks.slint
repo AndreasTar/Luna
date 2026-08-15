@@ -2,15 +2,107 @@ export global Global_NumberConversion_Callback {
     callback request_convert_number(allNums: [string], allBases: [int], editedIndex: int, editedNumber: string) -> [string];
 }
 
+// The calendar's data, and the shapes it travels in.
+//
+// These live here rather than in the tool's own ui.slint because Rust can only reach a
+// global, and only one the root file re-exports. A tool page is instantiated by the
+// generated page chain, so its properties are not addressable from outside; the page
+// binds to the global instead and Rust fills the global. One global is enough because
+// one calendar page exists.
+//
+// Cells arrive ready to draw. Slint works out no dates: the grid it is handed already
+// has the weekday offset applied, the neighbouring months filled in, and today and the
+// selection marked. See tools/calendar/dates.rs for why.
+
+// One day in a month grid. Grids are always 42 cells, six weeks of seven days, so the
+// page never changes height as the months are stepped through.
+export struct DayCell {
+    day_num: int,
+    // False for the days either side that belong to the neighbouring months.
+    in_month: bool,
+    is_today: bool,
+    is_selected: bool,
+    // Whether anything is on that day, for the marker on the cell.
+    has_events: bool,
+}
+
+export struct MonthCell {
+    month_num: int,
+    in_year: bool,
+    is_current: bool,
+    is_selected: bool,
+}
+
+export struct HourCell {
+    hour_num: int,
+    is_selected: bool,
+    is_current: bool,
+}
+
+// One entry as the day view draws it. Hours are measured from the start of the day being
+// shown, so an entry running to 02:00 the next morning ends at hour 26 and needs no
+// second cell to say so.
+export struct EventCell {
+    id: int,
+    title: string,
+    start_hour: int,
+    end_hour: int,
+    all_day: bool,
+}
+
+export struct UpcomingEventsCell {
+    event_id: int,
+    event_date: string,
+    event_title: string,
+    is_today: bool,
+}
+
+export global Global_Calendar_Data {
+    // The month view.
+    in property <[DayCell]> month_grid;
+    in property <string> month_label;
+
+    // The year view. One flat array of 12 * 42 cells rather than an array of arrays:
+    // month m's cell i is at m * 42 + i. Flat because a nested model buys nothing here
+    // and costs a shape that is harder to fill from Rust.
+    in property <[MonthCell]> year_months;
+    in property <[DayCell]> year_days;
+    in property <string> year_label;
+
+    // The day view.
+    in property <[HourCell]> day_hours;
+    in property <[EventCell]> day_events;
+    in property <string> day_label;
+
+    in property <[UpcomingEventsCell]> upcoming;
+
+    // The note for the selected day. Pushed on every selection change; the page reports
+    // edits back through `note_edited`.
+    in property <string> note_body;
+    // Set while an edit has not been written yet, for the save button to key off.
+    in property <bool> note_unsaved;
+}
+
 export global Global_Calendar_Callback {
-    callback month_date_clicked();
-    callback month_next_button_clicked();
-    callback month_prev_button_clicked();
-    callback year_month_clicked();
-    callback year_date_clicked();
-    callback year_next_button_clicked();
-    callback year_prev_button_clicked();
-    callback daily_hour_clicked();
-    callback notes_save_button_clicked();
-    callback upcoming_event_clicked();
+    // Navigation. The argument is a signed number of months or years, so one callback
+    // covers both directions and "jump three months" needs no new plumbing.
+    callback month_step(int);
+    callback year_step(int);
+    callback today_selected();
+
+    // Selection. Indices into the arrays above rather than dates, so neither side has to
+    // parse anything: Rust maps an index back through the same grid it built.
+    callback day_selected(int);
+    callback year_month_selected(int);
+    callback year_day_selected(int);
+    callback hour_selected(int);
+    callback upcoming_selected(int);
+
+    // Entries.
+    callback event_added(title: string, start_hour: int, end_hour: int, remind_days: int);
+    callback event_removed(int);
+
+    // Notes.
+    callback note_edited(string);
+    callback note_saved();
 }

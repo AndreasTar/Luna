@@ -1,0 +1,64 @@
+import { Theme } from "theme.slint";
+
+// The fixed dimensions of Luna's chrome: the sidebar's bottom dock and the bar across
+// the top of every tool page.
+//
+// One global rather than numbers in two files, because the cog at the bottom left and
+// the cog at the top left of a tool page are meant to read as the same control. If they
+// are sized apart they stop looking like siblings.
+export global Chrome {
+    // One button. Square, and the same wherever a button appears.
+    out property <length> button_size: 34px;
+    out property <length> icon_size: 18px;
+
+    // The strip at the foot of the sidebar. Fixed: it holds a row of buttons and is not
+    // meant to grow or shrink with the window.
+    out property <length> dock_height: 44px;
+
+    out property <length> chrome_padding: 5px;
+    out property <length> chrome_spacing: 5px;
+
+    out property <length> corner_radius: 6px;
+}
+
+// A square button showing a single glyph.
+//
+// Used for the sidebar dock and the tool page bar. The glyph is passed in as text rather
+// than an image because Luna ships no icon assets and will not fetch any: an emoji is
+// already in the system font. Note that it is drawn in whatever the font provides, which
+// on Windows means the monochrome outline rather than the colour version.
+export component IconButton inherits Rectangle {
+    in property <string> icon;
+    // What the button is, for screen readers. Not drawn.
+    in property <string> label;
+    // Drawn as held down. For a button that opens a panel, so the button shows whether
+    // that panel is up.
+    in property <bool> active: false;
+
+    callback clicked <=> touch.clicked;
+
+    width: Chrome.button_size;
+    height: Chrome.button_size;
+    border-radius: Chrome.corner_radius;
+
+    background: root.active     ? Theme.background_tertiary
+              : touch.has-hover ? Theme.background_secondary
+              : transparent;
+
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { touch.clicked(); }
+
+    touch := TouchArea { }
+
+    Text {
+        width: 100%;
+        height: 100%;
+
+        text: root.icon;
+        font-size: Chrome.icon_size;
+        color: Theme.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}

@@ -206,24 +206,31 @@ fn generate_rust(tools: &[DiscoveredTool]) -> String {
     }
 
     out.push_str(
-        "use super::{ BoundTool, ToolView };\n\n\
-         /// Every tool's manifest, for the registry.\n\
-         pub(crate) fn manifests() -> Vec<luna_core::ToolManifest> {\n    return vec![\n",
+        "use super::{ BoundTool, ToolView, ViewContext };\n\n\
+         /// Every tool as the registry takes it: the manifest, and the background half\n\
+         /// for a tool that declares one.\n\
+         pub(crate) fn registrations()\n\
+         -> Vec<(luna_core::ToolManifest, Option<luna_core::ServiceFactory>)> {\n    return vec![\n",
     );
     for tool in tools {
-        let _ = writeln!(out, "        {}::Tool::manifest(),", tool.module);
+        let _ = writeln!(
+            out,
+            "        ({}::Tool::manifest(), {}::Tool::service()),",
+            tool.module, tool.module
+        );
     }
     out.push_str("    ];\n}\n\n");
 
     out.push_str(
         "/// Binds every tool's callbacks and returns the bound views to be kept alive.\n\
-         pub(crate) fn bind_all(\n    ui: &slint::Weak<crate::LunaAppUi>,\n) \
+         pub(crate) fn bind_all(\n    ui: &slint::Weak<crate::LunaAppUi>,\n\
+         \x20   ctx: &ViewContext<'_>,\n) \
          -> Vec<Box<dyn BoundTool>> {\n    return vec![\n",
     );
     for tool in tools {
         let _ = writeln!(
             out,
-            "        Box::new({}::Tool::bind(ui.clone())),",
+            "        Box::new({}::Tool::bind(ui.clone(), ctx)),",
             tool.module
         );
     }

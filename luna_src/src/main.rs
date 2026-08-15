@@ -58,10 +58,10 @@ fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
     // the app keeps running.
     let mut host = Host::bootstrap_at(paths)?;
 
-    for manifest in tools::manifests() {
-        // No service factories yet: neither tool declares `background`. The argument
-        // is where a tool's background half gets registered once one needs it.
-        host.register_tool(manifest, None)?;
+    for (manifest, service) in tools::registrations() {
+        // A tool that declares `background` supplies a factory here; one that does not
+        // passes None and exists only while its page is open.
+        host.register_tool(manifest, service)?;
     }
 
     host.start_tools();
@@ -85,7 +85,10 @@ fn run() -> Result<ShutdownIntent, Box<dyn std::error::Error>> {
     // Bound once, because callbacks live on Slint globals which outlive any page.
     // See the note on `tools::ToolView` for what changes when pages own their own
     // callbacks. Held for the life of the window.
-    let _bound_tools = tools::bind_all(&luna_app_ui.as_weak());
+    let _bound_tools = tools::bind_all(
+        &luna_app_ui.as_weak(),
+        &tools::ViewContext { paths: &host.paths },
+    );
 
     let intent = Rc::new(Cell::new(ShutdownIntent::Exit));
     let host = Rc::new(std::cell::RefCell::new(host));

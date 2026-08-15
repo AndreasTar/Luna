@@ -53,6 +53,11 @@ pub mod ui_state;
 
 pub use config::{AppConfig, LoadOutcome, ToolConfig, UiStateTtl};
 pub use db::Database;
+
+// Re-exported so a tool can talk to the database without declaring a dependency of its
+// own. A second `rusqlite` in the tree would be a second SQLite, and two engines with
+// two sets of pragmas against one file is not a thing to leave to chance.
+pub use rusqlite;
 pub use error::{CoreError, Result};
 pub use events::{EventLog, RuleEvent};
 pub use manifest::{PortType, ToolManifest};

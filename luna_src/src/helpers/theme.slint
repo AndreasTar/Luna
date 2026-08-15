@@ -38,4 +38,13 @@ export global Theme {
     in property <brush> disabled:               #ffffff;
 
     in property <brush> highlight:              #8f6fbf;
+
+    // Fired when the light/dark button in a tool's bar is pressed, carrying the scheme
+    // being switched to. Light and dark are two separate palettes rather than two modes
+    // of one, so the handler swaps the active palette for whichever the user nominated
+    // for that scheme, and everything above is repopulated from it.
+    //
+    // Unhandled until that pairing exists in settings. The button still switches the
+    // widget styling in the meantime, so nothing is worse off than it was.
+    callback scheme_toggled(bool);
 }

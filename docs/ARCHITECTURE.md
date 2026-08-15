@@ -320,6 +320,22 @@ rules, the event log, health samples and password entries.
 Config stays as TOML files: small, human-editable, diffable. Large binary artefacts
 stay as files under `data/tools/<id>/`, not blobs in the DB.
 
+**Schema changes are append-only.** `MIGRATIONS` in `luna_core::db` runs in order,
+each in a transaction, recorded in `_luna_schema`. Once a version has shipped its SQL
+is never edited: the runner only applies versions it has not seen, so editing one
+leaves every existing database without the change. A correction is a new migration.
+Shipped so far: 1 meta, 2 rule events, 3 scheduled jobs, 4 job lead time, 5 calendar.
+
+**Tool tables live in the shared database**, named for their tool, rather than each
+tool keeping a file of its own. One file to migrate, one to back up, and one place
+where a query can join across tools when something eventually wants to.
+
+**Instants are unix seconds UTC**, everywhere, including for all-day calendar entries,
+which store the local day's midnight to the next midnight. A wall-clock string would
+make "what is on this day" a string comparison that stops being true the moment the
+machine changes timezone. Local dates appear only as keys where the value belongs to
+the day as written on the wall rather than to a moment in it, such as a day's note.
+
 **Atomic writes for every file write**: temp file, fsync, rename. An app designed
 never to close will be killed eventually; a half-written config must not be possible.
 
@@ -452,6 +468,19 @@ tick (a minute is ample) and on view open.
 
 **Completion** is logged as an event, which both feeds guards (8.2) and rolls the
 next window for `RollingFromCompletion` anchors.
+
+### 8.3a Registering work from a tool
+
+The scheduler runs on its own thread with its own connection and holds its jobs in
+memory, so a tick does not hit the database once per rule. A tool registering a job
+writes through a connection of its own, which that copy knows nothing about.
+
+Rather than give the thread a channel to be poked down, writing the job table bumps a
+revision in `_luna_meta`, and each tick compares that one integer and reloads when it
+has moved. A tool writes a reminder, the next tick sees it, and nothing has to know who
+else is holding the database open. Without it a reminder added mid-session would only
+begin working after a restart, which is the kind of defect that looks like it works
+right up until it matters.
 
 ### 8.4 External progress sources (extension point)
 
@@ -714,9 +743,21 @@ config and the database through `luna_core`; the tool registry with runtime
 enable/disable; build-script tool discovery, so a tool is a folder in `tools/`; the
 sidebar driven by the registry and pages keyed by tool id; the base converter
 end-to-end; `number_converter` and `color_format_converter` as solid documented
-library modules; and the calendar's UI layout with its callbacks now reachable from
-Rust. The stale iced and egui files have been removed, with the `LunaPallete` work
-salvaged into `palettes/`.
+library modules; and the calendar end-to-end, with real dates, entries, notes,
+upcoming, and reminders that fire with the page closed. The stale iced and egui files
+have been removed, with the `LunaPallete` work salvaged into `palettes/`.
+
+**How a tool reaches its data.** `ToolView::bind` takes a `ViewContext` carrying
+`AppPaths`, and `ToolView::service` returns an optional `ServiceFactory` that the
+registry uses for the tool's background half. Both are generated into
+`tools/generated.rs` by the build script, so a tool folder still only needs its three
+files.
+
+**A tool's models reach Slint through a global**, not through properties on its page.
+A page is instantiated by the generated page chain, so Rust has no handle on it; the
+page binds to a global and Rust fills the global. One global per tool is enough while
+one page is visible at a time, which is the same reasoning `Theme` rests on. Removing
+that constraint is the remaining part of the service/view split.
 
 **Outstanding from the service/view split:** tool callbacks are still bound once at
 startup against Slint globals rather than per page instance, so a `ToolView` does not
@@ -725,7 +766,7 @@ correctly; only the Rust binding lags.
 
 **Known gaps and defects**, all superseded or fixed by the work above:
 
-- `calendar_ui.slint:4` imports the same global three times.
+- ~~`calendar_ui.slint:4` imports the same global three times.~~ Fixed.
 - `luna_src/src/helpers/positioner.rs` is the last egui-era file. It compiles and is
   declared in `helpers/mod.rs`, but nothing uses it and the only function that consumed
   its types is commented out. Keep with an explanatory comment, or delete.
@@ -741,5 +782,7 @@ correctly; only the Rust binding lags.
   passes CI because `color_format_converter` is not a default feature.
 - `convert_from_decimal` still carries the `tries: u8 = 64` debug counter, and `u32`
   caps input around 4.29e9.
-- Calendar month grid does not offset the first day by its weekday, and
-  `get_monthly_day_count` returns 28/29 for any unlisted month, including 0 and 13.
+- ~~Calendar month grid does not offset the first day by its weekday, and
+  `get_monthly_day_count` returns 28/29 for any unlisted month, including 0 and 13.~~
+  Fixed: the page no longer computes dates at all. `tools/calendar/dates.rs` builds the
+  grid in Rust with `chrono` and hands it over ready to draw.

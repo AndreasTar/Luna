@@ -10,8 +10,13 @@ import { LunaLibraryGlobalSettings } from "..\helpers\gallery_settings.slint";
 // path. Holds one page per discovered tool, keyed by tool id.
 import { ToolPages } from "tool_pages.slint";
 import { PalettePicker, PaletteEntry } from "../helpers/palette_picker.slint";
+import { IconButton } from "../helpers/icon_button.slint";
 
-export { Global_NumberConversion_Callback, Global_Calendar_Callback } from "..\helpers\global_callbacks.slint";
+export { Global_NumberConversion_Callback, Global_Calendar_Callback, Global_Calendar_Data } from "..\helpers\global_callbacks.slint";
+
+// The shapes the calendar's models travel in. Re-exported so Rust gets generated types
+// to build them with; a struct only reachable through an import is not enough.
+export { DayCell, MonthCell, HourCell, EventCell, UpcomingEventsCell } from "..\helpers\global_callbacks.slint";
 
 // Re-exported so Rust can push the resolved palette into it. A global is only visible
 // to Rust if the root file exports it, which is what made the calendar's callbacks
@@ -177,27 +182,14 @@ export component LunaAppUi inherits Window {
 
             changed current-id => { root.tool-changed(self.current-id); }
 
-            // The sidebar keeps a slot at the bottom for exactly this.
-            Rectangle {
-                height: 34px;
-                border-radius: 6px;
-                background: root.showing-settings ? Theme.background-tertiary
-                          : settings-touch.has-hover ? Theme.background-secondary
-                          : transparent;
-
-                settings-touch := TouchArea {
-                    clicked => { root.showing-settings = !root.showing-settings; }
-                }
-
-                Text {
-                    // Global settings. Palette is the first section in it; tool
-                    // settings live in the top right of each tool's own page.
-                    text: @tr("Settings");
-                    font-size: 13px;
-                    color: Theme.text-secondary;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
+            // The dock at the foot of the sidebar. Global settings for now; anything
+            // else that belongs to the shell rather than to a tool goes in beside it,
+            // and the row fills from the left.
+            IconButton {
+                icon: "⚙";
+                label: @tr("Settings");
+                active: root.showing-settings;
+                clicked => { root.showing-settings = !root.showing-settings; }
             }
         }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { HorizontalBox, VerticalBox, Palette } from "std-widgets.slint";
+import { Chrome } from "icon_button.slint";
 
 // One entry in the sidebar, built from an enabled tool's manifest.
 //
@@ -94,9 +95,16 @@ export component SideBar inherits Rectangle {
     VerticalBox {
         padding-left: 0px;
         padding-right: 0px;
-        alignment: start;
+
+        // No `alignment: start`. The title and the tool list state that they do not
+        // stretch, the spacer below the list takes everything that is left, and the dock
+        // at the foot keeps the height it asks for. An alignment would have handed every
+        // one of them its preferred size and pooled the slack at one end, which is not
+        // the same thing: the dock has to be pinned to the bottom edge whether there are
+        // two tools in the list or twenty.
 
         label := Text {
+            vertical-stretch: 0;
             font-size: 16px;
             horizontal-alignment: center;
         }
@@ -150,13 +158,20 @@ export component SideBar inherits Rectangle {
             }
         }
 
-        VerticalLayout {
-            bottom := VerticalBox {
-                padding-top: 0px;
-                padding-bottom: 0px;
+        // Everything the list and the dock do not use, so the dock sits on the bottom
+        // edge rather than following the last tool in the list.
+        Rectangle { vertical-stretch: 1; }
 
-                @children
-             }
+        dock := HorizontalLayout {
+            // A set size, as asked: a row of buttons that neither grows nor shrinks.
+            // More buttons go in beside the first one, and the row fills left to right.
+            vertical-stretch: 0;
+            height: Chrome.dock_height;
+            padding: Chrome.chrome_padding;
+            spacing: Chrome.chrome_spacing;
+            alignment: start;
+
+            @children
         }
     }
 }

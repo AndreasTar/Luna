@@ -3043,6 +3043,7 @@ dependencies = [
  "rfd",
  "slint",
  "slint-build",
+ "tempfile",
  "tray-icon",
  "web-sys",
 ]

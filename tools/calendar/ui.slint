@@ -1,8 +1,16 @@
 
 import { PageComponent } from "../../luna_src/src/helpers/page_component.slint";
-import { TextEdit, ScrollView } from "std-widgets.slint";
-import { Global_Calendar_Callback } from "../../luna_src/src/helpers/global_callbacks.slint";
-//import { GlobalConversionCallback } from "..\..\helpers\global_callbacks.slint";
+import { TextEdit, ScrollView, LineEdit, Button } from "std-widgets.slint";
+import { Theme } from "../../luna_src/src/helpers/theme.slint";
+import {
+    Global_Calendar_Callback,
+    Global_Calendar_Data,
+    DayCell,
+    MonthCell,
+    HourCell,
+    EventCell,
+    UpcomingEventsCell,
+} from "../../luna_src/src/helpers/global_callbacks.slint";
 
 //    Simple_AMPM, //  8:00 pm |  8:00 am
 //    Full_AMPM,   // 08:00 pm | 08:00 am
@@ -17,75 +25,68 @@ enum HourStampType {
     Army,
 }
 
-struct HourCell {
-    hour_num: int, // 0 - 24
-    hour_type: HourStampType,
-    time_signature: string, // 8:00am / 20:00 / etc
-    is_selected: bool,
-    is_current: bool,
-}
+// Sizes and spacings, in one place so the whole page can be tuned without hunting.
+global CalendarMetrics {
+    // The floor for one day cell in the year view. Twelve months of these decide the
+    // page's minimum width, so it is the dial that trades legibility against how small
+    // Luna can be made.
+    out property <length> year_day: 12px;
+    out property <length> year_day_font: year_day * 0.8;
 
-struct DayCell {
-    day_num: int, // 1-31 unless its 30 day or february etc
-    in_month: bool,
-    is_today: bool,
-    is_selected: bool,
-}
+    out property <length> month_day: 20px;
 
-struct MonthCell {
-    month_num: int, // 1-12
-    in_year: bool,
-    is_current: bool,
-    is_selected: bool,
-}
+    // The 5 to 15 range the whole calendar keeps to.
+    out property <length> pad: 5px;
+    out property <length> pad_wide: 10px;
+    out property <length> gap: 5px;
 
-struct EventCell {
-    // idk what it should store yet, and if it needs to be on the slint side at all
-    start_hour: int, // 0000 - 2459, integer
-    end_hour: int,   // 0000 - 2459, integer
-    next_day: bool, // for between-days events, true if end_hour is in the next day
-    title: string,
+    out property <length> radius: 6px;
+
+    // How tall one hour is in the day view before any surplus is handed out.
+    out property <length> hour_row: 22px;
+    out property <length> hour_gap: 2px;
+    // The strip down the left of the day view that holds the times, which event blocks
+    // start to the right of.
+    out property <length> hour_gutter: 62px;
 }
 
 // Cells that will be present in the daily view
 component HourCellButton inherits Rectangle {
     in property <HourCell> hour_data;
+    in property <HourStampType> hour_type: HourStampType.Army;
 
     callback hour_clicked(int);
 
     pure function convert_time_to_signature(hour: int) -> string {
-        return    root.hour_data.hour_type == HourStampType.Simple_AMPM ? hour < 12 ? 
-                      hour + ":00 am" : hour + ":00 pm" 
-                : root.hour_data.hour_type == HourStampType.Full_AMPM   ? hour < 10 ? 
+        return    root.hour_type == HourStampType.Simple_AMPM ? hour < 12 ?
+                      hour + ":00 am" : hour + ":00 pm"
+                : root.hour_type == HourStampType.Full_AMPM   ? hour < 10 ?
                       "0" + hour + ":00 am" : hour < 12 ? hour + ":00 am" :
                       hour < 22 ? "0" + hour + ":00 pm" : hour + ":00 pm"
-                : root.hour_data.hour_type == HourStampType.Army_AMPM   ? hour < 10 ?
-                      "0" + hour + ":00 am" : hour < 12 ? hour + ":00 am" : hour + ":00 pm"  
-                : root.hour_data.hour_type == HourStampType.Simple      ? hour < 12 ?
-                      hour + ":00" : hour + ":00"  
-                : root.hour_data.hour_type == HourStampType.Army        ? hour < 10 ? 
-                      "0"+ hour + ":00" : hour + ":00"  
+                : root.hour_type == HourStampType.Army_AMPM   ? hour < 10 ?
+                      "0" + hour + ":00 am" : hour < 12 ? hour + ":00 am" : hour + ":00 pm"
+                : root.hour_type == HourStampType.Simple      ? hour < 12 ?
+                      hour + ":00" : hour + ":00"
+                : root.hour_type == HourStampType.Army        ? hour < 10 ?
+                      "0"+ hour + ":00" : hour + ":00"
                 : "UNDEFINED";
     }
 
-    // TODO add more cases for is_today & has_hover etc
-    // colors are for testing
-    background: root.hour_data.is_selected                ? white
-              : ta.has-hover                              ? #2266cc
-              : Math.mod(root.hour_data.hour_num, 2) == 0 ? #2b2a2c 
-              : #1f1f1f ; 
+    background: root.hour_data.is_selected                ? Theme.highlight
+              : ta.has-hover                              ? Theme.background_tertiary
+              : Math.mod(root.hour_data.hour_num, 2) == 0 ? Theme.background_secondary
+              : Theme.background;
 
     ta := TouchArea { clicked => { root.hour_clicked(root.hour_data.hour_num); } }
 
-    // TODO add more cases for is_today & has_hover etc
     Text {
         width: 100%;
         height: 100%;
         text: convert_time_to_signature(root.hour_data.hour-num);
         font-size: 13px;
-        color: root.hour_data.is_selected ? white
-             : root.hour_data.is_current  ? #2266cc
-             : #bbbbbb;
+        color: root.hour_data.is_selected ? Theme.text
+             : root.hour_data.is_current  ? Theme.highlight
+             : Theme.text_secondary;
         horizontal-alignment: left;
         vertical-alignment: top;
     }
@@ -100,21 +101,18 @@ component DayCellButton inherits Rectangle {
     // the cell it asked for.
     in property <length> day_font_size: 14px;
 
-    callback day_clicked(int);
+    callback day_clicked();
 
-    border-radius: 12px;
-    border-color: ghostwhite;
-    border-width: 0px;
+    border-radius: CalendarMetrics.radius * 2;
+    border-color: Theme.border_secondary;
+    border-width: root.day_data.is_today && !root.day_data.is_selected ? 1px : 0px;
 
-    // TODO add more cases for is_today & has_hover etc
-    background: root.day_data.is_selected ? #4A90E2
-              : root.day_data.is_today    ? #ddeeff
-              : ta.has_hover              ? #1258a2
+    background: root.day_data.is_selected ? Theme.highlight
+              : ta.has_hover              ? Theme.background_tertiary
               : transparent;
 
-    ta := TouchArea { clicked => { root.day_clicked(root.day_data.day_num); } }
+    ta := TouchArea { clicked => { root.day_clicked(); } }
 
-    // TODO add more cases for is_today & has_hover etc
     if visible_days_num : Text {
         // Fills the cell, so the alignments below have the cell to align within rather
         // than the width of the digits themselves.
@@ -132,12 +130,24 @@ component DayCellButton inherits Rectangle {
         text: root.day_data.day_num;
         font-size: root.day_font_size;
         font-weight: FontWeight.semi-bold;
-        color: root.day_data.is_selected ? white
-             : root.day_data.is_today    ? #2266cc
-             : root.day_data.in_month    ? #d6d6d6
-             : #bbbbbb;
+        color: root.day_data.is_selected ? Theme.text
+             : root.day_data.is_today    ? Theme.highlight
+             : root.day_data.in_month    ? Theme.text
+             : Theme.text_secondary;
         horizontal-alignment: center;
         vertical-alignment: center;
+        opacity: root.day_data.in_month ? 1.0 : 0.45;
+    }
+
+    // Something is on this day. A dot rather than a count, because at the year view's
+    // size a count would be unreadable and at the month view's it would still be noise.
+    if root.day_data.has_events : Rectangle {
+        width: 4px;
+        height: 4px;
+        border-radius: 2px;
+        x: (parent.width - self.width) / 2;
+        y: parent.height - self.height - 2px;
+        background: root.day_data.is_selected ? Theme.text : Theme.highlight;
     }
 }
 
@@ -145,107 +155,240 @@ component DayCellButton inherits Rectangle {
 component MonthCellButton inherits Rectangle {
 
     in property <MonthCell> month_data;
-    callback month_clicked(int);
+    in property <string> month_name;
+    callback month_clicked();
 
-    border-radius: 15px;
-    border-color: Math.mod(root.month_data.month-num, 2) == 0 ? #272727 : #2d2d2d;
+    border-radius: CalendarMetrics.radius * 2;
+    border-color: Theme.border;
     border-width: 1px;
 
-    // TODO add more cases for is_today & has_hover etc
-    background: root.month_data.is_selected                 ? #4A90E2
-              : root.month_data.is_current                  ? #ddeeff
-              : ta.has_hover                                ? #1258a2
-              : Math.mod(root.month_data.month-num, 2) == 0 ? #272727
+    background: root.month_data.is_selected                 ? Theme.background_tertiary
+              : ta.has_hover                                ? Theme.background_secondary
+              : Math.mod(root.month_data.month-num, 2) == 0 ? Theme.background_secondary
               : transparent;
-    
-    ta := TouchArea { clicked => { root.month_clicked(root.month_data.month-num); } }
 
-    // TODO add more cases for is_today & has_hover etc
+    ta := TouchArea { clicked => { root.month_clicked(); } }
+
     VerticalLayout {
 
         // Twelve of these sit side by side, so every pixel of padding here is twelve
         // pixels of minimum width on the window. Kept to the low end of the 5 to 15
         // range the rest of the calendar uses.
-        padding: 5px;
+        padding: CalendarMetrics.pad;
         spacing: 2px;
 
         Text {
-            text: root.month_data.month_num;
-            font-size: 13px;
             vertical-stretch: 0;
-            color: root.month_data.is_selected ? white
-                : root.month_data.is_current  ? #2266cc
-                : root.month_data.in_year     ? #a0a0a0
-                : #bbbbbb;
+            text: root.month_name;
+            font-size: 12px;
+            color: root.month_data.is_current ? Theme.highlight
+                 : root.month_data.in_year    ? Theme.text_secondary
+                 : Theme.text_tertiary;
             horizontal-alignment: center;
             vertical-alignment: top;
-
-            
         }
 
         @children
     }
-    
 }
 
+// A row of navigation: back, a label, forward.
+component StepHeader inherits HorizontalLayout {
+    in property <string> label;
 
-// Cells that will be present in the daily view, if an event is present
-// Can span multiple hours
-component EventCellButton inherits Rectangle {
-    
-}
+    callback stepped(int);
 
-// TODO change to ScrollView? prolly want custom scroll graphic
-// TODO add the events logic
-component DailyView inherits Rectangle {
+    vertical-stretch: 0;
+    spacing: CalendarMetrics.gap;
 
-    in property <length> hour_cell_width: 300px;
-    in property <string> current_date: "Test Date";
-
-    in property <[EventCell]> events_list;
-
-    function hour_clicked(hour: int, day: int, month: int, year: int) {
-        Global-Calendar-Callback.daily_hour_clicked();
+    Button {
+        horizontal-stretch: 0;
+        text: "<";
+        clicked => { root.stepped(-1); }
     }
 
-    outer_hour := VerticalLayout {
-        padding: 10px;
+    Text {
+        horizontal-stretch: 1;
+        min-width: 0px;
+        text: root.label;
+        font-weight: FontWeight.semi-bold;
+        font-size: 15px;
+        color: Theme.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
 
-        date := Text {
+    Button {
+        horizontal-stretch: 0;
+        text: ">";
+        clicked => { root.stepped(1); }
+    }
+}
+
+component DailyView inherits Rectangle {
+
+    outer_hour := VerticalLayout {
+        padding: CalendarMetrics.pad_wide;
+        spacing: CalendarMetrics.gap;
+
+        HorizontalLayout {
             vertical-stretch: 0;
-            color: white;
-            text: current_date;
-            vertical-alignment: center;
-            horizontal-alignment: left;
+            spacing: CalendarMetrics.gap;
             max-height: 50px;
+
+            date := Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                color: Theme.text;
+                text: Global_Calendar_Data.day_label;
+                vertical-alignment: center;
+                horizontal-alignment: left;
+                overflow: elide;
+            }
+
+            // The way back after wandering off through the months. Without it the only
+            // route home is counting steps in the other direction.
+            Button {
+                horizontal-stretch: 0;
+                text: @tr("Today");
+                clicked => { Global_Calendar_Callback.today_selected(); }
+            }
         }
 
-        hours_layout := VerticalLayout {
-
-            // The hours take the height, not the date above them. Worth stating even
-            // though there are only two children: a layout whose children all report a
-            // stretch of 0 does not leave the extra space alone, it splits it equally
-            // between them, so the date line would grow at the same rate as the whole
-            // day. The 24 cells inside are left at 0 precisely for that reason: equal
-            // shares is what an hour grid wants.
+        // The hours and the entries drawn over them, in one grid cell so both get the
+        // same geometry. An entry is placed by arithmetic on that geometry rather than
+        // by sitting in an hour's cell, because an entry spanning four hours belongs to
+        // no single cell.
+        hours_stack := GridLayout {
             vertical-stretch: 1;
-            spacing: 2px;
 
-            for h in 24 : HourCellButton {
-                hour_data: {
-                    hour_num: h+1, 
-                    hour_type: HourStampType.Army,
-                    time_signature: "test",
-                    is_selected: false,
-                    is_current: false,
-                };
+            hours_layout := VerticalLayout {
+                row: 0;
+                col: 0;
+                spacing: CalendarMetrics.hour_gap;
 
-                preferred-width: hour_cell_width;
+                for h in Global_Calendar_Data.day_hours : HourCellButton {
+                    hour_data: h;
+                    min-height: CalendarMetrics.hour_row;
 
-                drop-shadow-offset-y: 2px;
-                drop-shadow-color: #5e5e5f;
+                    hour_clicked(hour) => { Global_Calendar_Callback.hour_selected(hour); }
+                }
+            }
 
-                hour_clicked => { hour_clicked(h, 1, 1, 2026) } // HACK hardcoded everything lmao
+            Rectangle {
+                row: 0;
+                col: 0;
+
+                for ev in Global_Calendar_Data.day_events : Rectangle {
+                    // One hour's worth of height, including the gap below it.
+                    property <length> slot:
+                        (parent.height - 23 * CalendarMetrics.hour_gap) / 24
+                        + CalendarMetrics.hour_gap;
+
+                    x: CalendarMetrics.hour_gutter;
+                    width: parent.width - CalendarMetrics.hour_gutter - CalendarMetrics.pad;
+                    y: ev.all_day ? 0px : ev.start_hour * self.slot;
+                    height: ev.all_day
+                          ? parent.height
+                          : max(self.slot - CalendarMetrics.hour_gap,
+                                (ev.end_hour - ev.start_hour) * self.slot - CalendarMetrics.hour_gap);
+
+                    background: Theme.primary;
+                    border-radius: CalendarMetrics.radius;
+                    border-width: 1px;
+                    border-color: Theme.border_secondary;
+                    opacity: ev.all_day ? 0.35 : 0.9;
+
+                    HorizontalLayout {
+                        padding: CalendarMetrics.pad;
+                        spacing: CalendarMetrics.gap;
+
+                        Text {
+                            horizontal-stretch: 1;
+                            min-width: 0px;
+                            text: ev.title;
+                            font-size: 12px;
+                            color: Theme.text;
+                            vertical-alignment: top;
+                            overflow: elide;
+                        }
+
+                        // Its own control rather than a click anywhere on the block, so
+                        // an entry cannot be deleted by a stray click on the thing you
+                        // were trying to read.
+                        Rectangle {
+                            horizontal-stretch: 0;
+                            width: 16px;
+                            height: 16px;
+                            border-radius: 8px;
+                            background: remove_touch.has-hover ? Theme.error : transparent;
+
+                            remove_touch := TouchArea {
+                                clicked => { Global_Calendar_Callback.event_removed(ev.id); }
+                            }
+
+                            Text {
+                                width: 100%;
+                                height: 100%;
+                                text: "x";
+                                font-size: 12px;
+                                color: Theme.text;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Adding an entry to whichever day is selected.
+        editor := HorizontalLayout {
+            vertical-stretch: 0;
+            spacing: CalendarMetrics.gap;
+
+            title_field := LineEdit {
+                horizontal-stretch: 1;
+                placeholder-text: @tr("New entry");
+            }
+
+            from_field := LineEdit {
+                horizontal-stretch: 0;
+                width: 52px;
+                input-type: decimal;
+                placeholder-text: @tr("from");
+            }
+
+            to_field := LineEdit {
+                horizontal-stretch: 0;
+                width: 52px;
+                input-type: decimal;
+                placeholder-text: @tr("to");
+            }
+
+            remind_field := LineEdit {
+                horizontal-stretch: 0;
+                width: 66px;
+                input-type: decimal;
+                // Days before the entry that the reminder fires. Blank or zero means the
+                // reminder is the entry itself.
+                placeholder-text: @tr("warn");
+            }
+
+            Button {
+                horizontal-stretch: 0;
+                text: @tr("Add");
+                enabled: title_field.text != "";
+                clicked => {
+                    Global_Calendar_Callback.event_added(
+                        title_field.text,
+                        from_field.text == "" ? 9 : from_field.text.to-float(),
+                        to_field.text == "" ? 10 : to_field.text.to-float(),
+                        remind_field.text == "" ? 0 : remind_field.text.to-float(),
+                    );
+                    title_field.text = "";
+                }
             }
         }
     }
@@ -253,32 +396,17 @@ component DailyView inherits Rectangle {
 
 component MonthlyView inherits Rectangle {
 
-    in property <length> day_cell_dims: 50px;
-    in property <int> current_month: 1;
-    in property <string> current_date_string: "Test Date";
-
-    pure function get_monthly_day_count(month: int, leap_year: bool) -> int {
-        return  month == 1  ? 31 
-              : month == 3  ? 31
-              : month == 4  ? 30
-              : month == 5  ? 31
-              : month == 6  ? 30
-              : month == 7  ? 31
-              : month == 8  ? 31
-              : month == 9  ? 30
-              : month == 10 ? 31
-              : month == 11 ? 30
-              : month == 12 ? 31
-              : leap-year   ? 29 : 28;
-    }
-
-    function day_clicked(day: int, month: int, year: int) {
-        Global-Calendar-Callback.month_date_clicked();
-    }
+    in property <length> day_cell_dims: CalendarMetrics.month_day;
 
     outer_month := VerticalLayout {
-        padding: 5px;
-        padding-bottom: 10px;
+        padding: CalendarMetrics.pad;
+        padding-bottom: CalendarMetrics.pad_wide;
+        spacing: CalendarMetrics.gap;
+
+        StepHeader {
+            label: Global_Calendar_Data.month_label;
+            stepped(by) => { Global_Calendar_Callback.month_step(by); }
+        }
 
         days_grid := GridLayout {
 
@@ -286,142 +414,87 @@ component MonthlyView inherits Rectangle {
             preferred-width: day_cell_dims * 7 + 5px;
             preferred-height: day_cell_dims * 6 + 5px;
 
-            date := Text {
-
-                col: 1;
-                colspan: 4;
-                row: 0;
-                font-weight: FontWeight.semi-bold;
-                font-size: 15px;
-                letter-spacing: 1px;
-                text: current_date_string;
-                horizontal-alignment: left;
-                vertical-alignment: center;
-                color: #a4a4a4;
-                overflow: elide;
-                wrap: no-wrap;
-            }
-
             for days_list[d] in ["M", "T", "W", "T", "F", "S", "S"] : Text {
                 col: d;
-                row: 1;
+                row: 0;
 
                 font-weight: FontWeight.semi-bold;
                 font-size: 15px;
                 vertical-alignment: center;
                 horizontal-alignment: center;
                 preferred-width: day_cell_dims;
-                preferred-height: day_cell_dims;
                 text: days_list;
-                color: #a4a4a4;
+                color: Theme.text_secondary;
             }
 
-            // TODO faulty, error prone, change it to per month day count
-            for days[d] in get_monthly_day_count(current_month, false) : DayCellButton {
-                col: Math.mod((d), 7);
-                row: ((d) / 7) + 2;
+            // Exactly 42 cells, already carrying the weekday offset and the days either
+            // side. Nothing here works out what day anything is.
+            for cell[i] in Global_Calendar_Data.month_grid : DayCellButton {
+                col: Math.mod(i, 7);
+                row: (i / 7) + 1;
 
                 // A grid row takes the smallest stretch among its cells, so marking the
-                // day cells is what keeps the two header rows above at their own height
+                // day cells is what keeps the header row above at its own height
                 // instead of growing along with the dates.
                 vertical-stretch: 1;
 
                 preferred-width: day_cell_dims;
                 preferred-height: day_cell_dims;
 
-                day_clicked => { day_clicked(d, current_month, 2026) } // HACK hardcoded year
-
-                day_data: {
-                    day_num: (d+1),
-                    in_month: true,
-                    is_today: false,
-                };
+                day_data: cell;
+                day_clicked => { Global_Calendar_Callback.day_selected(i); }
             }
         }
-
-        
     }
 }
 
 component YearlyView inherits Rectangle {
-    
-    in property <int> current_year;
-    // The floor for one day cell, not the size it stays at: the grids below hand out
-    // whatever the window has spare on top of this. Small, because a whole year is
-    // 366 of them and the monthly view is where a date is meant to be comfortable.
-    in property <length> day_cell_dims: 12px;
-    // Sized off the cell so the two stay in proportion. Override it on its own if the
-    // digits want to be bigger or smaller than the cell implies. Note that this does
-    // not follow the window: the cells grow, the digits stay put.
-    in property <length> day_font_size: day_cell_dims * 0.8;
+
+    in property <length> day_cell_dims: CalendarMetrics.year_day;
+    in property <length> day_font_size: CalendarMetrics.year_day_font;
     in property <bool> show_day_numbers: true;
 
-    pure function get_monthly_day_count(month: int, leap_year: bool) -> int {
-        return  month == 1  ? 31 
-              : month == 3  ? 31
-              : month == 4  ? 30
-              : month == 5  ? 31
-              : month == 6  ? 30
-              : month == 7  ? 31
-              : month == 8  ? 31
-              : month == 9  ? 30
-              : month == 10 ? 31
-              : month == 11 ? 30
-              : month == 12 ? 31
-              : leap-year   ? 29 : 28;
-    }
-
-    function month_clicked(month_index: int, year: int) {
-        Global-Calendar-Callback.year_month_clicked();
-    }
-
-    function day_clicked(day_index: int, month: int, year: int) {
-        Global-Calendar-Callback.year_date_clicked();
-    }
-
+    property <[string]> month_names: [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
 
     outer_layout := VerticalLayout {
 
         // No `alignment`. An alignment other than the default stretch hands every child
         // its preferred size and parks the leftover space at one end, which is why the
         // grid below used to sit in the top corner with the rest of the panel empty
-        // underneath it. Left as stretch, the year text keeps its natural height (a Text
-        // does not stretch) and the grid takes everything else.
-        spacing: 5px;
+        // underneath it.
+        padding: CalendarMetrics.pad;
+        spacing: CalendarMetrics.gap;
 
-        year_text := Text {
-            text: current_year;
-            vertical-alignment: center;
-            horizontal-alignment: center;
+        StepHeader {
+            label: Global_Calendar_Data.year_label;
+            stepped(by) => { Global_Calendar_Callback.year_step(by); }
         }
 
         months_grid := GridLayout {
 
             // Takes the panel's height rather than sharing it with the year label.
             vertical-stretch: 1;
-            spacing: 5px;
-            padding: 5px;
+            spacing: CalendarMetrics.gap;
+            padding: CalendarMetrics.pad;
 
             // Four across, three down. Three across is the more usual shape for a year
             // at a glance, but it is a third taller, and height is the scarce dimension
             // on this page: the day view next door is 24 hours tall on its own.
-            for months[m] in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : MonthCellButton {
+            for month[m] in Global_Calendar_Data.year_months : MonthCellButton {
 
-                col: Math.mod(m, 3);
-                row: m / 3 ;
+                col: Math.mod(m, 4);
+                row: m / 4 ;
 
                 // Nothing sized here. The day cells state a minimum, the grid around
                 // them adds it up, and the month cell inherits the total plus its own
-                // label and padding. Writing it out by hand a second time only creates
-                // something that can disagree with the cells it is meant to describe.
+                // label and padding.
+                month_data: month;
+                month_name: root.month_names[m];
 
-                month_data: {
-                    month_num: m+1,
-                    in_year: true,
-                    is_current: false,
-                };
-
-                month_clicked => { month_clicked(m, 2026) } // HACK hardcoded year
+                month_clicked => { Global_Calendar_Callback.year_month_selected(m); }
 
                 days_grid := GridLayout {
 
@@ -429,28 +502,27 @@ component YearlyView inherits Rectangle {
                     // with the month number above them.
                     vertical-stretch: 1;
 
-                    for days[d] in get_monthly_day_count(m+1, false) : DayCellButton {
-                        col: Math.mod((d), 7);
-                        row: (d) / 7 ;
+                    // The same 42 cell grid as the month view, so the weekday columns
+                    // line up across all twelve. Month m's cell i lives at m * 42 + i in
+                    // one flat array.
+                    for d in 42 : DayCellButton {
+                        col: Math.mod(d, 7);
+                        row: d / 7 ;
 
-                        visible_days_num: root.show_day_numbers;
+                        day_data: Global_Calendar_Data.year_days[m * 42 + d];
+                        visible_days_num: root.show_day_numbers
+                                       && Global_Calendar_Data.year_days[m * 42 + d].in_month;
                         day_font_size: root.day_font_size;
 
                         // Minimum rather than preferred. A preferred size is what an
                         // element settles at when the layout has space to spare, so the
-                        // cells sat at their 12px ideal and left the panel half empty;
-                        // as a minimum it is the floor they shrink to and the grid
-                        // spends the surplus on them instead.
+                        // cells sat at their ideal and left the panel half empty; as a
+                        // minimum it is the floor they shrink to and the grid spends the
+                        // surplus on them instead.
                         min-height: day_cell_dims;
                         min-width: day_cell_dims;
 
-                        day_clicked => { day_clicked(d, m, 2026) } // HACK hardcoded year
-
-                        day_data: {
-                            day_num: (d+1),
-                            in_month: true,
-                            is_today: false,
-                        };
+                        day_clicked => { Global_Calendar_Callback.year_day_selected(m * 42 + d); }
                     }
                 }
             }
@@ -458,94 +530,109 @@ component YearlyView inherits Rectangle {
     }
 }
 
-struct UpcomingEventsCell {
-
-    event_date: string,
-    event_title: string,
-    event_type: string, // TODO this will be changed to a user defined enum
-    event_index: int,
-    is_today: bool,
-}
-
 component UpcomingEventButton inherits Rectangle {
 
     in property <UpcomingEventsCell> event_data;
 
-    callback upcoming_event_clicked(int);
+    callback upcoming_event_clicked();
 
-    border-radius: 12px;
-    border-color: ghostwhite;
-    border-width: 0px;
+    border-radius: CalendarMetrics.radius;
+    background: ta.has_hover ? Theme.background_tertiary : transparent;
+    min-height: 30px;
 
-    // TODO add more cases for is_today & has_hover etc
-    background//: root.event_data.is_selected ? #4A90E2
-              : root.event_data.is_today    ? #ddeeff
-              : ta.has_hover              ? #1258a2
-              : transparent;
+    ta := TouchArea { clicked => { root.upcoming_event_clicked(); } }
 
-    ta := TouchArea { clicked => { root.upcoming_event_clicked(root.event_data.event_index); } }
+    HorizontalLayout {
+        padding: CalendarMetrics.pad;
+        spacing: CalendarMetrics.gap;
 
-    // TODO add more cases for is_today & has_hover etc
-    Text {
-        text: root.event_data.event_title;
-        font-size: 14px;
-        font-weight: FontWeight.semi-bold;
-        color//: root.event_data.is_selected ? white
-             : root.event_data.is_today    ? #2266cc
-             //: root.event_data.in_month    ? #d6d6d6
-             : #bbbbbb;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+        Text {
+            horizontal-stretch: 0;
+            min-width: 52px;
+            text: root.event_data.event_date;
+            font-size: 12px;
+            color: root.event_data.is_today ? Theme.highlight : Theme.text_secondary;
+            vertical-alignment: center;
+        }
+
+        Text {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            text: root.event_data.event_title;
+            font-size: 13px;
+            font-weight: FontWeight.semi-bold;
+            color: Theme.text;
+            vertical-alignment: center;
+            overflow: elide;
+        }
     }
-
-    
 }
 
 component UpcomingView inherits Rectangle {
 
-    in property <[UpcomingEventsCell]> upcoming_events;
-    
     outer_layout := VerticalLayout {
-        padding: 5px;
+        padding: CalendarMetrics.pad;
+        spacing: CalendarMetrics.gap;
 
         title_text := Text {
             vertical-stretch: 0;
-            text: "UPCOMING";
+            text: @tr("UPCOMING");
+            font-size: 12px;
+            color: Theme.text_secondary;
         }
 
         events_scroll_area := ScrollView {
             // The list takes the panel, the heading keeps its line.
             vertical-stretch: 1;
 
-            for event[e] in upcoming_events: UpcomingEventButton {
+            VerticalLayout {
+                alignment: start;
+                spacing: 2px;
 
+                for event[e] in Global_Calendar_Data.upcoming : UpcomingEventButton {
+                    event_data: event;
+                    upcoming_event_clicked => { Global_Calendar_Callback.upcoming_selected(e); }
+                }
             }
         }
     }
 }
 
 component NotesView inherits Rectangle {
-    
-    // TODO add 'save' button
-
-    in property <string> current_date: "Test Date";
-
 
     outer_layout := VerticalLayout {
 
-        padding: 5px;
-        spacing: 15px;
+        padding: CalendarMetrics.pad;
+        spacing: CalendarMetrics.gap;
 
-
-        date_text := Text {
+        HorizontalLayout {
             vertical-stretch: 0;
-            text: "Notes " + current_date;
+            spacing: CalendarMetrics.gap;
+
+            date_text := Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: @tr("Notes");
+                font-size: 12px;
+                color: Theme.text_secondary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            Button {
+                horizontal-stretch: 0;
+                text: Global_Calendar_Data.note_unsaved ? @tr("Save *") : @tr("Save");
+                enabled: Global_Calendar_Data.note_unsaved;
+                clicked => { Global_Calendar_Callback.note_saved(); }
+            }
         }
 
         notes_field := TextEdit {
             // Same again: the writing area takes the panel, the date keeps its line.
             vertical-stretch: 1;
             font-size: 12px;
+            text: Global_Calendar_Data.note_body;
+            edited => { Global_Calendar_Callback.note_edited(self.text); }
         }
     }
 }
@@ -562,96 +649,65 @@ export component ToolPage inherits PageComponent {
     padding-top: 10px;
 
     // What the page opens at. The minimum is not stated anywhere; it falls out of the
-    // three columns and lands around 880 by 620.
+    // three columns.
     preferred_width: 1200px;
     preferred_height: 760px;
-
 
     // Three columns: month over year on the left, the day in the middle, upcoming over
     // notes on the right.
     //
     // Nothing here declares a min-width or min-height for the layouts themselves. Slint
     // already works those out from the children and propagates them up to the window,
-    // so writing the arithmetic by hand is both redundant and easy to get backwards:
-    // in a horizontal layout the min height is the *tallest* child, not the sum, and in
-    // a vertical layout the min width is the *widest* child, not the sum.
-    //
-    // Nothing sets a percentage width either. An explicit width on a child overrides
-    // the layout's own distribution, so it fights the child's min-width instead of
-    // respecting it, and the percentages did not leave room for the spacing between
-    // columns.
-    //
-    // Instead each column states its own minimum and maximum, and the spacers on the
-    // outside take whatever is left over. That gives the window a natural minimum size
-    // with no maximum, and turns surplus width into even padding rather than stretching
-    // the columns past the point where they look right.
+    // so writing the arithmetic by hand is both redundant and easy to get backwards.
     outer_layout := HorizontalLayout {
 
-        spacing: 5px;
-        padding-bottom: 10px;
+        spacing: CalendarMetrics.gap;
+        padding-bottom: CalendarMetrics.pad_wide;
 
         // The spacers stretch far more slowly than the columns do. With everything on
-        // the default factor of 1 the surplus was split five ways, so padding appeared
-        // at the edges while the columns were still nowhere near the width they are
-        // allowed to reach. Weighted like this the columns fill out to their maximum
-        // first and only what is left over past that becomes padding.
-        Rectangle { 
-            horizontal-stretch: 1; 
-            max-width: 15px;
-        }
+        // the default factor the surplus was split five ways, so padding appeared at the
+        // edges while the columns were still nowhere near the width they are allowed to
+        // reach.
+        Rectangle { horizontal-stretch: 1; }
 
         month_year_layout := VerticalLayout {
 
-            horizontal-stretch: 30;
+            horizontal-stretch: 50;
             // No min-width. The year view below states what a legible day cell costs,
             // and twelve months of them decide this column's minimum far more reliably
-            // than a number typed here, which was quietly narrower than its contents.
-            max-width: 520px;
-            padding-bottom: 5px;
-            spacing: 5px;
+            // than a number typed here.
+            max-width: 640px;
+            padding-bottom: CalendarMetrics.pad;
+            spacing: CalendarMetrics.gap;
 
             month_view := MonthlyView {
-
-                // The month grows first but stops at 260, and the year below takes the
+                // The month grows first but stops at 300, and the year below takes the
                 // rest of the column. Both need a factor above 0: an unmarked pair would
                 // be split down the middle regardless of how much each one can use.
                 vertical-stretch: 1;
-
-                current_date_string: "Test Date";
-                day_cell_dims: 20px;
-
-                min-height: 180px;
-                max-height: 260px;
+                min-height: 200px;
+                max-height: 300px;
             }
 
             year_view := YearlyView {
-
                 vertical-stretch: 3;
-                current_year: 2026;
-
-                // No min-height either, for the same reason: three rows of months know
-                // their own floor, and the column takes the rest of the height.
             }
         }
 
         day_view := DailyView {
 
-            horizontal-stretch: 40;
-            min-width: 260px;
-            max-width: 640px;
-
-            current_date: "Test date";
-
-            hour_cell_width: 400px;
+            horizontal-stretch: 50;
+            min-width: 300px;
+            max-width: 560px;
         }
 
         upcoming_notes_layout := VerticalLayout {
 
-            horizontal-stretch: 30;
+            horizontal-stretch: 50;
             min-width: 180px;
-            max-width: 400px;
-            padding-bottom: 5px;
-            spacing: 5px;
+            max-width: 320px;
+            padding-bottom: CalendarMetrics.pad;
+            spacing: CalendarMetrics.gap;
 
             upcoming_view := UpcomingView {
                 vertical-stretch: 1;
@@ -660,16 +716,12 @@ export component ToolPage inherits PageComponent {
             }
 
             notes_view := NotesView {
-                vertical-stretch: 2;
+                vertical-stretch: 3;
                 min-height: 140px;
-                max-height: 600px;
             }
         }
 
-        Rectangle { 
-            horizontal-stretch: 1; 
-            max-width: 15px;
-        }
+        Rectangle { horizontal-stretch: 1; }
     }
 
 }

@@ -7,10 +7,19 @@
 //! A tool folder holds `manifest.toml`, a `mod.rs` defining `pub struct Tool`, and a
 //! `ui.slint` exporting `component ToolPage`.
 
-use luna_core::ToolManifest;
+use luna_core::{AppPaths, ServiceFactory, ToolManifest};
 use slint::Weak;
 
 use crate::LunaAppUi;
+
+/// What a tool's view is handed when it is bound.
+///
+/// Paths rather than an open database, for the reason [`luna_core::ServiceContext`]
+/// gives: a `rusqlite::Connection` is `Send` but not `Sync`, so everything that wants
+/// one opens its own against the same file and lets WAL mode sort out the overlap.
+pub(crate) struct ViewContext<'a> {
+    pub paths: &'a AppPaths,
+}
 
 /// A tool view that has been bound to the window.
 ///
@@ -46,7 +55,17 @@ pub(crate) trait ToolView: BoundTool + Sized {
     fn manifest() -> ToolManifest;
 
     /// Wires the tool's callbacks to the window.
-    fn bind(ui: Weak<LunaAppUi>) -> Self;
+    fn bind(ui: Weak<LunaAppUi>, ctx: &ViewContext<'_>) -> Self;
+
+    /// Builds the tool's background half, for a tool that declares `background`.
+    ///
+    /// A factory rather than an instance, because the registry drops the service when
+    /// the tool is disabled and builds a fresh one when it comes back. The default is
+    /// `None`, which is the right answer for a tool that only exists while its page is
+    /// open.
+    fn service() -> Option<ServiceFactory> {
+        return None;
+    }
 }
 
 // Written by build.rs from the contents of tools/. A plain module rather than an
@@ -54,4 +73,4 @@ pub(crate) trait ToolView: BoundTool + Sized {
 // gets completions and inline errors like any other file.
 mod generated;
 
-pub(crate) use generated::{ bind_all, manifests };
+pub(crate) use generated::{ bind_all, registrations };
