@@ -34,11 +34,11 @@ pub const VERSION: luna::Version = luna::Version::new(0, 2, 0);
 const TOOL_ID: &str = "luna.calendar";
 
 /// How many entries the upcoming list shows.
-const UPCOMING_LIMIT: usize = 40;
+const UPCOMING_LIMIT: usize = 20;
 
 /// What the page is looking at.
 ///
-/// `anchor` is the month on screen, `selected` the day. They are separate because
+/// `anchor` is the month on screen, `selected` is the day. They are separate because
 /// stepping the month must not move the selection, and selecting a day in the greyed-out
 /// edge of a grid must move the month.
 struct State {
@@ -93,9 +93,8 @@ impl ToolView for Tool {
         let store = match Store::open(&database) {
             Ok(store) => store,
             Err(e) => {
-                // A calendar that cannot reach its storage is still worth showing: the
-                // grid, the navigation and the clock all work without it. Refusing to
-                // bind would take the page away entirely.
+                // A calendar that cannot reach its storage is still worth showing, since the
+                // grid, the navigation and the clock all work without it. Refusing would take the page away entirely.
                 eprintln!("calendar: storage is unavailable, entries will not load: {e}");
                 return calendar;
             }

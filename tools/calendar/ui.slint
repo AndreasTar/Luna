@@ -32,7 +32,7 @@ enum HourStampType {
 global CalendarMetrics {
     // The floor for one day cell in the year view. Twelve months of these decide the
     // page's minimum width, so it is the dial that trades legibility against how small
-    // Luna can be made.
+    // the window can be made.
     out property <length> year_day: 11px;
     out property <length> year_day_font: year_day * 0.85;
 
@@ -168,11 +168,10 @@ component DayCellButton inherits Rectangle {
         width: 100%;
         height: 100%;
 
-        // States its own minimum as zero so the cell can shrink smaller than the number
-        // it holds. A Text otherwise reports the size of its glyphs as a hard minimum,
-        // and that propagates all the way out to the window: with twelve months of them
-        // on screen it was the year view, not the day view, deciding how small Luna
-        // could be. The number is clipped rather than resized when the cell gets tight.
+        // States its own minimum as zero so the cell can shrink smaller than the number it holds. 
+        // A Text otherwise reports the size of its glyphs as a hard minimum, and that propagates all 
+        // the way out to the window: with twelve months of them on screen it was the year view, not the day view, 
+        // deciding how small the window could be. The number is clipped rather than resized when the cell gets tight.
         min-width: 0px;
         min-height: 0px;
 
@@ -330,8 +329,8 @@ component DailyView inherits Rectangle {
                 col: 0;
 
                 for ev in Global_Calendar_Data.day_events : Rectangle {
-                    // One hour's worth of height, including the gap below it. Fractions
-                    // of it are what put a half past start half way down a row.
+                    // One hour's worth of height, including the gap below it. 
+                    // Fractions of it are what put a half past start half way down a row.
                     property <length> slot:
                         (parent.height - 23 * CalendarMetrics.hour_gap) / 24
                         + CalendarMetrics.hour_gap;
